@@ -1,6 +1,5 @@
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -13,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import ApiKeySettings from "@/components/ApiKeySettings";
 
 const SettingsPage = () => {
   const navigate = useNavigate();
@@ -78,25 +78,7 @@ const SettingsPage = () => {
             <Separator />
 
             {/* API Keys */}
-            <div className="grid gap-4">
-              <h3 className="font-medium leading-none">API Keys</h3>
-              <div className="grid gap-2">
-                <Label htmlFor="openai-key">OpenAI API Key</Label>
-                <Input id="openai-key" type="password" placeholder="sk-..." />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="google-key">Google API Key</Label>
-                <Input id="google-key" type="password" placeholder="AIzaSy..." />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="anthropic-key">Anthropic API Key</Label>
-                <Input id="anthropic-key" type="password" placeholder="sk-ant-..." />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="openrouter-key">OpenRouter API Key</Label>
-                <Input id="openrouter-key" type="password" placeholder="sk-or-..." />
-              </div>
-            </div>
+            <ApiKeySettings />
             <Separator />
 
             {/* Integrations */}
