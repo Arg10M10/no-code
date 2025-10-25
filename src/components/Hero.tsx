@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Github, Figma, Camera, Upload, Cpu, Send } from "lucide-react";
+import { Github, Figma, Camera, Upload, Cpu, ArrowUp } from "lucide-react";
 import { useRef, useState } from "react";
 import ModelsPopover from "./ModelsPopover";
 import {
@@ -79,8 +79,8 @@ const Hero = () => {
               </Popover>
             </div>
             <div className="absolute right-4 bottom-4">
-              <Button size="icon" className="rounded-full">
-                <Send className="h-4 w-4" />
+              <Button size="icon" className="rounded-full transition-transform hover:scale-105 active:scale-95">
+                <ArrowUp className="h-4 w-4" />
               </Button>
             </div>
           </div>
