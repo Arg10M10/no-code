@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { KeyRound, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { KeyRound, Trash2, ExternalLink } from "lucide-react";
+import { AnthropicLogo, GoogleLogo, OpenAiLogo, OpenRouterLogo } from "./ProviderLogos";
 
 type Provider = {
   id: 'openai' | 'google' | 'anthropic' | 'openrouter';
@@ -18,19 +20,15 @@ type Provider = {
   description: string;
   logo: React.ReactNode;
   placeholder: string;
+  getApiKeyUrl: string;
+  models: string[];
 };
 
-const ProviderLogo = ({ children }: { children: React.ReactNode }) => (
-  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-    {children}
-  </div>
-);
-
 const providers: Provider[] = [
-  { id: 'openai', name: 'OpenAI', description: 'Powering models like GPT-4.', logo: <ProviderLogo>OA</ProviderLogo>, placeholder: 'sk-...' },
-  { id: 'google', name: 'Google', description: 'Home of the Gemini family of models.', logo: <ProviderLogo>G</ProviderLogo>, placeholder: 'AIzaSy...' },
-  { id: 'anthropic', name: 'Anthropic', description: 'Building reliable, interpretable, and steerable AI systems.', logo: <ProviderLogo>AN</ProviderLogo>, placeholder: 'sk-ant-...' },
-  { id: 'openrouter', name: 'OpenRouter', description: 'Access a variety of models through a single API.', logo: <ProviderLogo>OR</ProviderLogo>, placeholder: 'sk-or-...' },
+  { id: 'openai', name: 'OpenAI', description: 'Powering models like GPT-4.', logo: <OpenAiLogo />, placeholder: 'sk-...', getApiKeyUrl: 'https://openai.com/api/', models: ['GPT-4o', 'GPT-4 Turbo', 'GPT-3.5 Turbo'] },
+  { id: 'google', name: 'Google', description: 'Home of the Gemini family of models.', logo: <GoogleLogo />, placeholder: 'AIzaSy...', getApiKeyUrl: 'https://aistudio.google.com/app/api-keys', models: ['Gemini 1.5 Pro', 'Gemini 1.5 Flash'] },
+  { id: 'anthropic', name: 'Anthropic', description: 'Building reliable, interpretable, and steerable AI systems.', logo: <AnthropicLogo />, placeholder: 'sk-ant-...', getApiKeyUrl: 'https://console.anthropic.com/login?returnTo=%2F%3F', models: ['Claude 3 Opus', 'Claude 3 Sonnet', 'Claude 3 Haiku'] },
+  { id: 'openrouter', name: 'OpenRouter', description: 'Access a variety of models through a single API.', logo: <OpenRouterLogo />, placeholder: 'sk-or-...', getApiKeyUrl: 'https://openrouter.ai/docs/api-reference/overview', models: ['Various', 'Llama 3', 'Mistral'] },
 ];
 
 const ApiKeySettings = () => {
@@ -76,7 +74,7 @@ const ApiKeySettings = () => {
         {providers.map((provider) => (
           <div key={provider.id} className="flex items-center justify-between p-3 border border-border rounded-lg bg-background">
             <div className="flex items-center gap-3">
-              {provider.logo}
+              <div className="h-8 w-8 flex items-center justify-center">{provider.logo}</div>
               <span className="font-medium">{provider.name}</span>
             </div>
             <div className="flex items-center gap-3">
@@ -103,6 +101,18 @@ const ApiKeySettings = () => {
             <DialogDescription>{selectedProvider?.description}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Available Models</Label>
+              <div className="flex flex-wrap gap-2">
+                {selectedProvider?.models.map(model => <Badge key={model} variant="secondary">{model}</Badge>)}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Get your API Key</Label>
+              <a href={selectedProvider?.getApiKeyUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline">
+                Go to {selectedProvider?.name} dashboard <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="api-key" className="text-right">
                 API Key
