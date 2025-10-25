@@ -1,7 +1,22 @@
 import { Button } from "@/components/ui/button";
-import { Github, Figma, Puzzle, Camera } from "lucide-react";
+import { Github, Figma, Camera, Upload } from "lucide-react";
+import { useRef } from "react";
 
 const Hero = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      console.log("Selected file:", file.name);
+      // Aquí puedes añadir la lógica para manejar el archivo subido
+    }
+  };
+
   return (
     <section className="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-20">
       <div className="max-w-4xl mx-auto text-center space-y-8">
@@ -70,13 +85,20 @@ const Hero = () => {
               <Camera className="h-4 w-4 mr-2" />
               Clone a Screenshot
             </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+            />
             <Button
               variant="outline"
               size="sm"
               className="rounded-full bg-secondary border-border hover:bg-muted"
+              onClick={handleUploadClick}
             >
-              <Puzzle className="h-4 w-4 mr-2" />
-              Get Extension
+              <Upload className="h-4 w-4 mr-2" />
+              Upload a Project
             </Button>
           </div>
         </div>
