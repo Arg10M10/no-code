@@ -15,8 +15,8 @@ export const GoogleLogo = () => (
 );
 
 export const AnthropicLogo = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M9.6 5.4L5.25 18.6h2.1L8.4 15.3h4.2l1.05 3.3h2.1L11.4 5.4H9.6zm-.9 8.1l1.5-4.8 1.5 4.8h-3zM15 5.4h2.1v13.2H15V5.4z" />
+  <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10.9091 15.8333V4.16667H12.7273L15.4545 10L12.7273 15.8333H10.9091ZM7.27273 15.8333V4.16667H4.54545V15.8333H7.27273Z" />
   </svg>
 );
 
