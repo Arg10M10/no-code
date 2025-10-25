@@ -42,7 +42,7 @@ const Hero = () => {
           <div className="relative">
             <textarea
               placeholder="Ask Fusion to build a multi-step us"
-              className="w-full h-64 px-6 py-4 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full h-64 px-6 py-4 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-shadow duration-300 ease-in-out hover:shadow-lg"
             />
             <Button
               variant="ghost"
