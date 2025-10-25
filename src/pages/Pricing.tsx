@@ -130,7 +130,10 @@ const Pricing = () => {
         <main className="container mx-auto px-6 pt-32 pb-20">
           <div className="max-w-6xl mx-auto space-y-12">
             {/* Header */}
-            <div className="text-center space-y-4">
+            <div
+              className="text-center space-y-4 opacity-0 animate-fade-in-up"
+              style={{ animationDelay: "0.2s" }}
+            >
               <h1 className="text-5xl md:text-6xl font-bold">
                 Select a plan for your team
               </h1>
@@ -143,7 +146,10 @@ const Pricing = () => {
             </div>
 
             {/* Plan Selector */}
-            <div className="flex items-center justify-center gap-4">
+            <div
+              className="flex items-center justify-center gap-4 opacity-0 animate-fade-in-up"
+              style={{ animationDelay: "0.3s" }}
+            >
               <div className="flex gap-2 p-1 bg-secondary rounded-lg">
                 <Button
                   variant={selectedPlan === "fusion" ? "default" : "ghost"}
@@ -165,7 +171,10 @@ const Pricing = () => {
             </div>
 
             {/* Billing Toggle */}
-            <div className="flex items-center justify-center gap-4">
+            <div
+              className="flex items-center justify-center gap-4 opacity-0 animate-fade-in-up"
+              style={{ animationDelay: "0.4s" }}
+            >
               <span className={billingPeriod === "monthly" ? "text-foreground" : "text-muted-foreground"}>
                 Monthly
               </span>
@@ -187,7 +196,10 @@ const Pricing = () => {
             </div>
 
             {/* Pricing Cards */}
-            <div className="grid md:grid-cols-3 gap-8 pt-8">
+            <div
+              className="grid md:grid-cols-3 gap-8 pt-8 opacity-0 animate-fade-in-up"
+              style={{ animationDelay: "0.5s" }}
+            >
               {currentPlans.map((plan, index) => (
                 <PricingCard
                   key={index}
@@ -198,7 +210,10 @@ const Pricing = () => {
             </div>
 
             {/* Footer Note */}
-            <div className="text-center text-sm text-muted-foreground pt-8">
+            <div
+              className="text-center text-sm text-muted-foreground pt-8 opacity-0 animate-fade-in-up"
+              style={{ animationDelay: "0.6s" }}
+            >
               <p>
                 Plan features, pricing, and limits are subject to change. See{" "}
                 <a href="#" className="text-primary hover:underline">
