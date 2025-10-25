@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Github, Figma, Camera, Upload, Cpu, ArrowUp, File, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { Github, Figma, Camera, Upload, Cpu, ArrowUp, File, X, ClipboardPaste } from "lucide-react";
+import { useRef, useState, ClipboardEvent } from "react";
 import ModelsPopover from "./ModelsPopover";
 import {
   Popover,
@@ -12,8 +12,11 @@ const Hero = () => {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const screenshotFileInputRef = useRef<HTMLInputElement>(null);
+  
   const [selectedModel, setSelectedModel] = useState("OpenAI - GPT-5");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pastedTextInfo, setPastedTextInfo] = useState<{ wordCount: number; content: string } | null>(null);
+  const [prompt, setPrompt] = useState("");
 
   const handleUploadProjectClick = () => {
     projectFileInputRef.current?.click();
@@ -30,7 +33,6 @@ const Hero = () => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log("Selected file:", file.name);
       setSelectedFile(file);
     }
     event.target.value = "";
@@ -39,6 +41,28 @@ const Hero = () => {
   const handleClearFile = () => {
     setSelectedFile(null);
   };
+
+  const handleClearPastedText = () => {
+    setPastedTextInfo(null);
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedText = event.clipboardData.getData('text');
+    const wordCount = pastedText.split(/\s+/).filter(Boolean).length;
+
+    if (wordCount > 500) {
+      event.preventDefault();
+      setPastedTextInfo({ wordCount, content: pastedText });
+    }
+  };
+
+  const attachmentCount = [selectedFile, pastedTextInfo].filter(Boolean).length;
+  const paddingTopClass =
+    attachmentCount === 2
+      ? 'pt-24'
+      : attachmentCount === 1
+      ? 'pt-14'
+      : 'pt-4';
 
   return (
     <section className="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-20">
@@ -63,22 +87,38 @@ const Hero = () => {
           style={{ animationDelay: "0.4s" }}
         >
           <div className="relative">
-            {selectedFile && (
-              <div className="absolute top-4 left-4 right-4 z-10 animate-fade-in-down">
-                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-background border border-border rounded-lg shadow-sm">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <File className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    <span className="text-sm font-medium truncate">{selectedFile.name}</span>
+            <div className="absolute top-3 left-3 right-3 z-10 flex flex-col gap-2">
+              {selectedFile && (
+                <div className="flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-xs font-medium truncate">{selectedFile.name}</span>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full flex-shrink-0" onClick={handleClearFile}>
-                    <X className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full flex-shrink-0" onClick={handleClearFile}>
+                    <X className="h-3 w-3" />
                   </Button>
                 </div>
-              </div>
-            )}
+              )}
+              {pastedTextInfo && (
+                <div className="flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ClipboardPaste className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-xs font-medium truncate">
+                      Pasted Text ({pastedTextInfo.wordCount} words)
+                    </span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full flex-shrink-0" onClick={handleClearPastedText}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onPaste={handlePaste}
               placeholder="Ask Fusion to build a multi-step us"
-              className={`w-full h-64 pl-6 pr-16 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 ease-in-out hover:shadow-lg ${selectedFile ? 'pt-20' : 'pt-4'}`}
+              className={`w-full h-64 pl-6 pr-16 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 ease-in-out hover:shadow-lg ${paddingTopClass}`}
             />
             <div className="absolute left-4 bottom-4 flex items-center gap-2">
               <Button
