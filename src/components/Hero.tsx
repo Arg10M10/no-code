@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Github, Figma, Server, Puzzle } from "lucide-react";
 
 const Hero = () => {
@@ -46,9 +45,16 @@ const Hero = () => {
               variant="outline"
               size="sm"
               className="rounded-full bg-secondary border-border hover:bg-muted"
+              asChild
             >
-              <Figma className="h-4 w-4 mr-2" />
-              Figma Import
+              <a
+                href="https://www.figma.com/community/plugin/747985167520967365/builder-io-figma-to-code-ai-apps-react-vue-tailwind-etc"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Figma className="h-4 w-4 mr-2" />
+                Figma Import
+              </a>
             </Button>
             <Button
               variant="outline"
