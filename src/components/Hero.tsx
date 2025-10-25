@@ -6,15 +6,24 @@ const Hero = () => {
     <section className="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-20">
       <div className="max-w-4xl mx-auto text-center space-y-8">
         <div className="space-y-4">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight">
+          <h1
+            className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight opacity-0 animate-fade-in-up"
+            style={{ animationDelay: "0.2s" }}
+          >
             What should we build?
           </h1>
-          <p className="text-lg text-muted-foreground">
+          <p
+            className="text-lg text-muted-foreground opacity-0 animate-fade-in-up"
+            style={{ animationDelay: "0.3s" }}
+          >
             Start building with a single prompt. No coding needed.
           </p>
         </div>
 
-        <div className="max-w-2xl mx-auto space-y-4">
+        <div
+          className="max-w-2xl mx-auto space-y-4 opacity-0 animate-fade-in-up"
+          style={{ animationDelay: "0.4s" }}
+        >
           <div className="relative">
             <textarea
               placeholder="Ask Fusion to build a multi-step us"
