@@ -9,11 +9,16 @@ import {
 } from "@/components/ui/popover";
 
 const Hero = () => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const projectFileInputRef = useRef<HTMLInputElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
   const [selectedModel, setSelectedModel] = useState("OpenAI - GPT-5");
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
+  const handleUploadProjectClick = () => {
+    projectFileInputRef.current?.click();
+  };
+
+  const handleAttachImageClick = () => {
+    imageFileInputRef.current?.click();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,6 +61,7 @@ const Hero = () => {
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground hover:text-foreground"
+                onClick={handleAttachImageClick}
               >
                 Attach
               </Button>
@@ -88,15 +94,22 @@ const Hero = () => {
           <div className="flex items-center justify-center gap-3">
             <input
               type="file"
-              ref={fileInputRef}
+              ref={projectFileInputRef}
               onChange={handleFileChange}
               className="hidden"
+            />
+            <input
+              type="file"
+              ref={imageFileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/*"
             />
             <Button
               variant="outline"
               size="sm"
               className="rounded-full bg-secondary border-border hover:bg-muted"
-              onClick={handleUploadClick}
+              onClick={handleUploadProjectClick}
             >
               <Upload className="h-4 w-4 mr-2" />
               Upload a Project
