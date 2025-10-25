@@ -54,6 +54,21 @@ const Hero = () => {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full bg-secondary border-border hover:bg-muted"
+              onClick={handleUploadClick}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload a Project
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -84,21 +99,6 @@ const Hero = () => {
             >
               <Camera className="h-4 w-4 mr-2" />
               Clone a Screenshot
-            </Button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full bg-secondary border-border hover:bg-muted"
-              onClick={handleUploadClick}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload a Project
             </Button>
           </div>
         </div>
