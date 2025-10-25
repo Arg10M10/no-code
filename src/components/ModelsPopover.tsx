@@ -4,20 +4,20 @@ import { Button } from '@/components/ui/button';
 
 const modelsData = {
   OpenAI: {
-    provider: 'GPT-4, GPT-3.5',
-    models: ['GPT-4o', 'GPT-4', 'GPT-3.5-Turbo'],
+    provider: 'GPT-5 Series',
+    models: ['GPT-5 Codex', 'GPT-5', 'GPT-5 Mini', 'GPT-5 Nano', 'o4mini'],
   },
   Google: {
-    provider: 'Gemini Pro',
-    models: ['Gemini 1.5 Pro', 'Gemini 1.0 Pro'],
+    provider: 'Gemini 2.5 Series',
+    models: ['Gemini 2.5 flash', 'Gemini 2.5 Pro'],
   },
   Anthropic: {
-    provider: 'Claude 3',
-    models: ['Claude 3 Opus', 'Claude 3 Sonnet', 'Claude 3 Haiku'],
+    provider: 'Claude Series',
+    models: ['Claude 4.5 Sonet', 'Claude 4 Sonet', 'Claude 3.7 Sonet', 'Claude 3.5 Sonet'],
   },
   OpenRouter: {
     provider: 'Free models',
-    models: ['Llama 3 8B', 'Mistral 7B'],
+    models: ['Deepseek v3.1 (free)', 'Deepseek v3 (free)', 'Qween3 Coder (free)'],
   },
 };
 

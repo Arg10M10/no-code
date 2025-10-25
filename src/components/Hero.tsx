@@ -10,7 +10,7 @@ import {
 
 const Hero = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedModel, setSelectedModel] = useState("OpenAI - GPT-4o");
+  const [selectedModel, setSelectedModel] = useState("OpenAI - GPT-5");
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
