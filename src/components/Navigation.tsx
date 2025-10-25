@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Navigation = () => {
   return (
@@ -7,13 +8,13 @@ const Navigation = () => {
       <div className="container mx-auto px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-2">
               <div className="flex gap-0.5">
                 <div className="h-5 w-1.5 bg-primary rounded-sm"></div>
                 <div className="h-5 w-1.5 bg-accent rounded-sm"></div>
               </div>
               <span className="text-xl font-semibold">ByDamian</span>
-            </div>
+            </Link>
             
             <div className="hidden md:flex items-center gap-6">
               <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -28,9 +29,9 @@ const Navigation = () => {
               <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Enterprise
               </button>
-              <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Pricing
-              </button>
+              </Link>
             </div>
           </div>
 
