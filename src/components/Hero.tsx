@@ -10,7 +10,7 @@ const Hero = () => {
             What should we build?
           </h1>
           <p className="text-lg text-muted-foreground">
-            using your design & code context
+            Start building with a single prompt. No coding needed.
           </p>
         </div>
 
