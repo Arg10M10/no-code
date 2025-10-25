@@ -1,157 +1,150 @@
-"use client";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { Check, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { KeyRound, Trash2, ExternalLink } from "lucide-react";
+import { AnthropicLogo, GoogleLogo, OpenAiLogo, OpenRouterLogo } from "./ProviderLogos";
 
-// Define the structure for a provider
-interface Provider {
-  id: string;
+type Provider = {
+  id: 'openai' | 'google' | 'anthropic' | 'openrouter';
   name: string;
-  key: string;
+  description: string;
+  logo: React.ReactNode;
   placeholder: string;
-}
-
-// Initial list of providers
-const initialProviders: Provider[] = [
-  {
-    id: "openai",
-    name: "OpenAI",
-    key: "OPENAI_API_KEY",
-    placeholder: "sk-...",
-  },
-  {
-    id: "google",
-    name: "Google Gemini",
-    key: "GEMINI_API_KEY",
-    placeholder: "AIza...",
-  },
-  {
-    id: "anthropic",
-    name: "Anthropic",
-    key: "ANTHROPIC_API_KEY",
-    placeholder: "sk-ant-...",
-  },
-  {
-    id: "openrouter",
-    name: "OpenRouter",
-    key: "OPENROUTER_API_KEY",
-    placeholder: "sk-or-...",
-  },
-];
-
-// Utility function to get initials
-const getInitials = (name: string) => {
-  return name
-    .split(/\s+/)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase();
+  getApiKeyUrl: string;
+  models: string[];
 };
 
-export function ApiKeySettings() {
-  const [providers, setProviders] = useState<Provider[]>(initialProviders);
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>(() => {
-    // Load existing keys from localStorage or initialize empty
-    const keys: Record<string, string> = {};
-    initialProviders.forEach((p) => {
-      keys[p.key] = localStorage.getItem(p.key) || "";
-    });
-    return keys;
-  });
+const providers: Provider[] = [
+  { id: 'openai', name: 'OpenAI', description: 'Powering models like GPT-4.', logo: <OpenAiLogo />, placeholder: 'sk-...', getApiKeyUrl: 'https://openai.com/api/', models: ['GPT-4o', 'GPT-4 Turbo', 'GPT-3.5 Turbo'] },
+  { id: 'google', name: 'Google', description: 'Home of the Gemini family of models.', logo: <GoogleLogo />, placeholder: 'AIzaSy...', getApiKeyUrl: 'https://aistudio.google.com/app/api-keys', models: ['Gemini 1.5 Pro', 'Gemini 1.5 Flash'] },
+  { id: 'anthropic', name: 'Anthropic', description: 'Building reliable, interpretable, and steerable AI systems.', logo: <AnthropicLogo />, placeholder: 'sk-ant-...', getApiKeyUrl: 'https://console.anthropic.com/login?returnTo=%2F%3F', models: ['Claude 3 Opus', 'Claude 3 Sonnet', 'Claude 3 Haiku'] },
+  { id: 'openrouter', name: 'OpenRouter', description: 'Access a variety of models through a single API.', logo: <OpenRouterLogo />, placeholder: 'sk-or-...', getApiKeyUrl: 'https://openrouter.ai/docs/api-reference/overview', models: ['Various', 'Llama 3', 'Mistral'] },
+];
 
-  const handleSave = (keyName: string, value: string) => {
-    setApiKeys((prev) => ({ ...prev, [keyName]: value }));
-    localStorage.setItem(keyName, value);
+const ApiKeySettings = () => {
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+  const [currentKey, setCurrentKey] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleManageClick = (provider: Provider) => {
+    setSelectedProvider(provider);
+    setCurrentKey(apiKeys[provider.id] || "");
+    setIsDialogOpen(true);
   };
 
-  const handleRemove = (keyName: string) => {
-    setApiKeys((prev) => ({ ...prev, [keyName]: "" }));
-    localStorage.removeItem(keyName);
+  const handleSave = () => {
+    if (selectedProvider) {
+      setApiKeys(prev => ({ ...prev, [selectedProvider.id]: currentKey }));
+    }
+    setIsDialogOpen(false);
   };
 
-  const isKeySet = (keyName: string) => !!apiKeys[keyName];
+  const handleDelete = () => {
+    if (selectedProvider) {
+      const newKeys = { ...apiKeys };
+      delete newKeys[selectedProvider.id];
+      setApiKeys(newKeys);
+    }
+    setIsDialogOpen(false);
+  };
+
+  const handleDialogChange = (open: boolean) => {
+    if (!open) {
+      setSelectedProvider(null);
+      setCurrentKey("");
+    }
+    setIsDialogOpen(open);
+  }
 
   return (
     <div className="grid gap-4">
       <h3 className="font-medium leading-none">API Keys</h3>
       <div className="grid gap-3">
-        {providers.map((provider) => {
-          const keyIsSet = isKeySet(provider.key);
-
-          return (
-            <div
-              key={provider.id}
-              className="flex items-center justify-between p-3 border border-border rounded-lg bg-background"
-            >
-              <div className="flex items-center gap-3">
-                {/* Display initials instead of logo component */}
-                <div
-                  className={cn(
-                    "w-8 h-8 flex items-center justify-center rounded-full text-sm font-semibold",
-                    keyIsSet ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {getInitials(provider.name)}
+        {providers.map((provider) => (
+          <div key={provider.id} className="flex items-center justify-between p-3 border border-border rounded-lg bg-background">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 flex items-center justify-center">{provider.logo}</div>
+              <span className="font-medium">{provider.name}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              {apiKeys[provider.id] ? (
+                <div className="flex items-center gap-2 text-xs text-green-500">
+                  <KeyRound className="h-3 w-3" />
+                  <span>Active</span>
                 </div>
-                
-                <div className="grid gap-1">
-                  <Label htmlFor={provider.id}>{provider.name}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {provider.key}
-                  </p>
-                </div>
-              </div>
+              ) : (
+                <span className="text-xs text-muted-foreground">Not Configured</span>
+              )}
+              <Button variant="outline" size="sm" onClick={() => handleManageClick(provider)}>
+                Manage
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
 
-              <div className="flex items-center gap-2">
-                <div className="relative w-64">
-                  <Input
-                    id={provider.id}
-                    type="password"
-                    placeholder={provider.placeholder}
-                    value={apiKeys[provider.key] || ""}
-                    onChange={(e) =>
-                      setApiKeys((prev) => ({
-                        ...prev,
-                        [provider.key]: e.target.value,
-                      }))
-                    }
-                    className={cn(
-                      "pr-10",
-                      keyIsSet && "border-green-500 focus-visible:ring-green-500"
-                    )}
-                  />
-                  {keyIsSet && (
-                    <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500" />
-                  )}
-                </div>
-
-                {keyIsSet ? (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleRemove(provider.key)}
-                    title={`Remove ${provider.name} API Key`}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    onClick={() => handleSave(provider.key, apiKeys[provider.key] || "")}
-                    disabled={!apiKeys[provider.key]}
-                  >
-                    Save
-                  </Button>
-                )}
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Manage {selectedProvider?.name} API Key</DialogTitle>
+            <DialogDescription>{selectedProvider?.description}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Available Models</Label>
+              <div className="flex flex-wrap gap-2">
+                {selectedProvider?.models.map(model => <Badge key={model} variant="secondary">{model}</Badge>)}
               </div>
             </div>
-          );
-        })}
-      </div>
+            <div className="space-y-2">
+              <Label>Get your API Key</Label>
+              <a href={selectedProvider?.getApiKeyUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline">
+                Go to {selectedProvider?.name} dashboard <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="api-key" className="text-right">
+                API Key
+              </Label>
+              <Input
+                id="api-key"
+                type="password"
+                value={currentKey}
+                onChange={(e) => setCurrentKey(e.target.value)}
+                placeholder={selectedProvider?.placeholder}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <div>
+              {selectedProvider && apiKeys[selectedProvider.id] && (
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Key
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave}>Save Key</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
+};
+
+export default ApiKeySettings;
