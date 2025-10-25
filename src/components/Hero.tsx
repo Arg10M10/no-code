@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Github, Figma, Camera, Upload, Cpu } from "lucide-react";
+import { Github, Figma, Camera, Upload, Cpu, Send } from "lucide-react";
 import { useRef, useState } from "react";
 import ModelsPopover from "./ModelsPopover";
 import {
@@ -49,7 +49,7 @@ const Hero = () => {
           <div className="relative">
             <textarea
               placeholder="Ask Fusion to build a multi-step us"
-              className="w-full h-64 px-6 py-4 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-shadow duration-300 ease-in-out hover:shadow-lg"
+              className="w-full h-64 pl-6 pr-16 pt-4 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-shadow duration-300 ease-in-out hover:shadow-lg"
             />
             <div className="absolute left-4 bottom-4 flex items-center gap-2">
               <Button
@@ -77,6 +77,11 @@ const Hero = () => {
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+            <div className="absolute right-4 bottom-4">
+              <Button size="icon" className="rounded-full">
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
           </div>
 
