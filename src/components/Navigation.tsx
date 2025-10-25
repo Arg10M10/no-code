@@ -12,7 +12,7 @@ const Navigation = () => {
                 <div className="h-5 w-1.5 bg-primary rounded-sm"></div>
                 <div className="h-5 w-1.5 bg-accent rounded-sm"></div>
               </div>
-              <span className="text-xl font-semibold">builder.io</span>
+              <span className="text-xl font-semibold">ByDamian</span>
             </div>
             
             <div className="hidden md:flex items-center gap-6">
