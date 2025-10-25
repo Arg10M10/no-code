@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Github, Figma, Server, Puzzle } from "lucide-react";
+import { Github, Figma, Puzzle, Camera } from "lucide-react";
 
 const Hero = () => {
   return (
@@ -67,8 +67,8 @@ const Hero = () => {
               size="sm"
               className="rounded-full bg-secondary border-border hover:bg-muted"
             >
-              <Server className="h-4 w-4 mr-2" />
-              MCP Servers
+              <Camera className="h-4 w-4 mr-2" />
+              Clone a Screenshot
             </Button>
             <Button
               variant="outline"
