@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Github, Figma, Camera, Upload, Cpu, ArrowUp } from "lucide-react";
+import { Github, Figma, Camera, Upload, Cpu, ArrowUp, File, X } from "lucide-react";
 import { useRef, useState } from "react";
 import ModelsPopover from "./ModelsPopover";
 import {
@@ -11,7 +11,9 @@ import {
 const Hero = () => {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const screenshotFileInputRef = useRef<HTMLInputElement>(null);
   const [selectedModel, setSelectedModel] = useState("OpenAI - GPT-5");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleUploadProjectClick = () => {
     projectFileInputRef.current?.click();
@@ -20,13 +22,22 @@ const Hero = () => {
   const handleAttachImageClick = () => {
     imageFileInputRef.current?.click();
   };
+  
+  const handleCloneScreenshotClick = () => {
+    screenshotFileInputRef.current?.click();
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       console.log("Selected file:", file.name);
-      // Aquí puedes añadir la lógica para manejar el archivo subido
+      setSelectedFile(file);
     }
+    event.target.value = "";
+  };
+
+  const handleClearFile = () => {
+    setSelectedFile(null);
   };
 
   return (
@@ -52,9 +63,22 @@ const Hero = () => {
           style={{ animationDelay: "0.4s" }}
         >
           <div className="relative">
+            {selectedFile && (
+              <div className="absolute top-4 left-4 right-4 z-10 animate-fade-in-down">
+                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-background border border-border rounded-lg shadow-sm">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <File className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">{selectedFile.name}</span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full flex-shrink-0" onClick={handleClearFile}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
             <textarea
               placeholder="Ask Fusion to build a multi-step us"
-              className="w-full h-64 pl-6 pr-16 pt-4 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-shadow duration-300 ease-in-out hover:shadow-lg"
+              className={`w-full h-64 pl-6 pr-16 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 ease-in-out hover:shadow-lg ${selectedFile ? 'pt-20' : 'pt-4'}`}
             />
             <div className="absolute left-4 bottom-4 flex items-center gap-2">
               <Button
@@ -105,6 +129,13 @@ const Hero = () => {
               className="hidden"
               accept="image/*"
             />
+            <input
+              type="file"
+              ref={screenshotFileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/*"
+            />
             <Button
               variant="outline"
               size="sm"
@@ -141,6 +172,7 @@ const Hero = () => {
               variant="outline"
               size="sm"
               className="rounded-full bg-secondary border-border hover:bg-muted"
+              onClick={handleCloneScreenshotClick}
             >
               <Camera className="h-4 w-4 mr-2" />
               Clone a Screenshot
