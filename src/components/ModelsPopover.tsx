@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const modelsData = {
   OpenAI: {
@@ -40,7 +41,6 @@ const ModelsPopover: React.FC<ModelsPopoverProps> = ({ selectedModel, onSelectMo
   const handleBack = (e: React.MouseEvent) => {
     e.stopPropagation();
     setView('providers');
-    setSelectedProvider(null);
   };
 
   const handleModelSelect = (model: string) => {
@@ -50,7 +50,7 @@ const ModelsPopover: React.FC<ModelsPopoverProps> = ({ selectedModel, onSelectMo
   };
 
   const renderProviderView = () => (
-    <div className="w-64">
+    <div>
       <div className="p-2 text-center text-sm font-semibold border-b border-border">Select a Provider</div>
       <div className="p-2 space-y-1">
         {Object.keys(modelsData).map((providerKey) => {
@@ -76,7 +76,7 @@ const ModelsPopover: React.FC<ModelsPopoverProps> = ({ selectedModel, onSelectMo
     const [currentProvider, currentModel] = selectedModel.split(' - ');
 
     return (
-      <div className="w-64">
+      <div>
         <div className="flex items-center p-1 border-b border-border">
           <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8 rounded-full">
             <ArrowLeft className="h-4 w-4" />
@@ -102,7 +102,26 @@ const ModelsPopover: React.FC<ModelsPopoverProps> = ({ selectedModel, onSelectMo
     );
   };
 
-  return view === 'providers' ? renderProviderView() : renderModelsView();
+  return (
+    <div className="relative w-64 overflow-hidden">
+      <div
+        className={cn(
+          "transition-transform duration-300 ease-in-out",
+          view === 'providers' ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        {renderProviderView()}
+      </div>
+      <div
+        className={cn(
+          "absolute top-0 left-0 w-full transition-transform duration-300 ease-in-out",
+          view === 'models' ? 'translate-x-0' : 'translate-x-full'
+        )}
+      >
+        {renderModelsView()}
+      </div>
+    </div>
+  );
 };
 
 export default ModelsPopover;
