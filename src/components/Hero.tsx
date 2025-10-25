@@ -53,7 +53,7 @@ const Hero = () => {
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3">
             <input
               type="file"
               ref={fileInputRef}
