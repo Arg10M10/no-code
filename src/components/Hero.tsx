@@ -6,7 +6,7 @@ import ModelsModal from "./ModelsModal";
 const Hero = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("OpenAI");
+  const [selectedModel, setSelectedModel] = useState("OpenAI - GPT-4o");
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
