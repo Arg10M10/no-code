@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Github, Figma, Camera, Upload, Cpu, ArrowUp, File, X, ClipboardPaste } from "lucide-react";
 import { useRef, useState, ClipboardEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import ModelsPopover from "./ModelsPopover";
 import {
   Popover,
@@ -17,6 +19,7 @@ const Hero = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pastedTextInfo, setPastedTextInfo] = useState<{ wordCount: number; content: string } | null>(null);
   const [prompt, setPrompt] = useState("");
+  const navigate = useNavigate();
 
   const handleUploadProjectClick = () => {
     projectFileInputRef.current?.click();
@@ -49,6 +52,18 @@ const Hero = () => {
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const pastedText = event.clipboardData.getData('text');
     const wordCount = pastedText.split(/\s+/).filter(Boolean).length;
+
+    if (wordCount > 20000) {
+      event.preventDefault();
+      toast.error("Word limit exceeded", {
+        description: "Upgrade to Pro for unlimited context.",
+        action: {
+          label: "Upgrade",
+          onClick: () => navigate("/pricing"),
+        },
+      });
+      return;
+    }
 
     if (wordCount > 500) {
       event.preventDefault();
