@@ -2,11 +2,9 @@ import Navigation from "@/components/Navigation";
 import PricingCard from "@/components/PricingCard";
 import LavaLamp from "@/components/LavaLamp";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 
 const Pricing = () => {
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly");
-  const [selectedPlan, setSelectedPlan] = useState<"fusion" | "publish">("fusion");
 
   const fusionPlans = [
     {
@@ -69,58 +67,7 @@ const Pricing = () => {
     },
   ];
 
-  const publishPlans = [
-    {
-      title: "Free",
-      description: "For individuals and small projects",
-      price: "$0",
-      priceLabel: "per user/mo",
-      ctaText: "Get started",
-      ctaVariant: "outline" as const,
-      features: [
-        "Up to 5 users",
-        "100 monthly API calls",
-        "1 project",
-        "Visual CMS editor",
-        "Basic templates",
-      ],
-    },
-    {
-      title: "Pro",
-      description: "For growing teams and content needs",
-      price: billingPeriod === "monthly" ? "$29" : "$24",
-      priceLabel: "per user/mo",
-      ctaText: "Get started",
-      ctaVariant: "default" as const,
-      features: [
-        "Up to 50 users",
-        "10,000 monthly API calls",
-        "Everything in Free, plus:",
-        "Advanced templates",
-        "Workflow automation",
-        "Priority support",
-      ],
-    },
-    {
-      title: "Enterprise",
-      description: "For large-scale content operations",
-      price: "Custom",
-      priceLabel: "per user/mo",
-      ctaText: "Contact sales",
-      ctaVariant: "default" as const,
-      features: [
-        "Unlimited users",
-        "Custom API limits",
-        "Everything in Pro, plus:",
-        "Dedicated account manager",
-        "Custom integrations",
-        "24/7 premium support",
-        "SLA guarantees",
-      ],
-    },
-  ];
-
-  const currentPlans = selectedPlan === "fusion" ? fusionPlans : publishPlans;
+  const currentPlans = fusionPlans;
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -138,42 +85,14 @@ const Pricing = () => {
                 Select a plan for your team
               </h1>
               <p className="text-lg text-muted-foreground">
-                Start with either{" "}
-                <span className="text-primary font-semibold">Fusion</span> or{" "}
-                <span className="text-accent font-semibold">Publish</span>.
-                Combine both into the ultimate AI-accelerated workflow.
+                Choose the plan that's right for your team and start building.
               </p>
-            </div>
-
-            {/* Plan Selector */}
-            <div
-              className="flex items-center justify-center gap-4 opacity-0 animate-fade-in-up"
-              style={{ animationDelay: "0.3s" }}
-            >
-              <div className="flex gap-2 p-1 bg-secondary rounded-lg">
-                <Button
-                  variant={selectedPlan === "fusion" ? "default" : "ghost"}
-                  onClick={() => setSelectedPlan("fusion")}
-                  className={selectedPlan === "fusion" ? "bg-primary hover:bg-primary/90" : ""}
-                >
-                  <span className="font-semibold">Fusion</span>
-                  <span className="ml-2 text-xs opacity-80">Visual IDE</span>
-                </Button>
-                <Button
-                  variant={selectedPlan === "publish" ? "default" : "ghost"}
-                  onClick={() => setSelectedPlan("publish")}
-                  className={selectedPlan === "publish" ? "bg-accent hover:bg-accent/90" : ""}
-                >
-                  <span className="font-semibold">Publish</span>
-                  <span className="ml-2 text-xs opacity-80">Visual CMS</span>
-                </Button>
-              </div>
             </div>
 
             {/* Billing Toggle */}
             <div
               className="flex items-center justify-center gap-4 opacity-0 animate-fade-in-up"
-              style={{ animationDelay: "0.4s" }}
+              style={{ animationDelay: "0.3s" }}
             >
               <span className={billingPeriod === "monthly" ? "text-foreground" : "text-muted-foreground"}>
                 Monthly
@@ -198,7 +117,7 @@ const Pricing = () => {
             {/* Pricing Cards */}
             <div
               className="grid md:grid-cols-3 gap-8 pt-8 opacity-0 animate-fade-in-up"
-              style={{ animationDelay: "0.5s" }}
+              style={{ animationDelay: "0.4s" }}
             >
               {currentPlans.map((plan, index) => (
                 <PricingCard
@@ -212,7 +131,7 @@ const Pricing = () => {
             {/* Footer Note */}
             <div
               className="text-center text-sm text-muted-foreground pt-8 opacity-0 animate-fade-in-up"
-              style={{ animationDelay: "0.6s" }}
+              style={{ animationDelay: "0.5s" }}
             >
               <p>
                 Plan features, pricing, and limits are subject to change. See{" "}
