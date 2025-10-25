@@ -79,7 +79,7 @@ All colors MUST be HSL.
     top: 10%;
     left: 10%;
     animation-delay: 0s;
-    animation-duration: 25s;
+    animation-duration: 20s;
   }
 
   .lavalamp-blob:nth-child(2) {
@@ -89,7 +89,7 @@ All colors MUST be HSL.
     top: 50%;
     right: 10%;
     animation-delay: 5s;
-    animation-duration: 30s;
+    animation-duration: 25s;
   }
 
   .lavalamp-blob:nth-child(3) {
@@ -99,21 +99,37 @@ All colors MUST be HSL.
     bottom: 10%;
     left: 30%;
     animation-delay: 10s;
-    animation-duration: 35s;
+    animation-duration: 30s;
+  }
+
+  .lavalamp-blob:nth-child(4) {
+    width: 450px;
+    height: 450px;
+    background: hsl(195 100% 55%);
+    top: 30%;
+    left: 50%;
+    animation-delay: 15s;
+    animation-duration: 28s;
   }
 
   @keyframes float {
-    0%, 100% {
-      transform: translate(0, 0) scale(1);
+    0% {
+      transform: translate(0, 0) scale(1) rotate(0deg);
     }
-    25% {
-      transform: translate(50px, -50px) scale(1.1);
+    20% {
+      transform: translate(100px, -80px) scale(1.2) rotate(45deg);
     }
-    50% {
-      transform: translate(-30px, 40px) scale(0.9);
+    40% {
+      transform: translate(-80px, 100px) scale(0.8) rotate(90deg);
     }
-    75% {
-      transform: translate(40px, 30px) scale(1.05);
+    60% {
+      transform: translate(120px, 60px) scale(1.1) rotate(180deg);
+    }
+    80% {
+      transform: translate(-60px, -100px) scale(0.9) rotate(270deg);
+    }
+    100% {
+      transform: translate(0, 0) scale(1) rotate(360deg);
     }
   }
 }

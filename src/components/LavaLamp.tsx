@@ -4,6 +4,7 @@ const LavaLamp = () => {
       <div className="lavalamp-blob"></div>
       <div className="lavalamp-blob"></div>
       <div className="lavalamp-blob"></div>
+      <div className="lavalamp-blob"></div>
     </div>
   );
 };
