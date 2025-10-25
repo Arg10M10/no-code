@@ -1,12 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import SettingsPopover from "./SettingsPopover";
 
 const Navigation = () => {
   return (
@@ -48,16 +42,11 @@ const Navigation = () => {
               Log in
             </Button>
             <Button size="sm">Sign up</Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80" align="end">
-                <SettingsPopover />
-              </PopoverContent>
-            </Popover>
+            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
