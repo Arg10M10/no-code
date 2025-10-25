@@ -1,6 +1,18 @@
 export const OpenAiLogo = () => (
-  <svg width="24" height="24" viewBox="0 0 41 41" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M35.63,13.23a15.5,15.5,0,0,0-22-2.43,15.5,15.5,0,0,0-9.4,24.63,15.5,15.5,0,0,0,22,2.43,15.5,15.5,0,0,0,9.4-24.63Zm-11,16.1a9.2,9.2,0,0,1-13.1-1.4,1.2,1.2,0,0,1,0-1.7l2.8-2.8a1.2,1.2,0,0,1,1.7,0,3.8,3.8,0,0,0,5.4,0l2.8-2.8a1.2,1.2,0,0,1,1.7,0,9.2,9.2,0,0,1,0,13.1Zm2.8-2.8a3.8,3.8,0,0,0,0-5.4l-2.8-2.8a1.2,1.2,0,0,1,0-1.7,9.2,9.2,0,0,1,13.1,1.4,1.2,1.2,0,0,1,0,1.7l-2.8,2.8a1.2,1.2,0,0,1-1.7,0,3.8,3.8,0,0,0-5.4,0Zm5.3-13.1a9.2,9.2,0,0,1-1.4,13.1,1.2,1.2,0,0,1-1.7,0l-2.8-2.8a1.2,1.2,0,0,1,0-1.7,3.8,3.8,0,0,0,0-5.4l-2.8-2.8a1.2,1.2,0,0,1,0-1.7,9.2,9.2,0,0,1,13.1-1.4,1.2,1.2,0,0,1,0,1.7l-2.8,2.8a1.2,1.2,0,0,1-1.7-1.7V13.43Zm-16,5.3a3.8,3.8,0,0,0,5.4,0l2.8,2.8a1.2,1.2,0,0,1,0,1.7,9.2,9.2,0,0,1-13.1-1.4,1.2,1.2,0,0,1,0-1.7l2.8-2.8a1.2,1.2,0,0,1,1.7,0,3.8,3.8,0,0,0,0,5.4Z" />
+  <svg width="24" height="24" viewBox="0 0 41 41" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M35.6324 13.229C31.0324 10.029 25.2324 9.42901 20.0324 11.229C14.8324 13.029 10.6324 17.029 8.83241 22.229C7.03241 27.429 7.63241 33.229 10.8324 37.829C14.0324 42.429 19.8324 45.029 25.0324 43.229C30.2324 41.429 34.4324 37.429 36.2324 32.229C38.0324 27.029 37.4324 21.229 34.2324 16.629" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M24.6324 29.329C21.9324 30.929 18.6324 31.129 15.7324 29.929C12.8324 28.729 10.7324 26.329 9.93241 23.329" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M27.4324 26.529L24.6324 29.329" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12.7324 20.529L9.93241 23.329" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M27.4324 16.729C30.1324 15.129 33.4324 14.929 36.3324 16.129C39.2324 17.329 41.3324 19.729 42.1324 22.729" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M24.6324 19.529L27.4324 16.729" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M39.3324 25.529L42.1324 22.729" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M13.8324 13.329C12.2324 16.029 12.0324 19.329 13.2324 22.229C14.4324 25.129 16.8324 27.229 19.8324 28.029" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M16.6324 10.529L13.8324 13.329" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M22.6324 25.229L19.8324 28.029" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M16.6324 28.029C15.0324 25.329 14.8324 22.029 16.0324 19.129C17.2324 16.229 19.6324 14.129 22.6324 13.329" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M19.4324 30.829L16.6324 28.029" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M25.4324 16.129L22.6324 13.329" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -22,6 +34,6 @@ export const AnthropicLogo = () => (
 
 export const OpenRouterLogo = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zM8.005 8.01v7.99h2.11L13.1 12h-3V8.01h5.99v2.49h-3.88l3.01 4.01h-2.2l-3-4.01v3.51H8.005z" />
+    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM8.005 8.01002V16H10.115L13.1 12H10.115V8.01002H16V10.5H12.115L15.125 14.51H12.925L10.005 10.5V14H8.005V8.01002Z" />
   </svg>
 );
