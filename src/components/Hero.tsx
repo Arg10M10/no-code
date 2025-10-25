@@ -20,14 +20,14 @@ const Hero = () => {
 
         <div className="max-w-2xl mx-auto space-y-4">
           <div className="relative">
-            <Input
+            <textarea
               placeholder="Ask Fusion to build a multi-step us"
-              className="h-14 px-6 pr-24 bg-secondary border-border text-base rounded-xl"
+              className="w-full h-64 px-6 py-4 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <Button
               variant="ghost"
               size="sm"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute left-4 bottom-4 text-muted-foreground hover:text-foreground"
             >
               Attach
             </Button>
