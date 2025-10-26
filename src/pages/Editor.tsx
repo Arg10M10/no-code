@@ -159,7 +159,7 @@ const Editor: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="fixed inset-0 bg-background">
       {/* Barra superior */}
       <div className="sticky top-0 z-10 border-b border-border/40 bg-background/90 backdrop-blur-sm">
         <div className="flex items-center gap-3 px-3 sm:px-4 h-12">
