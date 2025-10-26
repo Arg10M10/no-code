@@ -10,7 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { storage } from "@/lib/storage";
-import { generateAnswer } from "../services/ai";
+import { createProjectFromPrompt, addMessage } from "@/lib/projects";
 
 const Hero = () => {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -112,24 +112,18 @@ const Hero = () => {
     }
 
     setLoading(true);
-    setAnswer("");
-    const id = toast.loading("Asking the AI...");
-
     const fullPrompt =
       pastedTextInfo?.content
         ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
         : prompt;
 
-    const res = await generateAnswer({
-      prompt: fullPrompt,
-      selectedModelLabel: selectedModel,
-      openRouterApiKey,
-      system:
-        "You are a technical-strategic assistant. You help build and improve websites, apps, and businesses: architecture, UX design, launch plans, metrics, marketing, and code (React, Tailwind, Node, SQL). Reply with clear steps, bullet points, and concise code snippets when useful.",
-    });
+    // Create project and store first user message
+    const proj = createProjectFromPrompt(prompt);
+    addMessage(proj.id, { role: "user", content: fullPrompt });
 
-    setAnswer(res);
-    toast.success("Done", { id, description: "Response generated." });
+    // Navigate to editor with project id
+    navigate(`/editor?id=${encodeURIComponent(proj.id)}`, { replace: false });
+
     setLoading(false);
   };
 

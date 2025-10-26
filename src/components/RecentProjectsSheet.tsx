@@ -87,6 +87,10 @@ const RecentProjectsSheet: React.FC = () => {
     });
   };
 
+  const openProject = (id: string) => {
+    navigate(`/editor?id=${encodeURIComponent(id)}`);
+  };
+
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -181,11 +185,12 @@ const RecentProjectsSheet: React.FC = () => {
                   .map((p) => (
                     <div
                       key={p.id}
-                      className="flex items-center gap-3 rounded-md border p-3 transition-shadow duration-200 hover:shadow-sm"
+                      className="flex items-center gap-3 rounded-md border p-3 transition-shadow duration-200 hover:shadow-sm cursor-pointer"
+                      onClick={() => (editingId ? null : openProject(p.id))}
                     >
                       <Folder className="h-4 w-4 text-muted-foreground" />
                       {editingId === p.id ? (
-                        <div className="flex w-full items-center gap-2">
+                        <div className="flex w-full items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <Input
                             value={draftName}
                             onChange={(e) => setDraftName(e.target.value)}
@@ -223,7 +228,10 @@ const RecentProjectsSheet: React.FC = () => {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 transition-transform duration-200 hover:scale-105 active:scale-95 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                            onClick={() => startEdit(p.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startEdit(p.id);
+                            }}
                             aria-label="Edit project"
                           >
                             <Pencil className="h-4 w-4" />
