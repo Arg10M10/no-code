@@ -90,7 +90,12 @@ const RecentProjectsSheet: React.FC = () => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Open recent chats" className="transition-transform duration-200 ease-out hover:scale-[1.03] active:scale-[0.98]">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Open recent chats"
+          className="ml-[-8px] sm:ml-[-10px] transition-transform duration-200 ease-out hover:scale-[1.03] active:scale-[0.98] hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+        >
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
@@ -114,7 +119,6 @@ const RecentProjectsSheet: React.FC = () => {
             </Button>
 
             <div className="relative h-9">
-              {/* Search button state */}
               <div
                 className={[
                   "absolute inset-0 flex",
@@ -135,7 +139,6 @@ const RecentProjectsSheet: React.FC = () => {
                 </Button>
               </div>
 
-              {/* Search input state */}
               <div
                 className={[
                   "absolute inset-0 flex items-center gap-2",
@@ -156,7 +159,7 @@ const RecentProjectsSheet: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 transition-transform duration-200 ease-out hover:scale-105 active:scale-95"
+                  className="h-9 w-9 transition-transform duration-200 ease-out hover:scale-105 active:scale-95 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                   onClick={onToggleSearch}
                   aria-label="Close search"
                 >
@@ -219,7 +222,7 @@ const RecentProjectsSheet: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 transition-transform duration-200 hover:scale-105 active:scale-95"
+                            className="h-8 w-8 transition-transform duration-200 hover:scale-105 active:scale-95 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                             onClick={() => startEdit(p.id)}
                             aria-label="Edit project"
                           >
