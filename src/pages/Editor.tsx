@@ -105,9 +105,10 @@ const EditorPage: React.FC = () => {
       </header>
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
+          {/* Left chat panel: use a smaller fixed width so the preview is more visible */}
           <ResizablePanel
-            defaultSize={25}
-            minSize={20}
+            defaultWidth={360}
+            minWidth={240}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
@@ -121,8 +122,11 @@ const EditorPage: React.FC = () => {
               onSend={handleNewMessage}
             />
           </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={75} minSize={40}>
+
+          {/* Inert handle kept for compatibility but renders nothing */}
+          <ResizableHandle />
+
+          <ResizablePanel>
             <PreviewPanel
               previewUrl={previewUrl}
               loading={previewLoading}
