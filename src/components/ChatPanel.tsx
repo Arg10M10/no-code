@@ -3,9 +3,8 @@
 import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import type { StoredMessage } from "@/lib/projects";
-import { ImagePlus, Send, X, Paperclip, Settings } from "lucide-react";
+import { Send, X, Paperclip, Settings } from "lucide-react";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -70,7 +69,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
     }
   };
 
-  // Chips/buttons shown above the input area
+  // Chips/buttons shown below the input area (now placed at the bottom)
   const chips = [
     { id: "build", label: "Build", filled: false },
     { id: "gpt5mini", label: "GPT 5 Mini", filled: false },
@@ -120,61 +119,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
         </div>
       </ScrollArea>
 
-      {/* Redesigned input area: dark rounded container with chips and blue accents */}
+      {/* Redesigned input area: dark rounded container with blue accents */}
       <form onSubmit={handleSubmit} className="p-4">
         <div className="rounded-xl bg-secondary border border-border p-3 shadow-sm">
-          {/* Chips row */}
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
-            {chips.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={[
-                  "inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full transition-all select-none",
-                  c.filled
-                    ? "bg-primary text-primary-foreground hover:brightness-90"
-                    : "bg-transparent border border-border text-primary hover:bg-primary/5",
-                ].join(" ")}
-                onClick={() => {
-                  // Keep chips non-functional for now - they can be wired later.
-                }}
-                aria-pressed={c.filled}
-              >
-                {c.label}
-              </button>
-            ))}
-
-            {/* spacer */}
-            <div className="flex-1" />
-
-            {/* small action icons (attach, settings) */}
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={handleAttachClick}
-                className="h-8 w-8 p-1.5 text-primary"
-                aria-label="Attach image"
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 p-1.5 text-primary"
-                onClick={() => {
-                  // settings action placeholder
-                }}
-                aria-label="Settings"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
           {/* Image preview (if any) */}
           {previewUrl ? (
             <div className="relative rounded-md overflow-hidden border border-white/6 mb-3">
@@ -182,7 +129,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
               <button
                 type="button"
                 onClick={removeImage}
-                className="absolute top-2 right-2 inline-flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 p-1"
+                className="absolute top-2 right-2 inline-flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20 p-1"
                 aria-label="Remove attached image"
               >
                 <X className="h-4 w-4 text-white/90" />
@@ -214,14 +161,61 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
 
             <div className="flex items-center gap-2">
               <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleAttachClick}
+                className="h-9 w-9 rounded-md p-0 text-primary"
+                aria-label="Attach image"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-md p-0 text-primary"
+                onClick={() => {
+                  // settings action placeholder
+                }}
+                aria-label="Settings"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+
+              <Button
                 type="submit"
                 disabled={loading || (!text.trim() && !selectedImage)}
-                className="h-10 rounded-md px-3 bg-primary text-primary-foreground hover:bg-primary/90"
+                className="h-9 w-9 rounded-md p-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                aria-label="Send"
               >
-                <div className="flex items-center gap-2">
-                  <Send className="h-4 w-4" />
-                </div>
+                <Send className="h-4 w-4" />
               </Button>
+            </div>
+          </div>
+
+          {/* Chips row moved to the bottom, more squared buttons */}
+          <div className="mt-3 border-t border-border pt-3">
+            <div className="flex items-center gap-2 justify-start flex-wrap">
+              {chips.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={[
+                    "inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none",
+                    c.filled
+                      ? "bg-primary text-primary-foreground hover:brightness-95"
+                      : "bg-transparent border border-border text-primary hover:bg-primary/5",
+                  ].join(" ")}
+                  onClick={() => {
+                    // kept non-functional for now; can be wired later
+                  }}
+                  aria-pressed={c.filled}
+                >
+                  {c.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
