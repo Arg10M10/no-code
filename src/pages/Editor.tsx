@@ -22,6 +22,7 @@ import {
 } from "@/lib/projects";
 import { storage } from "@/lib/storage";
 import { generateChat, ChatMessage, getProviderFromLabel } from "@/services/ai";
+import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
 import Loader from "@/components/Loader";
 
 const COST_PER_MESSAGE = 1;
@@ -60,7 +61,7 @@ const Editor: React.FC = () => {
   const projectId = searchParams.get("id") || "";
 
   const [projectName, setProjectName] = React.useState<string>("");
-  const [selectedModel, setSelectedModel] = React.useState<string>("OpenAI - GPT-5");
+  const [selectedModel, setSelectedModel] = React.useState<string>(getSelectedModelLabel());
   const [messages, setLocalMessages] = React.useState<StoredMessage[]>([]);
   const [credits, setCreditsState] = React.useState<number>(0);
   const [loading, setLoading] = React.useState<boolean>(false);
@@ -185,7 +186,13 @@ const Editor: React.FC = () => {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
-                <ModelsPopover selectedModel={selectedModel} onSelectModel={setSelectedModel} />
+                <ModelsPopover
+                  selectedModel={selectedModel}
+                  onSelectModel={(label) => {
+                    setSelectedModel(label);
+                    setSelectedModelLabel(label);
+                  }}
+                />
               </PopoverContent>
             </Popover>
           </div>

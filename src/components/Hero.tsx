@@ -6,13 +6,14 @@ import { toast } from "sonner";
 import ModelsPopover from "./ModelsPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createProjectFromPrompt, addMessage } from "@/lib/projects";
+import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
 
 const Hero = () => {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const screenshotFileInputRef = useRef<HTMLInputElement>(null);
 
-  const [selectedModel, setSelectedModel] = useState("OpenAI - GPT-5");
+  const [selectedModel, setSelectedModel] = useState(getSelectedModelLabel());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pastedTextInfo, setPastedTextInfo] = useState<{ wordCount: number; content: string } | null>(null);
   const [prompt, setPrompt] = useState("");
@@ -105,11 +106,11 @@ const Hero = () => {
       ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
       : prompt;
 
-    // Create project and store first user message
+    // Crear proyecto y guardar primer mensaje
     const proj = createProjectFromPrompt(prompt);
     addMessage(proj.id, { role: "user", content: fullPrompt });
 
-    // Navigate to editor with project id
+    // Navegar al editor
     navigate(`/editor?id=${encodeURIComponent(proj.id)}`, { replace: false });
 
     setLoading(false);
@@ -185,7 +186,13 @@ const Hero = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <ModelsPopover selectedModel={selectedModel} onSelectModel={setSelectedModel} />
+                  <ModelsPopover
+                    selectedModel={selectedModel}
+                    onSelectModel={(label) => {
+                      setSelectedModel(label);
+                      setSelectedModelLabel(label);
+                    }}
+                  />
                 </PopoverContent>
               </Popover>
             </div>
