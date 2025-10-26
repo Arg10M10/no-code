@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Github, Figma, Camera, Upload, Cpu, ArrowUp, File, X, ClipboardPaste } from "lucide-react";
+import { Github, Figma, Camera, Upload, Cpu, ArrowUp, File, X, ClipboardPaste, Clipboard, Check } from "lucide-react";
 import { useRef, useState, ClipboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -9,6 +9,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { storage } from "@/lib/storage";
+import { generateAnswer } from "../services/ai";
 
 const Hero = () => {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -19,24 +21,27 @@ const Hero = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pastedTextInfo, setPastedTextInfo] = useState<{ wordCount: number; content: string } | null>(null);
   const [prompt, setPrompt] = useState("");
+  const [answer, setAnswer] = useState<string>("");
+  const [copyOk, setCopyOk] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
   const examplePrompts = [
     {
-      title: "Landing page for a SaaS",
-      prompt: "Create a modern landing page for a new SaaS product that helps teams manage their projects. Include a hero section, features, pricing, and a footer.",
+      title: "Landing page para un SaaS",
+      prompt: "Crea una landing page moderna para un SaaS que ayuda a equipos a gestionar proyectos. Incluye hero, features, pricing y footer. Dame el HTML y Tailwind básicos, y una lista de mejoras.",
     },
     {
-      title: "To-do list app",
-      prompt: "Build a simple to-do list application. Users should be able to add tasks, mark them as complete, and delete them.",
+      title: "App de tareas",
+      prompt: "Diseña una app de to-dos en React + TypeScript con estados, añadir, completar y borrar. Incluye componentes y explica cómo estructurar los hooks.",
     },
     {
-      title: "Photographer's portfolio",
-      prompt: "Design a clean and elegant portfolio website for a professional photographer. It should have a gallery, an about page, and a contact form.",
+      title: "Plan de negocio inicial",
+      prompt: "Ayúdame a crear un plan de negocio lean para una app B2B: segmento de clientes, propuesta de valor, pricing inicial, métricas clave y experimentos.",
     },
     {
-      title: "Recipe sharing website",
-      prompt: "Develop a recipe sharing platform. Users can submit recipes with ingredients and instructions, and browse recipes by category.",
+      title: "Clonar diseño desde captura",
+      prompt: "Dado un screenshot de referencia, dime los pasos para clonar el layout en Tailwind y cómo desglosar componentes reutilizables.",
     },
   ];
 
@@ -74,10 +79,10 @@ const Hero = () => {
 
     if (wordCount > 20000) {
       event.preventDefault();
-      toast.error("Word limit exceeded", {
-        description: "Upgrade to Pro for unlimited context.",
+      toast.error("Límite de palabras excedido", {
+        description: "Mejora a Pro para contexto ilimitado.",
         action: {
-          label: "Upgrade",
+          label: "Ver planes",
           onClick: () => navigate("/pricing"),
         },
       });
@@ -88,6 +93,51 @@ const Hero = () => {
       event.preventDefault();
       setPastedTextInfo({ wordCount, content: pastedText });
     }
+  };
+
+  const handleSend = async () => {
+    const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
+    const openRouterApiKey = apiKeys["openrouter"];
+
+    if (!prompt.trim()) {
+      toast.message("Escribe un prompt", { description: "Cuéntame qué quieres construir o mejorar." });
+      return;
+    }
+
+    if (!openRouterApiKey) {
+      toast.error("Falta API Key", {
+        description: "Configura tu clave de OpenRouter en Settings > API Keys.",
+      });
+      return;
+    }
+
+    setLoading(true);
+    setAnswer("");
+    const id = toast.loading("Consultando a la IA...");
+
+    const fullPrompt =
+      pastedTextInfo?.content
+        ? `${prompt}\n\nContexto pegado (${pastedTextInfo.wordCount} palabras):\n${pastedTextInfo.content}`
+        : prompt;
+
+    const res = await generateAnswer({
+      prompt: fullPrompt,
+      selectedModelLabel: selectedModel,
+      openRouterApiKey,
+      system:
+        "Eres un asistente técnico-estratégico. Ayudas a construir y mejorar webs, apps y negocios: arquitectura, diseño UX, planes de lanzamiento, métricas, marketing y código (React, Tailwind, Node, SQL). Responde con pasos claros, bullets y ejemplos de código concisos cuando sea útil.",
+    });
+
+    setAnswer(res);
+    toast.success("Listo", { id, description: "Respuesta generada." });
+    setLoading(false);
+  };
+
+  const handleCopy = async () => {
+    if (!answer) return;
+    await navigator.clipboard.writeText(answer);
+    setCopyOk(true);
+    setTimeout(() => setCopyOk(false), 1200);
   };
 
   const attachmentCount = [selectedFile, pastedTextInfo].filter(Boolean).length;
@@ -138,7 +188,7 @@ const Hero = () => {
                   <div className="flex items-center gap-2 min-w-0">
                     <ClipboardPaste className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <span className="text-xs font-medium truncate">
-                      Pasted Text ({pastedTextInfo.wordCount} words)
+                      Texto pegado ({pastedTextInfo.wordCount} palabras)
                     </span>
                   </div>
                   <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full flex-shrink-0" onClick={handleClearPastedText}>
@@ -151,7 +201,7 @@ const Hero = () => {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onPaste={handlePaste}
-              placeholder="Ask Fusion to build a multi-step us"
+              placeholder="Describe lo que quieres construir o mejorar (web, app, negocio, código...)"
               className={`w-full h-64 pl-6 pr-16 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 ease-in-out hover:shadow-lg ${paddingTopClass}`}
             />
             <div className="absolute left-4 bottom-4 flex items-center gap-2">
@@ -161,7 +211,7 @@ const Hero = () => {
                 className="text-muted-foreground hover:text-foreground"
                 onClick={handleAttachImageClick}
               >
-                Attach
+                Adjuntar
               </Button>
               <Popover>
                 <PopoverTrigger asChild>
@@ -183,11 +233,48 @@ const Hero = () => {
               </Popover>
             </div>
             <div className="absolute right-4 bottom-4">
-              <Button size="icon" className="rounded-full transition-transform hover:scale-105 active:scale-95">
-                <ArrowUp className="h-4 w-4" />
+              <Button
+                size="icon"
+                className="rounded-full transition-transform hover:scale-105 active:scale-95"
+                onClick={handleSend}
+                disabled={loading}
+              >
+                <ArrowUp className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
               </Button>
             </div>
           </div>
+
+          {answer && (
+            <div
+              className="text-left border border-border rounded-xl bg-card/60 p-4 md:p-5 space-y-3 animate-fade-in-up"
+              style={{ animationDelay: "0.05s" }}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Respuesta de la IA</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={handleCopy}
+                >
+                  {copyOk ? (
+                    <>
+                      <Check className="h-4 w-4 mr-1.5" />
+                      Copiado
+                    </>
+                  ) : (
+                    <>
+                      <Clipboard className="h-4 w-4 mr-1.5" />
+                      Copiar
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-[15px]">
+                {answer}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-center gap-3">
             <input
@@ -257,7 +344,7 @@ const Hero = () => {
             className="pt-8 text-center opacity-0 animate-fade-in-up"
             style={{ animationDelay: "0.5s" }}
           >
-            <p className="text-sm text-muted-foreground mb-4">Or try one of these examples:</p>
+            <p className="text-sm text-muted-foreground mb-4">O prueba alguno de estos ejemplos:</p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               {examplePrompts.map((example) => (
                 <Button

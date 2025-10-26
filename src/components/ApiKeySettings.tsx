@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { KeyRound, Trash2, ExternalLink } from "lucide-react";
+import { storage } from "@/lib/storage";
 
 type Provider = {
   id: 'openai' | 'google' | 'anthropic' | 'openrouter';
@@ -24,17 +25,25 @@ type Provider = {
 };
 
 const providers: Provider[] = [
-  { id: 'openai', name: 'OpenAI', description: 'Powering models like GPT-4.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OA</div>, placeholder: 'sk-...', getApiKeyUrl: 'https://openai.com/api/', models: ['GPT-4o', 'GPT-4 Turbo', 'GPT-3.5 Turbo'] },
+  { id: 'openai', name: 'OpenAI', description: 'Powering models like GPT-4.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OA</div>, placeholder: 'sk-...', getApiKeyUrl: 'https://openai.com/api/', models: ['GPT-4o', 'GPT-4o mini'] },
   { id: 'google', name: 'Google', description: 'Home of the Gemini family of models.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">G</div>, placeholder: 'AIzaSy...', getApiKeyUrl: 'https://aistudio.google.com/app/api-keys', models: ['Gemini 1.5 Pro', 'Gemini 1.5 Flash'] },
-  { id: 'anthropic', name: 'Anthropic', description: 'Building reliable, interpretable, and steerable AI systems.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">A</div>, placeholder: 'sk-ant-...', getApiKeyUrl: 'https://console.anthropic.com/login?returnTo=%2F%3F', models: ['Claude 3 Opus', 'Claude 3 Sonnet', 'Claude 3 Haiku'] },
-  { id: 'openrouter', name: 'OpenRouter', description: 'Access a variety of models through a single API.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OR</div>, placeholder: 'sk-or-...', getApiKeyUrl: 'https://openrouter.ai/docs/api-reference/overview', models: ['Various', 'Llama 3', 'Mistral'] },
+  { id: 'anthropic', name: 'Anthropic', description: 'Building reliable, interpretable, and steerable AI systems.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">A</div>, placeholder: 'sk-ant-...', getApiKeyUrl: 'https://console.anthropic.com/login?returnTo=%2F%3F', models: ['Claude 3.5 Sonnet', 'Claude 3 Haiku'] },
+  { id: 'openrouter', name: 'OpenRouter', description: 'Access a variety of models through a single API.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OR</div>, placeholder: 'sk-or-...', getApiKeyUrl: 'https://openrouter.ai/docs/api-reference/overview', models: ['Aggregated models (OpenAI, Google, Anthropic, etc.)'] },
 ];
+
+const STORAGE_KEY = "api-keys";
 
 const ApiKeySettings = () => {
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
   const [currentKey, setCurrentKey] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Cargar claves guardadas
+  useEffect(() => {
+    const saved = storage.getJSON<Record<string, string>>(STORAGE_KEY, {});
+    setApiKeys(saved);
+  }, []);
 
   const handleManageClick = (provider: Provider) => {
     setSelectedProvider(provider);
@@ -44,16 +53,19 @@ const ApiKeySettings = () => {
 
   const handleSave = () => {
     if (selectedProvider) {
-      setApiKeys(prev => ({ ...prev, [selectedProvider.id]: currentKey }));
+      const next = { ...apiKeys, [selectedProvider.id]: currentKey.trim() };
+      setApiKeys(next);
+      storage.setJSON(STORAGE_KEY, next);
     }
     setIsDialogOpen(false);
   };
 
   const handleDelete = () => {
     if (selectedProvider) {
-      const newKeys = { ...apiKeys };
-      delete newKeys[selectedProvider.id];
-      setApiKeys(newKeys);
+      const next = { ...apiKeys };
+      delete next[selectedProvider.id];
+      setApiKeys(next);
+      storage.setJSON(STORAGE_KEY, next);
     }
     setIsDialogOpen(false);
   };
@@ -69,6 +81,9 @@ const ApiKeySettings = () => {
   return (
     <div className="grid gap-4">
       <h3 className="font-medium leading-none">API Keys</h3>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Para usar la IA ahora, configura al menos tu clave de OpenRouter. Más adelante podemos enrutar OpenAI/Google/Anthropic por backend.
+      </p>
       <div className="grid gap-3">
         {providers.map((provider) => (
           <div key={provider.id} className="flex items-center justify-between p-3 border border-border rounded-lg bg-background">
