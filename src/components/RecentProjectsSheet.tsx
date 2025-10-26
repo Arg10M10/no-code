@@ -141,7 +141,7 @@ const RecentProjectsSheet: React.FC = () => {
                         </Button>
                       </div>
                     ) : (
-                      <>
+                      <React.Fragment>
                         <div
                           className="flex-1 min-w-0 cursor-pointer"
                           onClick={() => openProject(p.id)}
@@ -194,7 +194,7 @@ const RecentProjectsSheet: React.FC = () => {
                             </AlertDialog>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </>
+                      </React.Fragment>
                     )}
                   </div>
                 ))}
