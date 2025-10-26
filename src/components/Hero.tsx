@@ -251,7 +251,7 @@ const Hero = () => {
               <Upload className="h-4 w-4 mr-2" />
               Upload a Project
             </Button>
-            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted">
+            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => navigate("/pricing")}>
               <Github className="h-4 w-4 mr-2" />
               Connect a repo
             </Button>
