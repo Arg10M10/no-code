@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Menu, Pencil, Check, X, Folder, Search } from "lucide-react";
+import { Menu, Pencil, Check, X, Folder, Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -85,38 +85,61 @@ const RecentProjectsSheet: React.FC = () => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Open recent projects">
+        <Button variant="ghost" size="icon" aria-label="Open recent chats">
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-80 sm:w-96 p-0">
         <div className="flex h-full flex-col">
           <SheetHeader className="p-4 border-b">
-            <SheetTitle>Recent Projects</SheetTitle>
+            <SheetTitle>Recent Chats</SheetTitle>
           </SheetHeader>
 
-          <div className="p-3 border-b flex items-center gap-2">
-            <Button size="sm" onClick={onNewChat}>
+          <div className="p-3 border-b space-y-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onNewChat}
+              className="w-full h-9 rounded-lg justify-start gap-3 border text-foreground bg-background hover:bg-accent"
+            >
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border">
+                <Plus className="h-3.5 w-3.5" />
+              </span>
               New Chat
             </Button>
+
             {showSearch ? (
-              <div className="flex items-center gap-2 flex-1">
+              <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search chats..."
-                    className="h-8 pl-8"
+                    className="h-9 pl-8 rounded-lg"
                   />
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggleSearch} aria-label="Close search">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={onToggleSearch}
+                  aria-label="Close search"
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             ) : (
-              <Button variant="secondary" size="sm" onClick={onToggleSearch}>
-                Search Chats
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onToggleSearch}
+                className="w-full h-9 rounded-lg justify-start gap-3 border text-foreground bg-background hover:bg-accent"
+              >
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border">
+                  <Search className="h-3.5 w-3.5" />
+                </span>
+                Search chats
               </Button>
             )}
           </div>
