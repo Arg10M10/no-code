@@ -59,7 +59,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-grow p-4 overflow-y-auto min-h-0">
+      {/* Message area: flex-1 makes it take up all available space, min-h-0 prevents it from overflowing */}
+      <div className="flex-1 p-4 overflow-y-auto min-h-0">
         {messages.map((msg, index) => (
           <div
             key={index}
@@ -99,7 +100,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         ))}
         <div ref={messagesEndRef} />
       </div>
-      <div className="p-4 border-t border-border/60 bg-card/60 flex-shrink-0">
+      {/* Input area: flex-shrink-0 prevents it from shrinking */}
+      <div className="p-4 border-t border-border/40 bg-background/80 backdrop-blur-sm flex-shrink-0">
         <form onSubmit={handleSubmit} className="relative">
           <Textarea
             ref={textareaRef}
