@@ -42,6 +42,10 @@ const SettingsModal: React.FC = () => {
           // Efecto cristal
           "border border-white/10 bg-background/60 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/50",
           "shadow-2xl",
+          // Animaciones suaves de entrada/salida
+          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-4",
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-4",
+          "duration-200 ease-out will-change-transform transform-gpu",
         ].join(" ")}
       >
         <DialogHeader className="px-6 pt-6">
@@ -63,12 +67,10 @@ const SettingsModal: React.FC = () => {
                       key={it.key}
                       variant="ghost"
                       className={[
-                        "justify-start h-9",
-                        // estados
+                        "justify-start h-9 transition-colors duration-200",
                         active
                           ? "bg-muted text-foreground"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-                        // quitar efectos azules de foco
                         "focus-visible:ring-0 focus-visible:ring-offset-0",
                       ].join(" ")}
                       onClick={() => setSection(it.key)}
@@ -82,9 +84,14 @@ const SettingsModal: React.FC = () => {
               </div>
             </aside>
 
-            {/* Contenido: solo scroll en el panel derecho */}
+            {/* Contenido: transición suave al cambiar de sección */}
             <section className="flex-1 overflow-y-auto max-h-[58vh] rounded-md">
-              <SettingsContent section={section} />
+              <div
+                key={section}
+                className="animate-in fade-in-0 slide-in-from-right-2 duration-200"
+              >
+                <SettingsContent section={section} />
+              </div>
             </section>
           </div>
         </div>
