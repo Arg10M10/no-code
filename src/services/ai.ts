@@ -52,12 +52,12 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
     case "openai":
       return { provider, model: "gpt-4o-mini" };
     case "google":
-      // Used in URL path for Gemini
-      return { provider, model: "gemini-1.5-flash" };
+      // Usar alias soportado en v1beta para generateContent
+      return { provider, model: "gemini-1.5-flash-latest" };
     case "anthropic":
       return { provider, model: "claude-3-5-sonnet-latest" };
     case "openrouter":
-      // Example free/cheap route on OpenRouter
+      // Ejemplo free/cheap en OpenRouter
       return { provider, model: "deepseek/deepseek-chat" };
     default:
       return { provider: "openai", model: "gpt-4o-mini" };
@@ -99,7 +99,7 @@ async function callAnthropic(params: {
   system?: string;
   temperature?: number;
 }): Promise<string> {
-  // Anthropic expects system separately and content objects for messages
+  // Anthropic espera system separado y objetos de contenido
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
   const mapped = chatMessages.map((m) => ({
@@ -153,7 +153,7 @@ async function callGoogle(params: {
     },
   };
   if (system) {
-    body.system_instruction = { role: "system", parts: [{ text: system }] };
+    body.system_instruction = { parts: [{ text: system }] };
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
