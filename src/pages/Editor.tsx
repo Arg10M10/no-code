@@ -13,7 +13,6 @@ import {
   getProjectById,
   getMessages,
   setMessages,
-  addMessage,
   StoredMessage,
   getCredits,
   decrementCredits,
@@ -22,7 +21,7 @@ import {
 } from "@/lib/projects";
 import { storage } from "@/lib/storage";
 import { generateChat, ChatMessage, getProviderFromLabel } from "@/services/ai";
-import Loader from "@/components/Loader";
+import { useSelectedModel } from "@/hooks/useSelectedModel";
 
 const COST_PER_MESSAGE = 1;
 
@@ -33,12 +32,10 @@ const SYSTEM_PROMPT = [
 ].join(" ");
 
 function extractPreviewHtml(text: string): string | null {
-  // Prefer ```html ... ```
   const htmlFence = text.match(/```html\s*([\s\S]*?)```/i);
   if (htmlFence && htmlFence[1] && htmlFence[1].includes("<html")) {
     return htmlFence[1].trim();
   }
-  // Any fenced block containing full HTML
   const fences = text.match(/```[\w-]*\s*([\s\S]*?)```/g);
   if (fences) {
     for (const block of fences) {
@@ -48,7 +45,6 @@ function extractPreviewHtml(text: string): string | null {
       }
     }
   }
-  // Custom markers (fallback)
   const marker = text.match(/<!--\s*PREVIEW_HTML_START\s*-->([\s\S]*?)<!--\s*PREVIEW_HTML_END\s*-->/i);
   if (marker && marker[1]) return marker[1].trim();
   return null;
@@ -60,7 +56,7 @@ const Editor: React.FC = () => {
   const projectId = searchParams.get("id") || "";
 
   const [projectName, setProjectName] = React.useState<string>("");
-  const [selectedModel, setSelectedModel] = React.useState<string>("OpenAI - GPT-5");
+  const { selectedModel, setSelectedModel } = useSelectedModel();
   const [messages, setLocalMessages] = React.useState<StoredMessage[]>([]);
   const [credits, setCreditsState] = React.useState<number>(0);
   const [loading, setLoading] = React.useState<boolean>(false);
@@ -160,7 +156,6 @@ const Editor: React.FC = () => {
 
   return (
     <div className="fixed inset-0 bg-background">
-      {/* Barra superior */}
       <div className="sticky top-0 z-10 border-b border-border/40 bg-background/90 backdrop-blur-sm">
         <div className="flex items-center gap-3 px-3 sm:px-4 h-12">
           <Button variant="ghost" size="sm" onClick={onBack} className="px-2">
@@ -192,7 +187,6 @@ const Editor: React.FC = () => {
         </div>
       </div>
 
-      {/* Split horizontal 100% alto */}
       <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-3rem)]">
         <ResizablePanel defaultSize={42} minSize={30} maxSize={60}>
           <ChatPanel messages={messages} loading={loading} credits={credits} onSend={onSend} />
