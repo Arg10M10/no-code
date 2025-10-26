@@ -112,7 +112,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
-      <div className="p-4 border-t border-border/40 bg-background/80 backdrop-blur-sm flex-shrink-0">
+      <div className="p-6 border-t border-border/10 bg-background/50 backdrop-blur-lg flex-shrink-0">
         <form onSubmit={handleSubmit} className="relative">
           <Textarea
             ref={textareaRef}
@@ -120,7 +120,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Describe los cambios que quieres hacer..."
-            className="pr-20 pl-12 py-4 min-h-[68px] resize-none bg-background/60 backdrop-blur-sm border-border/50 focus:bg-background/80"
+            className="pr-20 pl-12 py-4 min-h-[72px] resize-none bg-background/20 backdrop-blur-md border border-border/20 rounded-xl shadow-lg focus:bg-background/30"
             rows={1}
             disabled={loading}
           />
