@@ -1,7 +1,8 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Code, RefreshCw, Check, X } from "lucide-react";
+import { Code, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import "./preview-loader.css";
 
 interface PreviewPanelProps {
   code: string | null;
@@ -65,11 +66,30 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ code, loading, onApply }) =
       {/* Contenido principal: Preview o Editor */}
       <div className="flex-grow relative overflow-hidden">
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-            <div className="text-sm text-muted-foreground flex items-center">
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              Generando Preview...
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10">
+            <div className="loader">
+              <div className="box box-1">
+                <div className="side-left"></div>
+                <div className="side-right"></div>
+                <div className="side-top"></div>
+              </div>
+              <div className="box box-2">
+                <div className="side-left"></div>
+                <div className="side-right"></div>
+                <div className="side-top"></div>
+              </div>
+              <div className="box box-3">
+                <div className="side-left"></div>
+                <div className="side-right"></div>
+                <div className="side-top"></div>
+              </div>
+              <div className="box box-4">
+                <div className="side-left"></div>
+                <div className="side-right"></div>
+                <div className="side-top"></div>
+              </div>
             </div>
+            <span className="sr-only">Generando Preview...</span>
           </div>
         )}
 

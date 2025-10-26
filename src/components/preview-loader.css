@@ -1,0 +1,55 @@
+.loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  perspective: 700px;
+}
+
+.box {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  transform-style: preserve-3d;
+  animation: box-bounce 1.2s ease-in-out infinite;
+}
+
+.box-1 { animation-delay: 0s; }
+.box-2 { animation-delay: 0.12s; }
+.box-3 { animation-delay: 0.24s; }
+.box-4 { animation-delay: 0.36s; }
+
+.box .side-left,
+.box .side-right,
+.box .side-top {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background: hsl(var(--primary));
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.35);
+}
+
+/* Caras del cubo en 3D */
+.box .side-right {
+  transform: translateZ(12px);
+}
+
+.box .side-left {
+  transform: rotateY(-90deg) translateZ(12px);
+  filter: brightness(0.9);
+}
+
+.box .side-top {
+  transform: rotateX(90deg) translateZ(12px);
+  filter: brightness(1.1);
+}
+
+/* Animación */
+@keyframes box-bounce {
+  0%, 100% {
+    transform: translateY(6px) rotateX(0deg) rotateY(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotateX(25deg) rotateY(25deg);
+  }
+}
