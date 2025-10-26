@@ -1,6 +1,8 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Github, Figma, Camera, Upload, Cpu, ArrowUp, File, X, ClipboardPaste, Clipboard, Check } from "lucide-react";
-import { useRef, useState, ClipboardEvent } from "react";
+import { useRef, useState, ClipboardEvent, KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import ModelsPopover from "./ModelsPopover";
@@ -139,6 +141,15 @@ const Hero = () => {
   const attachmentCount = [selectedFile, pastedTextInfo].filter(Boolean).length;
   const paddingTopClass = attachmentCount === 2 ? "pt-24" : attachmentCount === 1 ? "pt-14" : "pt-4";
 
+  // New handler: Enter sends (without Shift), Shift+Enter inserts newline
+  const handleTextareaKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+    // Shift+Enter -> default behavior (insert newline)
+  };
+
   return (
     <section className="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-20">
       <div className="max-w-4xl mx-auto text-center space-y-8">
@@ -184,6 +195,7 @@ const Hero = () => {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onPaste={handlePaste}
+              onKeyDown={handleTextareaKeyDown}
               placeholder="Describe what you want to build or improve (website, app, business, code...)"
               className={`w-full h-64 pl-6 pr-16 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 ease-in-out hover:shadow-lg ${paddingTopClass}`}
             />
