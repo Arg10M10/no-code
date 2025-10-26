@@ -1,102 +1,280 @@
-"use client";
-
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Github, Figma, Camera, Upload, Cpu, ArrowUp, File, X, ClipboardPaste, Clipboard, Check } from "lucide-react";
+import { useRef, useState, ClipboardEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import ModelsPopover from "./ModelsPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { createProject, setMessages, StoredMessage } from "@/lib/projects";
+import { createProjectFromPrompt, addMessage } from "@/lib/projects";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { storage } from "@/lib/storage";
+import { getProviderFromLabel } from "@/services/ai";
 
-const Hero: React.FC = () => {
-  const navigate = useNavigate();
+const Hero = () => {
+  const projectFileInputRef = useRef<HTMLInputElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const screenshotFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [selectedModel, setSelectedModel] = useState(getSelectedModelLabel());
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pastedTextInfo, setPastedTextInfo] = useState<{ wordCount: number; content: string } | null>(null);
   const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState("Dyad-3.5");
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [answer, setAnswer] = useState<string>("");
+  const [copyOk, setCopyOk] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    setSelectedModel(getSelectedModelLabel());
-  }, []);
+  const examplePrompts = [
+    {
+      title: "SaaS landing page",
+      prompt:
+        "Create a modern landing page for a SaaS that helps teams manage projects. Include a hero, features, pricing, and footer. Provide basic HTML + Tailwind and a list of improvements.",
+    },
+    {
+      title: "Todo app",
+      prompt:
+        "Design a todo app in React + TypeScript with state, add, complete, and delete. Include components and explain how to structure the hooks.",
+    },
+    {
+      title: "Initial business plan",
+      prompt:
+        "Help me create a lean business plan for a B2B app: customer segments, value proposition, initial pricing, key metrics, and experiments.",
+    },
+    {
+      title: "Clone design from screenshot",
+      prompt:
+        "Given a reference screenshot, outline the steps to clone the layout in Tailwind and how to break it down into reusable components.",
+    },
+  ];
 
-  const handleModelSelect = (model: string) => {
-    setSelectedModel(model);
-    setSelectedModelLabel(model);
-    setIsPopoverOpen(false);
+  const handleUploadProjectClick = () => {
+    projectFileInputRef.current?.click();
   };
 
-  const handleCreateProject = () => {
-    if (prompt.trim()) {
-      const newProject = createProject(prompt.trim());
-      const initialMessage: StoredMessage = {
-        role: "user",
-        content: prompt.trim(),
-        createdAt: Date.now(),
-      };
-      setMessages(newProject.id, [initialMessage]);
-      navigate(`/editor?id=${newProject.id}`);
+  const handleAttachImageClick = () => {
+    imageFileInputRef.current?.click();
+  };
+
+  const handleCloneScreenshotClick = () => {
+    screenshotFileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
     }
+    event.target.value = "";
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
+  const handleClearFile = () => {
+    setSelectedFile(null);
+  };
+
+  const handleClearPastedText = () => {
+    setPastedTextInfo(null);
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedText = event.clipboardData.getData("text");
+    const wordCount = pastedText.split(/\s+/).filter(Boolean).length;
+
+    if (wordCount > 20000) {
       event.preventDefault();
-      handleCreateProject();
+      toast.error("Word limit exceeded", {
+        description: "Upgrade to Pro for unlimited context.",
+        action: {
+          label: "See plans",
+          onClick: () => navigate("/pricing"),
+        },
+      });
+      return;
+    }
+
+    if (wordCount > 500) {
+      event.preventDefault();
+      setPastedTextInfo({ wordCount, content: pastedText });
     }
   };
+
+  const handleSend = async () => {
+    if (!prompt.trim()) {
+      toast.message("Write a prompt", { description: "Tell me what you want to build or improve." });
+      return;
+    }
+
+    setLoading(true);
+
+    // Validar API key antes de crear el proyecto y navegar
+    const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
+    const provider = getProviderFromLabel(selectedModel);
+    if (!apiKeys[provider]) {
+      const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+      toast.error("Falta API Key", { description: `Configura tu clave de ${providerName} en Settings > API Keys.` });
+      setLoading(false);
+      return;
+    }
+
+    const fullPrompt = pastedTextInfo?.content
+      ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
+      : prompt;
+
+    // Crear proyecto y guardar primer mensaje; la IA correrá en el editor
+    const proj = createProjectFromPrompt(prompt);
+    addMessage(proj.id, { role: "user", content: fullPrompt });
+
+    // Navegar de inmediato al editor; allí se generará y renderizará el preview automáticamente
+    navigate(`/editor?id=${encodeURIComponent(proj.id)}`, { replace: false });
+
+    setLoading(false);
+  };
+
+  const handleCopy = async () => {
+    if (!answer) return;
+    await navigator.clipboard.writeText(answer);
+    setCopyOk(true);
+    setTimeout(() => setCopyOk(false), 1200);
+  };
+
+  const attachmentCount = [selectedFile, pastedTextInfo].filter(Boolean).length;
+  const paddingTopClass = attachmentCount === 2 ? "pt-24" : attachmentCount === 1 ? "pt-14" : "pt-4";
 
   return (
-    <section className="container flex flex-col items-center justify-center py-12 md:py-24 lg:py-32">
-      <div className="w-full max-w-2xl">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-            Tu Asistente de Desarrollo AI
+    <section className="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-20">
+      <div className="max-w-4xl mx-auto text-center space-y-8">
+        <div className="space-y-4">
+          <h1
+            className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight opacity-0 animate-fade-in-up"
+            style={{ animationDelay: "0.2s" }}
+          >
+            What should we build?
           </h1>
-          <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed mt-4">
-            Describe lo que quieres construir. Dyad generará el código y te permitirá iterar en tiempo real.
+          <p className="text-lg text-muted-foreground opacity-0 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
+            Start building with a single prompt. No coding needed.
           </p>
         </div>
-        <div className="mt-8">
+
+        <div className="max-w-2xl mx-auto space-y-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
           <div className="relative">
-            <Textarea
-              placeholder="Ej: 'Crea un formulario de contacto con campos para nombre, email y mensaje, y un botón de envío.'"
-              className="min-h-[120px] resize-none rounded-xl border-2 border-border p-4 pr-28 shadow-sm focus-visible:ring-primary"
+            <div className="absolute top-3 left-3 right-3 z-10 flex flex-col gap-2">
+              {selectedFile && (
+                <div className="flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-xs font-medium truncate">{selectedFile.name}</span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full flex-shrink-0" onClick={handleClearFile}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              {pastedTextInfo && (
+                <div className="flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ClipboardPaste className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-xs font-medium truncate">Pasted text ({pastedTextInfo.wordCount} words)</span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full flex-shrink-0" onClick={handleClearPastedText}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder="Describe what you want to build or improve (website, app, business, code...)"
+              className={`w-full h-64 pl-6 pr-16 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 ease-in-out hover:shadow-lg ${paddingTopClass}`}
             />
-            <div className="absolute bottom-3 right-3 flex items-center gap-2">
-              <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+            <div className="absolute left-4 bottom-4 flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={handleAttachImageClick}>
+                Attach
+              </Button>
+              <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                    <Cpu className="h-4 w-4 mr-2" />
                     {selectedModel}
-                    <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-48 p-1">
-                  <div
-                    className="cursor-pointer rounded p-2 text-sm hover:bg-muted"
-                    onClick={() => handleModelSelect("Dyad-3.5")}
-                  >
-                    Dyad-3.5
-                  </div>
-                  <div
-                    className="cursor-pointer rounded p-2 text-sm hover:bg-muted"
-                    onClick={() => handleModelSelect("Dyad-4")}
-                  >
-                    Dyad-4
-                  </div>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <ModelsPopover
+                    selectedModel={selectedModel}
+                    onSelectModel={(label) => {
+                      setSelectedModel(label);
+                      setSelectedModelLabel(label);
+                    }}
+                  />
                 </PopoverContent>
               </Popover>
+            </div>
+            <div className="absolute right-4 bottom-4">
               <Button
-                size="sm"
-                className="h-8"
-                onClick={handleCreateProject}
-                disabled={!prompt.trim()}
+                size="icon"
+                className="rounded-full transition-transform hover:scale-105 active:scale-95"
+                onClick={handleSend}
+                disabled={loading}
               >
-                <Sparkles className="mr-2 h-4 w-4" />
-                Crear
+                <ArrowUp className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
               </Button>
+            </div>
+          </div>
+
+          {answer && (
+            <div className="text-left border border-border rounded-xl bg-card/60 p-4 md:p-5 space-y-3 animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">AI response</h3>
+                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={handleCopy}>
+                  {copyOk ? (
+                    <>
+                      <Check className="h-4 w-4 mr-1.5" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Clipboard className="h-4 w-4 mr-1.5" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="whitespace-pre-wrap leading-relaxed text-sm md:text[15px]">{answer}</div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-center gap-3">
+            <input type="file" ref={projectFileInputRef} onChange={handleFileChange} className="hidden" />
+            <input type="file" ref={imageFileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+            <input type="file" ref={screenshotFileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleUploadProjectClick}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload a Project
+            </Button>
+            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => navigate("/pricing")}>
+              <Github className="h-4 w-4 mr-2" />
+              Connect a repo
+            </Button>
+            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" asChild>
+              <a href="https://www.figma.com/community/plugin/747985167520967365/builder-io-figma-to-code-ai-apps-react-vue-tailwind-etc" target="_blank" rel="noopener noreferrer">
+                <Figma className="h-4 w-4 mr-2" />
+                Figma Import
+              </a>
+            </Button>
+            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleCloneScreenshotClick}>
+              <Camera className="h-4 w-4 mr-2" />
+              Clone a Screenshot
+            </Button>
+          </div>
+
+          <div className="pt-8 text-center opacity-0 animate-fade-in-up" style={{ animationDelay: "0.5s" }}>
+            <p className="text-sm text-muted-foreground mb-4">Or try one of these examples:</p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {examplePrompts.map((example) => (
+                <Button key={example.title} variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => setPrompt(example.prompt)}>
+                  {example.title}
+                </Button>
+              ))}
             </div>
           </div>
         </div>

@@ -1,80 +1,115 @@
-const PROJECTS_KEY = "dyad_projects";
-const MESSAGES_KEY_PREFIX = "dyad_messages_";
-const CODE_KEY_PREFIX = "dyad_code_";
+import { storage } from "@/lib/storage";
 
-export interface Project {
+export type Project = {
   id: string;
   name: string;
-  createdAt: number;
-  credits: number;
-}
+  updatedAt: number;
+};
 
-export interface StoredMessage {
+export type StoredMessage = {
   role: "user" | "assistant";
   content: string;
   createdAt: number;
+};
+
+const PROJECTS_KEY = "recent-projects";
+
+function genId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export const getAllProjects = (): Project[] => {
-  const projectsJson = localStorage.getItem(PROJECTS_KEY);
-  return projectsJson ? JSON.parse(projectsJson) : [];
-};
+function deriveNameFromPrompt(prompt: string) {
+  const trimmed = prompt.trim().replace(/\s+/g, " ");
+  if (!trimmed) return "New Chat";
+  const max = 48;
+  return trimmed.length > max ? `${trimmed.slice(0, max)}…` : trimmed;
+}
 
-export const createProject = (name: string): Project => {
-  const projects = getAllProjects();
-  const newProject: Project = {
-    id: crypto.randomUUID(),
-    name,
-    createdAt: Date.now(),
-    credits: 10,
+export function listProjects(): Project[] {
+  return storage.getJSON<Project[]>(PROJECTS_KEY, []);
+}
+
+export function getProjectById(id: string): Project | undefined {
+  return listProjects().find((p) => p.id === id);
+}
+
+export function upsertProjects(projects: Project[]) {
+  storage.setJSON(PROJECTS_KEY, projects);
+}
+
+export function createProject(initialName?: string): Project {
+  const projects = listProjects();
+  const p: Project = {
+    id: genId(),
+    name: initialName && initialName.trim() ? initialName.trim() : "New Chat",
+    updatedAt: Date.now(),
   };
-  projects.unshift(newProject);
-  localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-  return newProject;
-};
+  upsertProjects([p, ...projects]);
+  return p;
+}
 
-export const getProjectById = (id: string): Project | undefined => {
-  const projects = getAllProjects();
-  return projects.find((p) => p.id === id);
-};
+export function touchProject(id: string) {
+  const projects = listProjects().map((p) => (p.id === id ? { ...p, updatedAt: Date.now() } : p));
+  upsertProjects(projects);
+}
 
-export const updateProjectName = (id: string, newName: string): void => {
-  const projects = getAllProjects();
-  const projectIndex = projects.findIndex((p) => p.id === id);
-  if (projectIndex !== -1) {
-    projects[projectIndex].name = newName;
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-  }
-};
+export function renameProject(id: string, name: string) {
+  const projects = listProjects().map((p) => (p.id === id ? { ...p, name: name.trim() || p.name } : p));
+  upsertProjects(projects);
+}
 
-export const deleteProject = (id: string): void => {
-  const projects = getAllProjects();
-  const updatedProjects = projects.filter(p => p.id !== id);
-  localStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
+export function createProjectFromPrompt(prompt: string): Project {
+  const name = deriveNameFromPrompt(prompt);
+  return createProject(name);
+}
 
-  // Also remove associated messages and code
-  localStorage.removeItem(`${MESSAGES_KEY_PREFIX}${id}`);
-  localStorage.removeItem(`${CODE_KEY_PREFIX}${id}`);
-};
+function chatKey(projectId: string) {
+  return `chat:${projectId}`;
+}
 
-export const getMessages = (projectId: string): StoredMessage[] => {
-  const messagesJson = localStorage.getItem(`${MESSAGES_KEY_PREFIX}${projectId}`);
-  return messagesJson ? JSON.parse(messagesJson) : [];
-};
+export function getMessages(projectId: string): StoredMessage[] {
+  return storage.getJSON<StoredMessage[]>(chatKey(projectId), []);
+}
 
-export const setMessages = (projectId: string, messages: StoredMessage[]): void => {
-  localStorage.setItem(`${MESSAGES_KEY_PREFIX}${projectId}`, JSON.stringify(messages));
-};
+export function addMessage(projectId: string, msg: Omit<StoredMessage, "createdAt"> & { createdAt?: number }) {
+  const current = getMessages(projectId);
+  const full: StoredMessage = { ...msg, createdAt: msg.createdAt ?? Date.now() };
+  storage.setJSON(chatKey(projectId), [...current, full]);
+  touchProject(projectId);
+}
 
-export const getCode = (projectId: string): string => {
-  return localStorage.getItem(`${CODE_KEY_PREFIX}${projectId}`) || "";
-};
+export function setMessages(projectId: string, msgs: StoredMessage[]) {
+  storage.setJSON(chatKey(projectId), msgs);
+  touchProject(projectId);
+}
 
-export const setCode = (projectId: string, code: string): void => {
-  localStorage.setItem(`${CODE_KEY_PREFIX}${projectId}`, code);
-};
+/* Credits management */
+const DEFAULT_CREDITS = 100;
+function creditsKey(projectId: string) {
+  return `credits:${projectId}`;
+}
+export function getCredits(projectId: string): number {
+  return storage.getJSON<number>(creditsKey(projectId), DEFAULT_CREDITS);
+}
+export function setCredits(projectId: string, value: number) {
+  storage.setJSON(creditsKey(projectId), Math.max(0, Math.floor(value)));
+  touchProject(projectId);
+}
+export function decrementCredits(projectId: string, amount = 1): number {
+  const current = getCredits(projectId);
+  const next = Math.max(0, current - amount);
+  setCredits(projectId, next);
+  return next;
+}
 
-export const getCredits = (projectId: string): number => {
-  const project = getProjectById(projectId);
-  return project ? project.credits : 0;
-};
+/* Code persistence per project */
+function codeKey(projectId: string) {
+  return `code:${projectId}`;
+}
+export function getCode(projectId: string): string | null {
+  return storage.getJSON<string | null>(codeKey(projectId), null);
+}
+export function setCode(projectId: string, code: string) {
+  storage.setJSON(codeKey(projectId), code);
+  touchProject(projectId);
+}
