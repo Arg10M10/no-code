@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Send, Plus, Monitor, ImageUp, History, Undo, Redo } from "lucide-react";
+import { Send, Plus, Monitor, ImageUp, History } from "lucide-react";
 import Loader from "@/components/Loader";
 import { StoredMessage } from "@/lib/projects";
 
@@ -14,12 +14,9 @@ interface ChatPanelProps {
   loading: boolean;
   credits: number;
   onSend: (text: string) => void;
-  history: StoredMessage[][];
-  currentVersionIndex: number;
-  onRevert: (index: number) => void;
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSend, history, currentVersionIndex, onRevert }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSend }) => {
   const [input, setInput] = React.useState<string>("");
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -56,12 +53,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
-
-  const canUndo = currentVersionIndex > 0;
-  const canRedo = currentVersionIndex < history.length - 1;
-
-  const handleUndo = () => canUndo && onRevert(currentVersionIndex - 1);
-  const handleRedo = () => canRedo && onRevert(currentVersionIndex + 1);
 
   return (
     <div className="flex flex-col h-full">
@@ -147,14 +138,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                 </Button>
               </PopoverTrigger>
               <PopoverContent
-                className="w-80 p-0 mb-2"
+                className="w-auto p-2 mb-2"
                 side="top"
                 align="start"
               >
-                <div className="p-2 border-b border-border/20">
-                   <Button
+                <div className="flex flex-col gap-1">
+                  <Button
                     variant="ghost"
-                    className="w-full justify-start px-2 py-1.5 h-auto text-sm font-normal"
+                    className="justify-start px-2 py-1.5 h-auto text-sm font-normal"
                     type="button"
                   >
                     <Monitor className="h-4 w-4 mr-2" />
@@ -162,38 +153,20 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                   </Button>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start px-2 py-1.5 h-auto text-sm font-normal"
+                    className="justify-start px-2 py-1.5 h-auto text-sm font-normal"
                     type="button"
                   >
                     <ImageUp className="h-4 w-4 mr-2" />
                     Subir foto
                   </Button>
-                </div>
-                <div className="p-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <History className="h-4 w-4" />
-                      <h4 className="font-semibold text-sm">Historial</h4>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleUndo} disabled={!canUndo}><Undo className="h-4 w-4" /></Button>
-                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleRedo} disabled={!canRedo}><Redo className="h-4 w-4" /></Button>
-                    </div>
-                  </div>
-                  <ScrollArea className="h-40">
-                    <div className="space-y-1 pr-2">
-                      {history.map((version, index) => (
-                        version.length > 0 ? (
-                          <div key={index} className={`flex items-center justify-between p-2 rounded-md ${currentVersionIndex === index ? 'bg-muted' : ''}`}>
-                            <span className="text-sm">Versión {index + 1}</span>
-                            <Button variant="secondary" size="sm" className="h-7" onClick={() => onRevert(index)} disabled={currentVersionIndex === index}>
-                              Revertir
-                            </Button>
-                          </div>
-                        ) : null
-                      ))}
-                    </div>
-                  </ScrollArea>
+                  <Button
+                    variant="ghost"
+                    className="justify-start px-2 py-1.5 h-auto text-sm font-normal"
+                    type="button"
+                  >
+                    <History className="h-4 w-4 mr-2" />
+                    Ver historial
+                  </Button>
                 </div>
               </PopoverContent>
             </Popover>
