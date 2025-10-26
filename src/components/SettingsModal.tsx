@@ -37,8 +37,8 @@ const SettingsModal: React.FC = () => {
       </DialogTrigger>
       <DialogContent
         className={[
-          // Ancho grande y altura fija (igual a API Keys) para evitar saltos
-          "w-[96vw] sm:max-w-[1100px] max-w-[1200px] h-[78vh] p-0 overflow-hidden",
+          // Ancho ligeramente reducido y altura fija más baja para evitar saltos
+          "w-[94vw] sm:max-w-[1000px] max-w-[1100px] h-[72vh] p-0 overflow-hidden",
           // Efecto cristal
           "border border-white/10 bg-background/60 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/50",
           "shadow-2xl",
@@ -64,11 +64,9 @@ const SettingsModal: React.FC = () => {
                       variant="ghost"
                       className={[
                         "justify-start h-9",
-                        // estados
                         active
                           ? "bg-muted text-foreground"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-                        // quitar efectos azules de foco
                         "focus-visible:ring-0 focus-visible:ring-offset-0",
                       ].join(" ")}
                       onClick={() => setSection(it.key)}
@@ -83,7 +81,7 @@ const SettingsModal: React.FC = () => {
             </aside>
 
             {/* Contenido: solo scroll en el panel derecho */}
-            <section className="flex-1 overflow-y-auto max-h-[58vh] rounded-md">
+            <section className="flex-1 overflow-y-auto max-h-[52vh] rounded-md">
               <SettingsContent section={section} />
             </section>
           </div>
