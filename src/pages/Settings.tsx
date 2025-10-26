@@ -1,112 +1,93 @@
-import Navigation from "@/components/Navigation";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Lock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import ApiKeySettings from "@/components/ApiKeySettings";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/components/ui/use-toast";
 
-const SettingsPage = () => {
-  const navigate = useNavigate();
+const Settings = () => {
+  const { toast } = useToast();
 
-  const handleDeleteAccount = () => {
-    if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-      localStorage.clear();
-      window.location.reload();
-    }
+  const handleResetAll = () => {
+    localStorage.clear();
+    toast({
+      title: "Reset Complete",
+      description: "All your chats and apps have been deleted from this browser.",
+    });
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container mx-auto px-6 pt-24 pb-20">
-        <div className="max-w-2xl mx-auto space-y-8">
-          <h1 className="text-3xl font-bold">Settings</h1>
-          
-          <div className="grid gap-6 p-6 border border-border rounded-lg bg-card">
-            {/* General Settings */}
-            <div className="grid gap-4">
-              <h3 className="font-medium leading-none">Settings</h3>
-              <div className="grid gap-2">
-                <Label htmlFor="language">Language</Label>
-                <Select defaultValue="en">
-                  <SelectTrigger id="language" className="w-full">
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Español</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="auto-update">Auto-update</Label>
-                <Switch id="auto-update" defaultChecked />
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Version</span>
-                <span>v1.0.0</span>
-              </div>
-            </div>
-            <Separator />
-            
-            {/* IA Settings */}
-            <div className="grid gap-4">
-              <h3 className="font-medium leading-none">IA Settings</h3>
-              <div className="grid gap-2">
-                <Label htmlFor="reasoning-size">Reasoning Size</Label>
-                <Select defaultValue="default">
-                  <SelectTrigger id="reasoning-size" className="w-full">
-                    <SelectValue placeholder="Select size" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="compact">Compact</SelectItem>
-                    <SelectItem value="default">Default</SelectItem>
-                    <SelectItem value="extended">Extended</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <Separator />
+    <main className="container mx-auto px-6 py-24">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold mb-2">Settings</h1>
+        <p className="text-muted-foreground mb-8">
+          Manage your account and application settings.
+        </p>
 
-            {/* API Keys */}
-            <ApiKeySettings />
-            <Separator />
+        <div className="grid gap-8">
+          {/* API Keys */}
+          <Card>
+            <CardHeader>
+              <CardTitle>API Keys</CardTitle>
+              <CardDescription>
+                Manage your API keys for different providers.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ApiKeySettings />
+            </CardContent>
+          </Card>
 
-            {/* Integrations */}
-            <div className="grid gap-4">
-              <h3 className="font-medium leading-none flex items-center gap-2">
-                Integrations <Lock className="h-3 w-3 text-muted-foreground" />
-              </h3>
-              <div className="text-sm text-muted-foreground">
-                Integrations are available on the Pro plan.
-              </div>
-              <Button size="sm" onClick={() => navigate("/pricing")}>
-                Upgrade to Pro
-              </Button>
-            </div>
-            <Separator />
+          <Separator />
 
-            {/* Danger Zone */}
-            <div className="grid gap-4">
-              <h3 className="font-medium leading-none text-destructive">Danger Zone</h3>
-              <Button variant="destructive" size="sm" onClick={handleDeleteAccount}>
-                Delete Account
-              </Button>
-            </div>
+          {/* Danger Zone */}
+          <div className="grid gap-4">
+            <h3 className="font-medium leading-none text-destructive">
+              Danger Zone
+            </h3>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="justify-self-start">
+                  Reset All
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete all
+                    your chats and apps. No tokens will be refunded.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleResetAll}>
+                    Continue
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 };
 
-export default SettingsPage;
+export default Settings;
