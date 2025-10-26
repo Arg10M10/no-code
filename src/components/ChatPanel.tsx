@@ -79,8 +79,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
         {loading ? <div className="text-sm text-foreground/80 italic">Generando...</div> : null}
       </div>
 
-      {/* Fixed-height scroll area so the chat doesn't resize or move */}
-      <ScrollArea className="h-80 md:h-96 lg:h-[28rem] flex-none">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-4 space-y-4">
           {messages.map((msg, index) => {
             const isAssistant = msg.role === "assistant";
