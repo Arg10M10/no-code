@@ -28,7 +28,7 @@ const providers: Provider[] = [
   { id: 'openai', name: 'OpenAI', description: 'Powering models like GPT-4.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OA</div>, placeholder: 'sk-...', getApiKeyUrl: 'https://openai.com/api/', models: ['GPT-4o', 'GPT-4o mini'] },
   { id: 'google', name: 'Google', description: 'Home of the Gemini family of models.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">G</div>, placeholder: 'AIzaSy...', getApiKeyUrl: 'https://aistudio.google.com/app/api-keys', models: ['Gemini 1.5 Pro', 'Gemini 1.5 Flash'] },
   { id: 'anthropic', name: 'Anthropic', description: 'Building reliable, interpretable, and steerable AI systems.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">A</div>, placeholder: 'sk-ant-...', getApiKeyUrl: 'https://console.anthropic.com/login?returnTo=%2F%3F', models: ['Claude 3.5 Sonnet', 'Claude 3 Haiku'] },
-  { id: 'openrouter', name: 'OpenRouter', description: 'Access a variety of models through a single API.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OR</div>, placeholder: 'sk-or-...', getApiKeyUrl: 'https://openrouter.ai/docs/api-reference/overview', models: ['Aggregated models (OpenAI, Google, Anthropic, etc.)'] },
+  { id: 'openrouter', name: 'OpenRouter', description: 'Access a variety of models through a single API.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-2OO rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OR</div>, placeholder: 'sk-or-...', getApiKeyUrl: 'https://openrouter.ai/docs/api-reference/overview', models: ['Aggregated models (OpenAI, Google, Anthropic, etc.)'] },
 ];
 
 const STORAGE_KEY = "api-keys";
@@ -39,7 +39,6 @@ const ApiKeySettings = () => {
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Cargar claves guardadas
   useEffect(() => {
     const saved = storage.getJSON<Record<string, string>>(STORAGE_KEY, {});
     setApiKeys(saved);
@@ -82,7 +81,7 @@ const ApiKeySettings = () => {
     <div className="grid gap-4">
       <h3 className="font-medium leading-none">API Keys</h3>
       <p className="text-xs text-muted-foreground -mt-2">
-        Para usar la IA ahora, configura al menos tu clave de OpenRouter. Más adelante podemos enrutar OpenAI/Google/Anthropic por backend.
+        To use AI right now, set at least your OpenRouter key. Later we can route OpenAI/Google/Anthropic through a backend.
       </p>
       <div className="grid gap-3">
         {providers.map((provider) => (

@@ -28,20 +28,20 @@ const Hero = () => {
 
   const examplePrompts = [
     {
-      title: "Landing page para un SaaS",
-      prompt: "Crea una landing page moderna para un SaaS que ayuda a equipos a gestionar proyectos. Incluye hero, features, pricing y footer. Dame el HTML y Tailwind básicos, y una lista de mejoras.",
+      title: "SaaS landing page",
+      prompt: "Create a modern landing page for a SaaS that helps teams manage projects. Include a hero, features, pricing, and footer. Provide basic HTML + Tailwind and a list of improvements.",
     },
     {
-      title: "App de tareas",
-      prompt: "Diseña una app de to-dos en React + TypeScript con estados, añadir, completar y borrar. Incluye componentes y explica cómo estructurar los hooks.",
+      title: "Todo app",
+      prompt: "Design a todo app in React + TypeScript with state, add, complete, and delete. Include components and explain how to structure the hooks.",
     },
     {
-      title: "Plan de negocio inicial",
-      prompt: "Ayúdame a crear un plan de negocio lean para una app B2B: segmento de clientes, propuesta de valor, pricing inicial, métricas clave y experimentos.",
+      title: "Initial business plan",
+      prompt: "Help me create a lean business plan for a B2B app: customer segments, value proposition, initial pricing, key metrics, and experiments.",
     },
     {
-      title: "Clonar diseño desde captura",
-      prompt: "Dado un screenshot de referencia, dime los pasos para clonar el layout en Tailwind y cómo desglosar componentes reutilizables.",
+      title: "Clone design from screenshot",
+      prompt: "Given a reference screenshot, outline the steps to clone the layout in Tailwind and how to break it down into reusable components.",
     },
   ];
 
@@ -79,10 +79,10 @@ const Hero = () => {
 
     if (wordCount > 20000) {
       event.preventDefault();
-      toast.error("Límite de palabras excedido", {
-        description: "Mejora a Pro para contexto ilimitado.",
+      toast.error("Word limit exceeded", {
+        description: "Upgrade to Pro for unlimited context.",
         action: {
-          label: "Ver planes",
+          label: "See plans",
           onClick: () => navigate("/pricing"),
         },
       });
@@ -100,24 +100,24 @@ const Hero = () => {
     const openRouterApiKey = apiKeys["openrouter"];
 
     if (!prompt.trim()) {
-      toast.message("Escribe un prompt", { description: "Cuéntame qué quieres construir o mejorar." });
+      toast.message("Write a prompt", { description: "Tell me what you want to build or improve." });
       return;
     }
 
     if (!openRouterApiKey) {
-      toast.error("Falta API Key", {
-        description: "Configura tu clave de OpenRouter en Settings > API Keys.",
+      toast.error("Missing API Key", {
+        description: "Set your OpenRouter key in Settings > API Keys.",
       });
       return;
     }
 
     setLoading(true);
     setAnswer("");
-    const id = toast.loading("Consultando a la IA...");
+    const id = toast.loading("Asking the AI...");
 
     const fullPrompt =
       pastedTextInfo?.content
-        ? `${prompt}\n\nContexto pegado (${pastedTextInfo.wordCount} palabras):\n${pastedTextInfo.content}`
+        ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
         : prompt;
 
     const res = await generateAnswer({
@@ -125,11 +125,11 @@ const Hero = () => {
       selectedModelLabel: selectedModel,
       openRouterApiKey,
       system:
-        "Eres un asistente técnico-estratégico. Ayudas a construir y mejorar webs, apps y negocios: arquitectura, diseño UX, planes de lanzamiento, métricas, marketing y código (React, Tailwind, Node, SQL). Responde con pasos claros, bullets y ejemplos de código concisos cuando sea útil.",
+        "You are a technical-strategic assistant. You help build and improve websites, apps, and businesses: architecture, UX design, launch plans, metrics, marketing, and code (React, Tailwind, Node, SQL). Reply with clear steps, bullet points, and concise code snippets when useful.",
     });
 
     setAnswer(res);
-    toast.success("Listo", { id, description: "Respuesta generada." });
+    toast.success("Done", { id, description: "Response generated." });
     setLoading(false);
   };
 
@@ -188,7 +188,7 @@ const Hero = () => {
                   <div className="flex items-center gap-2 min-w-0">
                     <ClipboardPaste className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <span className="text-xs font-medium truncate">
-                      Texto pegado ({pastedTextInfo.wordCount} palabras)
+                      Pasted text ({pastedTextInfo.wordCount} words)
                     </span>
                   </div>
                   <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full flex-shrink-0" onClick={handleClearPastedText}>
@@ -201,7 +201,7 @@ const Hero = () => {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onPaste={handlePaste}
-              placeholder="Describe lo que quieres construir o mejorar (web, app, negocio, código...)"
+              placeholder="Describe what you want to build or improve (website, app, business, code...)"
               className={`w-full h-64 pl-6 pr-16 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 ease-in-out hover:shadow-lg ${paddingTopClass}`}
             />
             <div className="absolute left-4 bottom-4 flex items-center gap-2">
@@ -211,7 +211,7 @@ const Hero = () => {
                 className="text-muted-foreground hover:text-foreground"
                 onClick={handleAttachImageClick}
               >
-                Adjuntar
+                Attach
               </Button>
               <Popover>
                 <PopoverTrigger asChild>
@@ -250,7 +250,7 @@ const Hero = () => {
               style={{ animationDelay: "0.05s" }}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Respuesta de la IA</h3>
+                <h3 className="text-sm font-semibold">AI response</h3>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -260,12 +260,12 @@ const Hero = () => {
                   {copyOk ? (
                     <>
                       <Check className="h-4 w-4 mr-1.5" />
-                      Copiado
+                      Copied
                     </>
                   ) : (
                     <>
                       <Clipboard className="h-4 w-4 mr-1.5" />
-                      Copiar
+                      Copy
                     </>
                   )}
                 </Button>
@@ -344,7 +344,7 @@ const Hero = () => {
             className="pt-8 text-center opacity-0 animate-fade-in-up"
             style={{ animationDelay: "0.5s" }}
           >
-            <p className="text-sm text-muted-foreground mb-4">O prueba alguno de estos ejemplos:</p>
+            <p className="text-sm text-muted-foreground mb-4">Or try one of these examples:</p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               {examplePrompts.map((example) => (
                 <Button

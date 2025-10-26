@@ -52,7 +52,7 @@ const SectionGeneral = () => {
 const SectionAI = () => {
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-semibold">IA Settings</h3>
+      <h3 className="text-lg font-semibold">AI Settings</h3>
       <div className="grid gap-4">
         <div className="grid gap-2">
           <Label htmlFor="reasoning-size">Reasoning Size</Label>
@@ -113,7 +113,6 @@ const SectionDanger = () => {
 const SettingsContent: React.FC<SettingsContentProps> = ({ section }) => {
   return (
     <div className="p-6">
-      {/* Usamos una tarjeta ligera para mantener la estética y legibilidad */}
       <div className="rounded-lg border border-border/60 bg-card/60 backdrop-blur-sm p-6">
         {section === "general" && <SectionGeneral />}
         {section === "ai" && <SectionAI />}

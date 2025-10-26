@@ -5,7 +5,7 @@ type ChatMessage = {
 
 export type AIRequest = {
   prompt: string;
-  selectedModelLabel: string; // p.ej. "OpenAI - GPT-5" (mapeamos a un modelo real)
+  selectedModelLabel: string; // e.g., "OpenAI - GPT-5" (mapped to a real model)
   system?: string;
   openRouterApiKey: string;
 };
@@ -19,17 +19,15 @@ type OpenRouterChatResponse = {
   }[];
 };
 
-// Mapeo simple desde la etiqueta del UI a un modelo soportado por OpenRouter
+// Simple mapping from UI label to an OpenRouter-supported model
 function mapLabelToModelId(label: string): string {
   const provider = (label.split(" - ")[0] || "").toLowerCase().trim();
 
-  // Defaults razonables por proveedor
   if (provider.includes("openai")) return "openai/gpt-4o-mini";
   if (provider.includes("google")) return "google/gemini-1.5-flash-8b";
   if (provider.includes("anthropic")) return "anthropic/claude-3.5-sonnet";
   if (provider.includes("openrouter")) return "deepseek/deepseek-chat";
 
-  // Fallback
   return "openai/gpt-4o-mini";
 }
 
@@ -41,7 +39,7 @@ export async function generateAnswer(req: AIRequest): Promise<string> {
       role: "system",
       content:
         req.system ??
-        "Eres un asistente experto que ayuda a construir y mejorar webs, apps y negocios. Responde con ejemplos claros, pasos accionables y, si procede, fragmentos de código concisos con buenas prácticas.",
+        "You are an expert assistant that helps build and improve websites, apps and businesses. Answer with clear steps, actionable guidance, and concise best-practice code snippets when helpful.",
     },
     { role: "user", content: req.prompt },
   ];
@@ -51,7 +49,6 @@ export async function generateAnswer(req: AIRequest): Promise<string> {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${req.openRouterApiKey}`,
-      // Campos recomendados por OpenRouter (opcional, pero útiles)
       "HTTP-Referer": window.location.origin,
       "X-Title": document.title || "ByDamian App",
     },
@@ -70,7 +67,7 @@ export async function generateAnswer(req: AIRequest): Promise<string> {
 
   const data = (await r.json()) as OpenRouterChatResponse;
   const content = data.choices?.[0]?.message?.content?.trim();
-  if (!content) throw new Error("La respuesta de la IA no contenía contenido.");
+  if (!content) throw new Error("The AI response had no content.");
 
   return content;
 }
