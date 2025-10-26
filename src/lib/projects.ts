@@ -113,3 +113,15 @@ export function setCode(projectId: string, code: string) {
   storage.setJSON(codeKey(projectId), code);
   touchProject(projectId);
 }
+
+/* Delete project and its persisted data */
+export function deleteProject(projectId: string) {
+  // Remove from projects list
+  const remaining = listProjects().filter((p) => p.id !== projectId);
+  upsertProjects(remaining);
+
+  // Remove stored data related to this project
+  storage.remove(chatKey(projectId));
+  storage.remove(codeKey(projectId));
+  storage.remove(creditsKey(projectId));
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Menu, Pencil, Check, X, Folder, Search, Plus } from "lucide-react";
+import { Menu, Pencil, Check, X, Folder, Search, Plus, MoreVertical, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,12 +13,19 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
-
-type Project = {
-  id: string;
-  name: string;
-  updatedAt: number;
-};
+import { listProjects, Project, renameProject, deleteProject } from "@/lib/projects";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 const STORAGE_KEY = "recent-projects";
 
@@ -28,15 +35,18 @@ const RecentProjectsSheet: React.FC = () => {
   const [draftName, setDraftName] = React.useState<string>("");
   const [showSearch, setShowSearch] = React.useState<boolean>(false);
   const [searchQuery, setSearchQuery] = React.useState<string>("");
+  const [isSheetOpen, setIsSheetOpen] = React.useState<boolean>(false);
 
   const inputRef = React.useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   React.useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed: Project[] = raw ? JSON.parse(raw) : [];
-    setProjects(parsed);
-  }, []);
+    if (isSheetOpen) {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed: Project[] = raw ? JSON.parse(raw) : [];
+      setProjects(parsed);
+    }
+  }, [isSheetOpen]);
 
   React.useEffect(() => {
     if (showSearch) inputRef.current?.focus();
@@ -76,10 +86,22 @@ const RecentProjectsSheet: React.FC = () => {
   }, [projects, searchQuery]);
 
   const onNewChat = () => {
+    // Close sheet then navigate to homepage
+    setIsSheetOpen(false);
     navigate("/");
   };
 
-  const onToggleSearch = () => {
+  const openProject = (id: string) => {
+    setIsSheetOpen(false);
+    navigate(`/editor?id=${encodeURIComponent(id)}`);
+  };
+
+  const handleDeleteProject = (id: string) => {
+    const next = projects.filter((p) => p.id !== id);
+    persist(next);
+  };
+
+  const toggleSearch = () => {
     setShowSearch((s) => {
       const next = !s;
       if (!next) setSearchQuery("");
@@ -87,12 +109,27 @@ const RecentProjectsSheet: React.FC = () => {
     });
   };
 
-  const openProject = (id: string) => {
-    navigate(`/editor?id=${encodeURIComponent(id)}`);
+  // Utility to truncate long names without breaking words too aggressively
+  const limitByVowels = (name: string, maxVowels: number = 10): string => {
+    const vowels = "aeiouAEIOU";
+    let vowelCount = 0;
+    let truncatedName = "";
+
+    for (let i = 0; i < name.length; i++) {
+      const char = name[i];
+      truncatedName += char;
+      if (vowels.includes(char)) {
+        vowelCount++;
+        if (vowelCount >= maxVowels) {
+          return i < name.length - 1 ? truncatedName.trim() + "..." : truncatedName;
+        }
+      }
+    }
+    return truncatedName;
   };
 
   return (
-    <Sheet>
+    <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
       <SheetTrigger asChild>
         <Button
           variant="ghost"
@@ -103,19 +140,20 @@ const RecentProjectsSheet: React.FC = () => {
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
+
       <SheetContent side="left" className="w-80 sm:w-96 p-0">
         <div className="flex h-full flex-col">
-          <SheetHeader className="p-4 border-b">
-            <SheetTitle>Recent Chats</SheetTitle>
-          </SheetHeader>
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Recent Chats</h3>
+                <p className="text-sm text-muted-foreground">Select a project or create a new chat.</p>
+              </div>
+            </div>
+          </div>
 
           <div className="p-3 border-b space-y-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onNewChat}
-              className="w-full h-9 rounded-lg justify-start gap-3 border text-foreground bg-background hover:bg-accent transition-all duration-200 ease-out hover:translate-x-[1px] active:translate-x-0"
-            >
+            <Button size="sm" variant="outline" onClick={onNewChat} className="w-full h-9 rounded-lg justify-start gap-3 border text-foreground bg-background hover:bg-accent transition-all duration-200 ease-out hover:translate-x-[1px] active:translate-x-0">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border transition-colors duration-200">
                 <Plus className="h-3.5 w-3.5" />
               </span>
@@ -133,7 +171,7 @@ const RecentProjectsSheet: React.FC = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={onToggleSearch}
+                  onClick={toggleSearch}
                   className="w-full h-9 rounded-lg justify-start gap-3 border text-foreground bg-background hover:bg-accent transition-all duration-200 ease-out hover:translate-x-[1px] active:translate-x-0"
                 >
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border transition-colors duration-200">
@@ -164,7 +202,7 @@ const RecentProjectsSheet: React.FC = () => {
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9 transition-transform duration-200 ease-out hover:scale-105 active:scale-95 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                  onClick={onToggleSearch}
+                  onClick={toggleSearch}
                   aria-label="Close search"
                 >
                   <X className="h-4 w-4" />
@@ -186,7 +224,6 @@ const RecentProjectsSheet: React.FC = () => {
                     <div
                       key={p.id}
                       className="flex items-center gap-3 rounded-md border p-3 transition-shadow duration-200 hover:shadow-sm cursor-pointer"
-                      onClick={() => (editingId ? null : openProject(p.id))}
                     >
                       <Folder className="h-4 w-4 text-muted-foreground" />
                       {editingId === p.id ? (
@@ -197,45 +234,59 @@ const RecentProjectsSheet: React.FC = () => {
                             className="h-8"
                             autoFocus
                           />
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={saveEdit}
-                            aria-label="Save name"
-                          >
+                          <Button variant="secondary" size="icon" className="h-8 w-8" onClick={saveEdit}>
                             <Check className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={cancelEdit}
-                            aria-label="Cancel edit"
-                          >
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEdit}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex w-full items-center justify-between gap-2">
+                        <div className="flex w-full items-center justify-between gap-2" onClick={() => openProject(p.id)}>
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">{p.name}</p>
+                            <p className="truncate text-sm font-medium">{limitByVowels(p.name)}</p>
                             <p className="text-xs text-muted-foreground">
                               Updated: {new Date(p.updatedAt).toLocaleString()}
                             </p>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 transition-transform duration-200 hover:scale-105 active:scale-95 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEdit(p.id);
-                            }}
-                            aria-label="Edit project"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => openProject(p.id)}>
+                                <FolderOpen className="mr-2 h-4 w-4" />
+                                Open Project
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => startEdit(p.id)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Rename
+                              </DropdownMenuItem>
+
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <div onClick={(e) => e.preventDefault()}>
+                                    <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                  </div>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. It will permanently delete the project.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteProject(p.id)}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       )}
                     </div>
