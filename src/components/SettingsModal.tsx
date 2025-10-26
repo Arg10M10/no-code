@@ -1,59 +1,53 @@
-import React from "react";
-import { Settings, SlidersHorizontal, Cpu, Key, Plug, ShieldAlert } from "lucide-react";
+"use client";
+
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import SettingsContent from "@/components/SettingsContent";
+import { Button } from "./ui/button";
+import { Cog, KeyRound, Bot, Palette, Info } from "lucide-react";
+import { useState } from "react";
+import GeneralSettings from "./GeneralSettings";
+import AISettings from "./AISettings";
+import APIKeysSettings from "./APIKeysSettings";
+import AboutSettings from "./AboutSettings";
+import TransitionPanel from "./TransitionPanel";
+import AppearanceSettings from "./AppearanceSettings";
 
-type Section = "general" | "ai" | "api" | "integrations" | "danger";
+const items = [
+  { key: "general", label: "General", icon: Cog, component: GeneralSettings },
+  { key: "appearance", label: "Apariencia", icon: Palette, component: AppearanceSettings },
+  { key: "ai", label: "IA", icon: Bot, component: AISettings },
+  { key: "api-keys", label: "API Keys", icon: KeyRound, component: APIKeysSettings },
+  { key: "about", label: "Acerca de", icon: Info, component: AboutSettings },
+];
 
-const SettingsModal: React.FC = () => {
-  const [section, setSection] = React.useState<Section>("general");
+export default function SettingsModal() {
+  const [section, setSection] = useState("general");
 
-  const items: { key: Section; label: string; icon: React.ElementType }[] = [
-    { key: "general", label: "General", icon: SlidersHorizontal },
-    { key: "ai", label: "IA", icon: Cpu },
-    { key: "api", label: "API Keys", icon: Key },
-    { key: "integrations", label: "Integraciones", icon: Plug },
-    { key: "danger", label: "Zona de riesgo", icon: ShieldAlert },
-  ];
+  const CurrentComponent = items.find((it) => it.key === section)?.component;
+  const currentLabel = items.find((it) => it.key === section)?.label;
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button
-          type="button"
-          className="p-2 -mr-1 sm:mr-0 rounded-md text-muted-foreground transition-colors hover:text-foreground hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-          aria-label="Abrir configuración"
-        >
-          <Settings className="h-5 w-5" />
-        </button>
+        <Button variant="ghost" size="icon">
+          <Cog />
+        </Button>
       </DialogTrigger>
       <DialogContent
         className={[
           // Ancho grande y altura moderada (ancha, no larga)
-          "w-[96vw] sm:max-w-[1100px] max-w-[1200px] max-h-[78vh] p-0",
-          // Efecto cristal
-          "border border-white/10 bg-background/60 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/50",
-          "shadow-2xl",
+          "w-[96vw] sm:max-w-[1100px] max-w-[1200px] h-[78vh] p-0",
         ].join(" ")}
       >
-        <DialogHeader className="px-6 pt-6">
-          <DialogTitle className="text-xl">Settings</DialogTitle>
-          <DialogDescription>Configura tu experiencia y conexiones</DialogDescription>
-        </DialogHeader>
-
-        {/* Layout principal: sidebar + contenido */}
-        <div className="px-4 sm:px-6 pb-6">
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-            {/* Sidebar: lista de botones */}
-            <aside className="sm:w-56 shrink-0">
+        <div className="flex flex-col sm:flex-row h-full">
+          <aside className="sm:w-56 shrink-0">
+            <div className="p-4 border-b sm:border-b-0 sm:border-r h-full">
               <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
                 {items.map((it) => {
                   const Icon = it.icon;
@@ -61,36 +55,33 @@ const SettingsModal: React.FC = () => {
                   return (
                     <Button
                       key={it.key}
-                      variant="ghost"
-                      className={[
-                        "justify-start h-9",
-                        // estados
-                        active
-                          ? "bg-muted text-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-                        // quitar efectos azules de foco
-                        "focus-visible:ring-0 focus-visible:ring-offset-0",
-                      ].join(" ")}
+                      variant={active ? "secondary" : "ghost"}
+                      className="justify-start"
                       onClick={() => setSection(it.key)}
-                      aria-pressed={active}
                     >
-                      <Icon className="h-4 w-4 mr-2" />
+                      <Icon className="w-4 h-4 mr-2" />
                       {it.label}
                     </Button>
                   );
                 })}
               </div>
-            </aside>
-
-            {/* Contenido: solo scroll en el panel derecho */}
-            <section className="flex-1 overflow-y-auto max-h-[58vh] rounded-md">
-              <SettingsContent section={section} />
-            </section>
-          </div>
+            </div>
+          </aside>
+          <main className="flex-1 overflow-y-auto">
+            <TransitionPanel key={section}>
+              <DialogHeader className="p-4 border-b">
+                <DialogTitle>{currentLabel}</DialogTitle>
+                <DialogDescription>
+                  Ajusta la configuración de la aplicación.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="p-4">
+                {CurrentComponent && <CurrentComponent />}
+              </div>
+            </TransitionPanel>
+          </main>
         </div>
       </DialogContent>
     </Dialog>
   );
-};
-
-export default SettingsModal;
+}
