@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -11,15 +11,17 @@ import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelRightClose, Bot } from "lucide-react";
-import { getProjectById, StoredMessage, updateProjectMessages } from "@/lib/projects";
+import { getProjectById, StoredMessage, setMessages, getMessages, getCredits, getCode } from "@/lib/projects";
 
 const EditorPage: React.FC = () => {
-  const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
+  const projectId = searchParams.get("id");
+
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
-  const [messages, setMessages] = useState<StoredMessage[]>([]);
+  const [messages, setMessagesState] = useState<StoredMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [credits, setCredits] = useState(10); // Example credits
+  const [credits, setCredits] = useState(0);
   const [code, setCode] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState(false);
 
@@ -27,11 +29,10 @@ const EditorPage: React.FC = () => {
     if (projectId) {
       const project = getProjectById(projectId);
       if (project) {
-        setMessages(project.messages);
-        // You might want to load the last known code state here
-        // setCode(project.code); 
+        setMessagesState(getMessages(projectId));
+        setCredits(getCredits(projectId));
+        setCode(getCode(projectId) || "");
       } else {
-        // Handle case where project is not found
         console.error("Project not found");
       }
     }
@@ -40,10 +41,10 @@ const EditorPage: React.FC = () => {
   const handleNewMessage = useCallback((text: string) => {
     if (!projectId) return;
 
-    const userMessage: StoredMessage = { role: "user", content: text, createdAt: new Date().toISOString() };
+    const userMessage: StoredMessage = { role: "user", content: text, createdAt: Date.now() };
     const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
-    updateProjectMessages(projectId, newMessages);
+    setMessagesState(newMessages);
+    setMessages(projectId, newMessages);
     setLoading(true);
     setCredits(prev => Math.max(0, prev - 1));
 
@@ -52,7 +53,7 @@ const EditorPage: React.FC = () => {
       const aiResponse: StoredMessage = {
         role: "assistant",
         content: "Aquí están los cambios que solicitaste. He actualizado el componente para incluir un nuevo botón y he ajustado el estilo.",
-        createdAt: new Date().toISOString(),
+        createdAt: Date.now(),
       };
       
       const generatedCode = `
@@ -73,8 +74,8 @@ export default NewComponent;
 `.trim();
 
       const finalMessages = [...newMessages, aiResponse];
-      setMessages(finalMessages);
-      updateProjectMessages(projectId, finalMessages);
+      setMessagesState(finalMessages);
+      setMessages(projectId, finalMessages);
       setCode(generatedCode);
       setLoading(false);
       
@@ -92,7 +93,7 @@ export default NewComponent;
     }, 1500); // Simulate a refresh delay
   };
 
-  const previewUrl = `http://localhost:5173/`; // Using root for now
+  const previewUrl = `/`; // Using root for now
 
   if (!projectId) {
     return <div>Cargando proyecto...</div>;
