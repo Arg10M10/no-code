@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { StoredMessage } from "@/lib/projects";
-import { ImagePlus, Send, X } from "lucide-react";
+import { ImagePlus, Send, X, Paperclip, Settings } from "lucide-react";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -70,6 +70,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
     }
   };
 
+  // Chips/buttons shown above the input area
+  const chips = [
+    { id: "build", label: "Build", filled: false },
+    { id: "gpt5mini", label: "GPT 5 Mini", filled: false },
+    { id: "pro", label: "Pro", filled: true },
+  ];
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-3 pb-0 flex items-center justify-between">
@@ -98,7 +105,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                       : "bg-muted-foreground/5 border border-transparent",
                   ].join(" ")}
                 >
-                  <p className={["text-sm leading-relaxed break-words", isAssistant ? "text-green-100" : isUser ? "text-blue-100" : "text-muted-foreground"].join(" ")}>
+                  <p
+                    className={[
+                      "text-sm leading-relaxed break-words",
+                      isAssistant ? "text-green-100" : isUser ? "text-blue-100" : "text-muted-foreground",
+                    ].join(" ")}
+                  >
                     {msg.content}
                   </p>
                 </div>
@@ -108,20 +120,65 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
         </div>
       </ScrollArea>
 
-      {/* Glass-style input area */}
-      <form
-        onSubmit={handleSubmit}
-        className="p-4 border-t bg-transparent"
-        aria-label="Send message"
-      >
-        <div
-          className="w-full rounded-xl p-3 backdrop-blur-md bg-white/6 border border-white/10 shadow-sm flex flex-col gap-2"
-          style={{ boxShadow: "0 6px 30px rgba(2,6,23,0.35)" }}
-        >
-          {/* image preview (if any) */}
+      {/* Redesigned input area: dark rounded container with chips and blue accents */}
+      <form onSubmit={handleSubmit} className="p-4">
+        <div className="rounded-xl bg-secondary border border-border p-3 shadow-sm">
+          {/* Chips row */}
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            {chips.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={[
+                  "inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full transition-all select-none",
+                  c.filled
+                    ? "bg-primary text-primary-foreground hover:brightness-90"
+                    : "bg-transparent border border-border text-primary hover:bg-primary/5",
+                ].join(" ")}
+                onClick={() => {
+                  // Keep chips non-functional for now - they can be wired later.
+                }}
+                aria-pressed={c.filled}
+              >
+                {c.label}
+              </button>
+            ))}
+
+            {/* spacer */}
+            <div className="flex-1" />
+
+            {/* small action icons (attach, settings) */}
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleAttachClick}
+                className="h-8 w-8 p-1.5 text-primary"
+                aria-label="Attach image"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 p-1.5 text-primary"
+                onClick={() => {
+                  // settings action placeholder
+                }}
+                aria-label="Settings"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Image preview (if any) */}
           {previewUrl ? (
-            <div className="relative rounded-md overflow-hidden border border-white/8">
-              <img src={previewUrl} alt="Preview" className="w-full max-h-48 object-contain bg-black/5" />
+            <div className="relative rounded-md overflow-hidden border border-white/6 mb-3">
+              <img src={previewUrl} alt="Preview" className="w-full max-h-40 object-contain bg-black/5" />
               <button
                 type="button"
                 onClick={removeImage}
@@ -133,14 +190,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
             </div>
           ) : null}
 
-          <div className="flex items-end gap-3">
+          {/* Input row */}
+          <div className="flex items-center gap-3">
             <textarea
               ref={textareaRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Escribe un mensaje para la IA..."
-              className="resize-none w-full min-h-[44px] max-h-40 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none px-2 py-2"
+              placeholder="Ask Dyad to build..."
+              className="resize-none flex-1 min-h-[44px] max-h-36 bg-transparent text-foreground placeholder:text-muted-foreground outline-none px-3 py-2 rounded-md"
               rows={1}
               aria-label="Message"
             />
@@ -156,33 +214,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
 
             <div className="flex items-center gap-2">
               <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={handleAttachClick}
-                title="Adjuntar imagen"
-                aria-label="Attach image"
-                className="h-9 w-9 p-2"
-              >
-                <ImagePlus className="h-4 w-4" />
-              </Button>
-
-              <Button
                 type="submit"
                 disabled={loading || (!text.trim() && !selectedImage)}
-                className="h-9 rounded-md px-3"
+                className="h-10 rounded-md px-3 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <div className="flex items-center gap-2">
                   <Send className="h-4 w-4" />
-                  <span className="text-sm">Enviar</span>
                 </div>
               </Button>
             </div>
-          </div>
-
-          <div className="text-xs text-muted-foreground flex items-center justify-between">
-            <div>Tip: Ctrl/Cmd + Enter para enviar</div>
-            <div>{selectedImage ? `${selectedImage.name}` : ""}</div>
           </div>
         </div>
       </form>
