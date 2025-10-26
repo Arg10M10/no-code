@@ -101,3 +101,15 @@ export function decrementCredits(projectId: string, amount = 1): number {
   setCredits(projectId, next);
   return next;
 }
+
+/* Code persistence per project */
+function codeKey(projectId: string) {
+  return `code:${projectId}`;
+}
+export function getCode(projectId: string): string | null {
+  return storage.getJSON<string | null>(codeKey(projectId), null);
+}
+export function setCode(projectId: string, code: string) {
+  storage.setJSON(codeKey(projectId), code);
+  touchProject(projectId);
+}

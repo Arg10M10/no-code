@@ -1,25 +1,27 @@
 import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ArrowLeft, Cpu, ArrowUp, Globe, Maximize2, RotateCcw, Share2, Rocket } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Cpu, ArrowLeft } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ModelsPopover from "@/components/ModelsPopover";
-import { storage } from "@/lib/storage";
+import { toast } from "sonner";
+import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from "@/components/ui/resizable";
+import ChatPanel from "@/components/ChatPanel";
+import PreviewPanel from "@/components/PreviewPanel";
+import CreditManager from "@/components/CreditManager";
 import {
   getProjectById,
   getMessages,
-  addMessage,
   setMessages,
+  addMessage,
   StoredMessage,
-  touchProject,
   getCredits,
   decrementCredits,
+  getCode,
+  setCode,
 } from "@/lib/projects";
+import { storage } from "@/lib/storage";
 import { generateChat, ChatMessage, getProviderFromLabel } from "@/services/ai";
-import { toast } from "sonner";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import Loader from "@/components/Loader";
 
 const COST_PER_MESSAGE = 1;
@@ -52,44 +54,33 @@ function extractPreviewHtml(text: string): string | null {
   return null;
 }
 
-const EditorPage: React.FC = () => {
+const Editor: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const projectId = searchParams.get("id") || "";
 
-  // Header / state
   const [projectName, setProjectName] = React.useState<string>("");
   const [selectedModel, setSelectedModel] = React.useState<string>("OpenAI - GPT-5");
-  const [credits, setCreditsState] = React.useState<number>(0);
-
-  // Chat
   const [messages, setLocalMessages] = React.useState<StoredMessage[]>([]);
-  const [input, setInput] = React.useState<string>("");
-
-  // Preview
-  const [previewHtml, setPreviewHtml] = React.useState<string | null>(null);
-  const [previewPath, setPreviewPath] = React.useState<string>("/");
-  const [iframeKey, setIframeKey] = React.useState<number>(0);
-
-  // Loaders
+  const [credits, setCreditsState] = React.useState<number>(0);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [previewLoading, setPreviewLoading] = React.useState<boolean>(false);
+  const [code, setCodeState] = React.useState<string | null>(null);
 
-  // Init
   React.useEffect(() => {
     if (!projectId) return;
     const p = getProjectById(projectId);
     if (!p) {
-      toast.error("Project not found");
+      toast.error("Proyecto no encontrado");
       navigate("/");
       return;
     }
     setProjectName(p.name);
     setLocalMessages(getMessages(projectId));
     setCreditsState(getCredits(projectId));
+    setCodeState(getCode(projectId));
   }, [projectId, navigate]);
 
-  // Auto-ask if last message is user
   React.useEffect(() => {
     if (!projectId) return;
     if (messages.length === 0) return;
@@ -102,31 +93,22 @@ const EditorPage: React.FC = () => {
 
   const onBack = () => navigate(-1);
 
-  const refreshPreview = () => {
-    if (previewHtml) {
-      // Re-apply srcDoc to reload sandbox
-      setPreviewHtml((h) => (h ? `${h}` : h));
-    } else {
-      setIframeKey((k) => k + 1);
-    }
-  };
-
   const askAssistant = async () => {
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const provider = getProviderFromLabel(selectedModel);
     if (!apiKeys[provider]) {
       const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-      toast.error("Missing API Key", { description: `Set your ${providerName} key in Settings > API Keys.` });
+      toast.error("Falta API Key", { description: `Configura tu clave de ${providerName} en Settings > API Keys.` });
       return;
     }
     if (!projectId) return;
 
     if (credits <= 0) {
-      toast.error("Out of credits", { description: "Upgrade to Pro to get more credits." });
+      toast.error("Sin créditos", { description: "Mejora tu plan para obtener más créditos." });
       return;
     }
 
-    const toastId = toast.loading("Asking the AI...");
+    const tId = toast.loading("Consultando a la IA…");
     setLoading(true);
     setPreviewLoading(true);
 
@@ -146,53 +128,55 @@ const EditorPage: React.FC = () => {
     setLocalMessages(next);
     setMessages(projectId, next);
 
-    // Update preview if HTML provided
     const html = extractPreviewHtml(reply);
     if (html) {
-      setPreviewHtml(html);
+      setCodeState(html);
+      setCode(projectId, html);
     }
 
-    // Consume credits
     const left = decrementCredits(projectId, COST_PER_MESSAGE);
     setCreditsState(left);
 
-    toast.success("Done", { id: toastId, description: "Response generated." });
+    toast.success("Listo", { id: tId, description: "Respuesta generada y renderizada." });
     setLoading(false);
     setPreviewLoading(false);
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || !projectId) return;
-    const userMsg: StoredMessage = { role: "user", content: input.trim(), createdAt: Date.now() };
-    const next = [...messages, userMsg];
+  const onSend = async (text: string) => {
+    if (!projectId) return;
+    const msg: StoredMessage = { role: "user", content: text, createdAt: Date.now() };
+    const next = [...messages, msg];
     setLocalMessages(next);
     setMessages(projectId, next);
-    setInput("");
-    touchProject(projectId);
     await askAssistant();
+  };
+
+  const onApplyCode = (nextCode: string) => {
+    if (!projectId) return;
+    setCodeState(nextCode);
+    setCode(projectId, nextCode);
+    toast.success("Preview actualizado");
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Toolbar */}
+      {/* Barra superior */}
       <div className="sticky top-0 z-10 border-b border-border/40 bg-background/90 backdrop-blur-sm">
         <div className="flex items-center gap-3 px-3 sm:px-4 h-12">
           <Button variant="ghost" size="sm" onClick={onBack} className="px-2">
             <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
+            Volver
           </Button>
 
           <div className="flex items-center gap-2 min-w-0">
-            <div className="truncate text-sm font-semibold leading-none">{projectName || "Project"}</div>
+            <div className="truncate text-sm font-semibold leading-none">{projectName || "Proyecto"}</div>
             <div className="text-[11px] text-muted-foreground">
-              {previewLoading ? "Loading Live Preview…" : ""}
+              {previewLoading ? "Cargando Preview…" : ""}
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 ml-auto sm:ml-4">
-            <div className="text-xs text-muted-foreground">
-              Credits: <span className="text-foreground font-medium">{credits}</span>
-            </div>
+          <div className="ml-auto flex items-center gap-2">
+            <CreditManager credits={credits} />
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
@@ -204,155 +188,22 @@ const EditorPage: React.FC = () => {
                 <ModelsPopover selectedModel={selectedModel} onSelectModel={setSelectedModel} />
               </PopoverContent>
             </Popover>
-            <Button size="sm" variant="secondary">Preview</Button>
-          </div>
-        </div>
-
-        {/* Address bar */}
-        <div className="px-3 sm:px-4 pb-2">
-          <div className="mx-auto max-w-xl">
-            <div className="flex items-center gap-2 rounded-full border border-border bg-card/50 px-2 py-1.5">
-              <Globe className="h-4 w-4 text-muted-foreground ml-1" />
-              <Input
-                value={previewPath}
-                onChange={(e) => setPreviewPath(e.target.value)}
-                className="h-7 border-0 bg-transparent focus-visible:ring-0 text-sm"
-                placeholder="/"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                onClick={() => setPreviewHtml(null)}
-                title="Open path in preview"
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                onClick={refreshPreview}
-                title="Refresh preview"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Main split */}
-      <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-4.5rem)]">
-        {/* Left: Chat column */}
-        <ResizablePanel defaultSize={38} minSize={26} maxSize={60}>
-          <div className="relative h-full">
-            <ScrollArea className="h-full pr-1">
-              <div className="px-3 sm:px-4 pb-28 pt-3 space-y-3">
-                {messages.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Start by sending a prompt to the assistant.</p>
-                ) : (
-                  messages.map((m, idx) => (
-                    <div
-                      key={idx}
-                      className={[
-                        "rounded-xl border p-3 text-sm leading-relaxed",
-                        m.role === "user" ? "bg-secondary/60 border-border/60" : "bg-card/60 border-border/60",
-                      ].join(" ")}
-                    >
-                      <div className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                        {m.role === "user" ? "You" : "Assistant"}
-                      </div>
-                      <div className="whitespace-pre-wrap">{m.content}</div>
-                    </div>
-                  ))
-                )}
-
-                {loading && (
-                  <div className="rounded-xl border border-border/60 p-4 bg-card/60 flex items-center gap-4">
-                    <Loader aria-label="Loading assistant reply" />
-                    <div className="text-sm text-muted-foreground">Generating response…</div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-
-            {/* Floating composer */}
-            <div className="absolute left-2 right-2 bottom-2">
-              <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur supports-[backdrop-filter]:bg-card/60 p-2 shadow-lg">
-                <div className="relative">
-                  <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask AI…"
-                    className="w-full h-24 bg-transparent rounded-xl p-3 pr-12 text-sm resize-none focus:outline-none"
-                  />
-                  <div className="absolute left-3 bottom-2 flex items-center gap-2">
-                    <span className="text-[11px] px-2 py-0.5 rounded-full border bg-background/60">Edit</span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full border bg-background/60">Chat</span>
-                  </div>
-                  <div className="absolute right-2 bottom-2">
-                    <Button
-                      size="icon"
-                      className="rounded-full"
-                      onClick={handleSend}
-                      disabled={loading || !input.trim() || credits <= 0}
-                      title={credits <= 0 ? "No credits left" : "Send"}
-                    >
-                      <ArrowUp className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
-                    </Button>
-                  </div>
-                </div>
-                <div className="mt-2 flex items-center justify-between px-1">
-                  <div className="text-[11px] text-muted-foreground">
-                    Credits: <span className="text-foreground font-medium">{credits}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="h-7 text-[12px]">
-                      <Share2 className="h-3.5 w-3.5 mr-1" />
-                      Share
-                    </Button>
-                    <Button variant="secondary" size="sm" className="h-7 text-[12px]">
-                      Upgrade
-                    </Button>
-                    <Button size="sm" className="h-7 text-[12px]">
-                      <Rocket className="h-3.5 w-3.5 mr-1" />
-                      Publish
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Split horizontal 100% alto */}
+      <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-3rem)]">
+        <ResizablePanel defaultSize={42} minSize={30} maxSize={60}>
+          <ChatPanel messages={messages} loading={loading} credits={credits} onSend={onSend} />
         </ResizablePanel>
-
         <ResizableHandle withHandle />
-
-        {/* Right: Preview column */}
-        <ResizablePanel defaultSize={62} minSize={40}>
-          <div className="relative h-full p-2 sm:p-3">
-            <div className="relative h-full w-full rounded-xl border border-border/60 bg-black/40 overflow-hidden">
-              {previewLoading && (
-                <div className="preview-loading-overlay">
-                  <div className="flex flex-col items-center gap-4">
-                    <Loader aria-label="Loading live preview" />
-                    <div className="text-xs text-muted-foreground">Loading Live Preview…</div>
-                  </div>
-                </div>
-              )}
-              <iframe
-                key={iframeKey}
-                title="Preview"
-                className="w-full h-full border-0"
-                src={previewHtml ? undefined : previewPath || "/"}
-                srcDoc={previewHtml || undefined}
-              />
-            </div>
-          </div>
+        <ResizablePanel defaultSize={58} minSize={40}>
+          <PreviewPanel code={code} loading={previewLoading} onApply={onApplyCode} />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
   );
 };
 
-export default EditorPage;
+export default Editor;
