@@ -1,59 +1,29 @@
+import React, { useEffect, useRef } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
-import { useProject } from "@/hooks/useProject";
-import { useEffect, useRef, useState } from "react";
-import { getPreviewUrl } from "@/lib/projects";
 import Loader from "./Loader";
 
 interface PreviewPanelProps {
-  projectId: string;
+  code: string | null;
+  loading: boolean;
+  onApply: (code: string) => void; // Prop se mantiene por compatibilidad, aunque no se use aquí
 }
 
-const PreviewPanel = ({ projectId }: PreviewPanelProps) => {
-  const { project, isLoading, error } = useProject(projectId);
+const PreviewPanel: React.FC<PreviewPanelProps> = ({ code, loading }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [iframeKey, setIframeKey] = useState(Date.now());
 
-  const previewUrl = getPreviewUrl(projectId);
+  useEffect(() => {
+    if (iframeRef.current) {
+      iframeRef.current.srcdoc = code || "<html><body></body></html>";
+    }
+  }, [code]);
 
   const handleRefresh = () => {
     if (iframeRef.current) {
-      // Option 1: Simple reload
-      // iframeRef.current.src = previewUrl;
-
-      // Option 2: Force reload without cache
-      // iframeRef.current.contentWindow?.location.reload(true);
-
-      // Option 3: Remount the iframe by changing its key
-      setIframeKey(Date.now());
+      // Una forma sencilla de forzar la recarga del iframe
+      iframeRef.current.srcdoc = iframeRef.current.srcdoc;
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="h-full flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">Loading project...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="h-full flex items-center justify-center bg-background">
-        <div className="text-destructive">Error loading project: {error.message}</div>
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-      <div className="h-full flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">Project not found.</div>
-      </div>
-    );
-  }
-
-  const isBuilding = project.status === "building";
 
   return (
     <div className="h-full flex flex-col bg-muted/40">
@@ -64,16 +34,14 @@ const PreviewPanel = ({ projectId }: PreviewPanelProps) => {
         </Button>
       </div>
       <div className="flex-1 relative">
-        {isBuilding && (
+        {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10">
             <Loader />
             <p className="mt-24 text-muted-foreground text-sm">Building your app...</p>
           </div>
         )}
         <iframe
-          key={iframeKey}
           ref={iframeRef}
-          src={previewUrl}
           title="Preview"
           className="w-full h-full border-0"
           sandbox="allow-scripts allow-same-origin"
