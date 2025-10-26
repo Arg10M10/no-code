@@ -1,68 +1,37 @@
-"use client";
+import { GripVertical } from "lucide-react";
+import * as ResizablePrimitive from "react-resizable-panels";
 
-import React from "react";
+import { cn } from "@/lib/utils";
 
-type PanelGroupProps = React.PropsWithChildren<{
-  className?: string;
-  style?: React.CSSProperties;
-  direction?: "horizontal" | "vertical";
-}>;
+const ResizablePanelGroup = ({ className, ...props }: React.ComponentProps<typeof ResizablePrimitive.PanelGroup>) => (
+  <ResizablePrimitive.PanelGroup
+    className={cn("flex h-full w-full data-[panel-group-direction=vertical]:flex-col", className)}
+    {...props}
+  />
+);
 
-type PanelProps = React.PropsWithChildren<{
-  className?: string;
-  style?: React.CSSProperties;
-  // Props accepted by the original resizable panel API — kept for compatibility.
-  defaultSize?: number;
-  minSize?: number;
-  collapsible?: boolean;
-  collapsedSize?: number;
-  onCollapse?: () => void;
-  onExpand?: () => void;
-}>;
+const ResizablePanel = ResizablePrimitive.Panel;
 
-type HandleProps = {
+const ResizableHandle = ({
+  withHandle,
+  className,
+  ...props
+}: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & {
   withHandle?: boolean;
-};
+}) => (
+  <ResizablePrimitive.PanelResizeHandle
+    className={cn(
+      "relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-1 data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:-translate-y-1/2 data-[panel-group-direction=vertical]:after:translate-x-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 [&[data-panel-group-direction=vertical]>div]:rotate-90",
+      className,
+    )}
+    {...props}
+  >
+    {withHandle && (
+      <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border">
+        <GripVertical className="h-2.5 w-2.5" />
+      </div>
+    )}
+  </ResizablePrimitive.PanelResizeHandle>
+);
 
-/**
- * ResizableHandle
- * Kept as a no-op / visually hidden element so the UI stays immovable
- * but imports that expect this component will still work.
- */
-export const ResizableHandle: React.FC<HandleProps> = () => {
-  // Render nothing visible (keeps component immovable)
-  return <div aria-hidden style={{ display: "none" }} />;
-};
-
-/**
- * ResizablePanel
- * Simple wrapper used as a panel inside a panel group.
- * Accepts the common props used by the original implementation for TypeScript compatibility,
- * but they don't affect the presentation here.
- */
-export const ResizablePanel: React.FC<PanelProps> = ({ children, className = "", style }) => {
-  return (
-    <div className={`min-w-0 ${className}`} style={style}>
-      {children}
-    </div>
-  );
-};
-
-/**
- * ResizablePanelGroup
- * Simple flex container to act as the group of panels.
- * Accepts `direction` prop for compatibility (horizontal | vertical).
- */
-export const ResizablePanelGroup: React.FC<PanelGroupProps> = ({ children, className = "", style, direction = "horizontal" }) => {
-  const flexDir = direction === "vertical" ? "flex-col" : "flex-row";
-  return (
-    <div className={`${flexDir} h-full w-full ${className}`} style={style}>
-      {children}
-    </div>
-  );
-};
-
-/**
- * Default export for backwards compatibility.
- */
-export default ResizablePanelGroup;
+export { ResizablePanelGroup, ResizablePanel, ResizableHandle };
