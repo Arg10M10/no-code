@@ -41,7 +41,7 @@ const EditorPage: React.FC = () => {
     }
   }, [projectId, navigate]);
 
-  const handleNewMessage = useCallback((text: string, image?: File | null) => {
+  const handleNewMessage = useCallback((text: string) => {
     if (!projectId) return;
 
     const userMessage: StoredMessage = { role: "user", content: text, createdAt: Date.now() };
@@ -105,7 +105,6 @@ const EditorPage: React.FC = () => {
       </header>
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
-          {/* Chat panel: force to the left */}
           <ResizablePanel
             defaultSize={25}
             minSize={20}
@@ -113,7 +112,7 @@ const EditorPage: React.FC = () => {
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
             onExpand={() => setIsLeftPanelCollapsed(false)}
-            className={isLeftPanelCollapsed ? "hidden order-0" : "order-0"}
+            className={isLeftPanelCollapsed ? "hidden" : ""}
           >
             <ChatPanel
               messages={messages}
@@ -122,11 +121,8 @@ const EditorPage: React.FC = () => {
               onSend={handleNewMessage}
             />
           </ResizablePanel>
-
           <ResizableHandle withHandle />
-
-          {/* Preview panel: force to the right */}
-          <ResizablePanel defaultSize={75} minSize={40} className="order-1">
+          <ResizablePanel defaultSize={75} minSize={40}>
             <PreviewPanel
               previewUrl={previewUrl}
               loading={previewLoading}
