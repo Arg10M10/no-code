@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,26 +31,10 @@ const providers: Provider[] = [
 ];
 
 const ApiKeySettings = () => {
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>(() => {
-    try {
-      const savedKeys = localStorage.getItem("apiKeys");
-      return savedKeys ? JSON.parse(savedKeys) : {};
-    } catch (error) {
-      console.error("Failed to parse API keys from localStorage", error);
-      return {};
-    }
-  });
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
   const [currentKey, setCurrentKey] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("apiKeys", JSON.stringify(apiKeys));
-    } catch (error) {
-      console.error("Failed to save API keys to localStorage", error);
-    }
-  }, [apiKeys]);
 
   const handleManageClick = (provider: Provider) => {
     setSelectedProvider(provider);
