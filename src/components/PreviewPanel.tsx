@@ -1,52 +1,81 @@
-import React, { useEffect, useRef } from "react";
-import { RefreshCw } from "lucide-react";
-import { Button } from "./ui/button";
+"use client";
+
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Upload } from "lucide-react";
 import Loader from "./Loader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PreviewPanelProps {
-  code: string | null;
+  previewUrl: string;
   loading: boolean;
-  onApply: (code: string) => void; // Prop se mantiene por compatibilidad, aunque no se use aquí
+  onRefresh: () => void;
+  code: string;
 }
 
-const PreviewPanel: React.FC<PreviewPanelProps> = ({ code, loading }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  useEffect(() => {
-    if (iframeRef.current) {
-      iframeRef.current.srcdoc = code || "<html><body></body></html>";
-    }
-  }, [code]);
+const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewUrl, loading, onRefresh, code }) => {
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
   const handleRefresh = () => {
     if (iframeRef.current) {
-      // Una forma sencilla de forzar la recarga del iframe
-      iframeRef.current.srcdoc = iframeRef.current.srcdoc;
+      // A more robust way to refresh an iframe
+      iframeRef.current.src = iframeRef.current.src;
     }
+    onRefresh();
   };
 
   return (
     <div className="h-full flex flex-col bg-muted/40">
-      <div className="flex items-center justify-between p-2 border-b bg-background">
-        <div className="text-sm font-medium">Preview</div>
-        <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh preview">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-      </div>
-      <div className="flex-1 relative">
-        {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10">
-            <Loader />
-            <p className="mt-24 text-muted-foreground text-sm">Building your app...</p>
+      <Tabs defaultValue="preview" className="flex flex-col flex-1 min-h-0">
+        <div className="flex items-center justify-between p-2 border-b bg-background flex-shrink-0">
+          <TabsList>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="issues">Problemas</TabsTrigger>
+            <TabsTrigger value="code">Código</TabsTrigger>
+          </TabsList>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refrescar preview">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button>
+              <Upload className="h-4 w-4 mr-2" />
+              Publicar
+            </Button>
           </div>
-        )}
-        <iframe
-          ref={iframeRef}
-          title="Preview"
-          className="w-full h-full border-0"
-          sandbox="allow-scripts allow-same-origin"
-        />
-      </div>
+        </div>
+        
+        <TabsContent value="preview" className="flex-1 relative">
+          {loading && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+              <Loader />
+            </div>
+          )}
+          <iframe
+            ref={iframeRef}
+            src={previewUrl}
+            className="w-full h-full border-0"
+            title="Preview"
+          />
+        </TabsContent>
+
+        <TabsContent value="issues" className="p-6 flex-1 overflow-y-auto">
+          <div className="max-w-md mx-auto text-center">
+            <h2 className="text-lg font-semibold mb-2">Problemas Detectados</h2>
+            <p className="text-sm text-muted-foreground">
+              No se han detectado problemas. Aquí se mostrarán los errores o advertencias.
+            </p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="code" className="flex-1 overflow-hidden bg-background/50">
+           <ScrollArea className="h-full">
+            <pre className="text-xs p-4 whitespace-pre-wrap break-words">
+              <code>{code || "No hay código para mostrar todavía."}</code>
+            </pre>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

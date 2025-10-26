@@ -1,218 +1,161 @@
-import React from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Cpu, ArrowLeft } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import ModelsPopover from "@/components/ModelsPopover";
-import { toast } from "sonner";
-import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from "@/components/ui/resizable";
+"use client";
+
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams } from "react-router-dom";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
-import CreditManager from "@/components/CreditManager";
-import {
-  getProjectById,
-  getMessages,
-  setMessages,
-  addMessage,
-  StoredMessage,
-  getCredits,
-  decrementCredits,
-  getCode,
-  setCode,
-} from "@/lib/projects";
-import { storage } from "@/lib/storage";
-import { generateChat, ChatMessage, getProviderFromLabel } from "@/services/ai";
-import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
-import Loader from "@/components/Loader";
+import { Button } from "@/components/ui/button";
+import { PanelLeftClose, PanelRightClose, Bot } from "lucide-react";
+import { getProjectById, StoredMessage, updateProjectMessages } from "@/lib/projects";
 
-const COST_PER_MESSAGE = 1;
+const EditorPage: React.FC = () => {
+  const { projectId } = useParams<{ projectId: string }>();
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+  const [messages, setMessages] = useState<StoredMessage[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [credits, setCredits] = useState(10); // Example credits
+  const [code, setCode] = useState<string>("");
+  const [previewLoading, setPreviewLoading] = useState(false);
 
-const SYSTEM_PROMPT = [
-  "You are a technical-strategic assistant. You help build and improve websites, apps, and businesses: architecture, UX, launch plans, metrics, marketing, and code (React, Tailwind, Node, SQL).",
-  "When the user asks to build or change UI, include a single full HTML document for live preview in a fenced code block labeled `html`.",
-  "Keep code minimal and production-friendly; prefer Tailwind classes.",
-].join(" ");
-
-function extractPreviewHtml(text: string): string | null {
-  // Prefer ```html ... ```
-  const htmlFence = text.match(/```html\s*([\s\S]*?)```/i);
-  if (htmlFence && htmlFence[1] && htmlFence[1].includes("<html")) {
-    return htmlFence[1].trim();
-  }
-  // Any fenced block containing full HTML
-  const fences = text.match(/```[\w-]*\s*([\s\S]*?)```/g);
-  if (fences) {
-    for (const block of fences) {
-      const inner = block.replace(/```[\w-]*\s*/, "").replace(/```$/, "");
-      if (inner.includes("<html") && inner.includes("</html>")) {
-        return inner.trim();
+  useEffect(() => {
+    if (projectId) {
+      const project = getProjectById(projectId);
+      if (project) {
+        setMessages(project.messages);
+        // You might want to load the last known code state here
+        // setCode(project.code); 
+      } else {
+        // Handle case where project is not found
+        console.error("Project not found");
       }
     }
-  }
-  // Custom markers (fallback)
-  const marker = text.match(/<!--\s*PREVIEW_HTML_START\s*-->([\s\S]*?)<!--\s*PREVIEW_HTML_END\s*-->/i);
-  if (marker && marker[1]) return marker[1].trim();
-  return null;
-}
+  }, [projectId]);
 
-const Editor: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const projectId = searchParams.get("id") || "";
-
-  const [projectName, setProjectName] = React.useState<string>("");
-  const [selectedModel, setSelectedModel] = React.useState<string>(getSelectedModelLabel());
-  const [messages, setLocalMessages] = React.useState<StoredMessage[]>([]);
-  const [credits, setCreditsState] = React.useState<number>(0);
-  const [loading, setLoading] = React.useState<boolean>(false);
-  const [previewLoading, setPreviewLoading] = React.useState<boolean>(false);
-  const [code, setCodeState] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!projectId) return;
-    const p = getProjectById(projectId);
-    if (!p) {
-      toast.error("Proyecto no encontrado");
-      navigate("/");
-      return;
-    }
-    setProjectName(p.name);
-    setLocalMessages(getMessages(projectId));
-    setCreditsState(getCredits(projectId));
-    setCodeState(getCode(projectId));
-  }, [projectId, navigate]);
-
-  // Arrancar la IA automáticamente si el último mensaje es del usuario
-  React.useEffect(() => {
-    if (!projectId) return;
-    if (messages.length === 0) return;
-    const last = messages[messages.length - 1];
-    if (last.role === "user" && !loading) {
-      void askAssistant();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, messages, loading]);
-
-  const onBack = () => navigate(-1);
-
-  const askAssistant = async () => {
-    const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
-    const provider = getProviderFromLabel(selectedModel);
-    if (!apiKeys[provider]) {
-      const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-      toast.error("Falta API Key", { description: `Configura tu clave de ${providerName} en Settings > API Keys.` });
-      return;
-    }
+  const handleNewMessage = useCallback((text: string) => {
     if (!projectId) return;
 
-    if (credits <= 0) {
-      toast.error("Sin créditos", { description: "Mejora tu plan para obtener más créditos." });
-      return;
-    }
-
-    const tId = toast.loading("Consultando a la IA…");
+    const userMessage: StoredMessage = { role: "user", content: text, createdAt: new Date().toISOString() };
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    updateProjectMessages(projectId, newMessages);
     setLoading(true);
-    setPreviewLoading(true);
+    setCredits(prev => Math.max(0, prev - 1));
 
-    const chatMsgs: ChatMessage[] = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
-    ];
+    // Simulate AI response and code generation
+    setTimeout(() => {
+      const aiResponse: StoredMessage = {
+        role: "assistant",
+        content: "Aquí están los cambios que solicitaste. He actualizado el componente para incluir un nuevo botón y he ajustado el estilo.",
+        createdAt: new Date().toISOString(),
+      };
+      
+      const generatedCode = `
+import React from 'react';
+import { Button } from '@/components/ui/button';
 
-    const reply = await generateChat({
-      messages: chatMsgs,
-      selectedModelLabel: selectedModel,
-      apiKeys,
-    });
-
-    const assistantMsg: StoredMessage = { role: "assistant", content: reply, createdAt: Date.now() };
-    const next = [...messages, assistantMsg];
-    setLocalMessages(next);
-    setMessages(projectId, next);
-
-    const html = extractPreviewHtml(reply);
-    if (html) {
-      setCodeState(html);
-      setCode(projectId, html);
-    }
-
-    const left = decrementCredits(projectId, COST_PER_MESSAGE);
-    setCreditsState(left);
-
-    toast.success("Listo", { id: tId, description: "Respuesta generada y renderizada." });
-    setLoading(false);
-    setPreviewLoading(false);
-  };
-
-  const onSend = async (text: string) => {
-    if (!projectId) return;
-    const msg: StoredMessage = { role: "user", content: text, createdAt: Date.now() };
-    const next = [...messages, msg];
-    setLocalMessages(next);
-    setMessages(projectId, next);
-    // No llamamos a askAssistant aquí para evitar doble invocación;
-    // el efecto se encarga de detectarlo y disparar la IA.
-  };
-
-  const onApplyCode = (nextCode: string) => {
-    if (!projectId) return;
-    setCodeState(nextCode);
-    setCode(projectId, nextCode);
-    toast.success("Preview actualizado");
-  };
-
+const NewComponent = () => {
   return (
-    <div className="fixed inset-0 bg-background">
-      {/* Barra superior */}
-      <div className="sticky top-0 z-10 border-b border-border/40 bg-background/90 backdrop-blur-sm">
-        <div className="flex items-center gap-3 px-3 sm:px-4 h-12">
-          <Button variant="ghost" size="sm" onClick={onBack} className="px-2">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Volver
-          </Button>
-
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="truncate text-sm font-semibold leading-none">{projectName || "Proyecto"}</div>
-            <div className="text-[11px] text-muted-foreground">
-              {previewLoading ? "Cargando Preview…" : ""}
-            </div>
-          </div>
-
-          <div className="ml-auto flex items-center gap-2">
-            <CreditManager credits={credits} />
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                  <Cpu className="h-4 w-4 mr-2" />
-                  {selectedModel}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <ModelsPopover
-                  selectedModel={selectedModel}
-                  onSelectModel={(label) => {
-                    setSelectedModel(label);
-                    setSelectedModelLabel(label);
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-      </div>
-
-      {/* Split horizontal 100% alto */}
-      <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-3rem)]">
-        <ResizablePanel defaultSize={42} minSize={30} maxSize={60}>
-          <ChatPanel messages={messages} loading={loading} credits={credits} onSend={onSend} />
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={58} minSize={40}>
-          <PreviewPanel code={code} loading={previewLoading} onApply={onApplyCode} />
-        </ResizablePanel>
-      </ResizablePanelGroup>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Componente Actualizado</h1>
+      <p className="mb-4">Este es el nuevo contenido generado por la IA.</p>
+      <Button onClick={() => alert('¡Botón presionado!')}>Nuevo Botón</Button>
     </div>
   );
 };
 
-export default Editor;
+export default NewComponent;
+`.trim();
+
+      const finalMessages = [...newMessages, aiResponse];
+      setMessages(finalMessages);
+      updateProjectMessages(projectId, finalMessages);
+      setCode(generatedCode);
+      setLoading(false);
+      
+      // Trigger preview refresh
+      setPreviewLoading(true);
+      setTimeout(() => setPreviewLoading(false), 1500);
+
+    }, 2500);
+  }, [messages, projectId]);
+
+  const handleRefreshPreview = () => {
+    setPreviewLoading(true);
+    setTimeout(() => {
+      setPreviewLoading(false);
+    }, 1500); // Simulate a refresh delay
+  };
+
+  const previewUrl = `http://localhost:5173/`; // Using root for now
+
+  if (!projectId) {
+    return <div>Cargando proyecto...</div>;
+  }
+
+  return (
+    <div className="h-screen w-screen flex flex-col bg-background text-foreground">
+      <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
+          >
+            <PanelLeftClose className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-semibold">Editor del Proyecto</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Bot className="h-5 w-5 text-primary" />
+            <span>Dyad</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
+          >
+            <PanelRightClose className="h-5 w-5" />
+          </Button>
+        </div>
+      </header>
+      <div className="flex-1 min-h-0">
+        <ResizablePanelGroup direction="horizontal">
+          <ResizablePanel
+            defaultSize={25}
+            minSize={20}
+            collapsible
+            collapsedSize={0}
+            onCollapse={() => setIsLeftPanelCollapsed(true)}
+            onExpand={() => setIsLeftPanelCollapsed(false)}
+            className={isLeftPanelCollapsed ? "hidden" : ""}
+          >
+            <ChatPanel
+              messages={messages}
+              loading={loading}
+              credits={credits}
+              onSend={handleNewMessage}
+            />
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={75} minSize={40}>
+            <PreviewPanel
+              previewUrl={previewUrl}
+              code={code}
+              loading={previewLoading}
+              onRefresh={handleRefreshPreview}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
+    </div>
+  );
+};
+
+export default EditorPage;
