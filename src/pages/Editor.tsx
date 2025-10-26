@@ -10,7 +10,7 @@ import {
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
-import { PanelLeftClose, PanelRightClose, Bot, LogOut } from "lucide-react";
+import { PanelLeftClose } from "lucide-react";
 import { getProjectById, StoredMessage, setMessages, getMessages, getCredits } from "@/lib/projects";
 
 const EditorPage: React.FC = () => {
@@ -20,7 +20,6 @@ const EditorPage: React.FC = () => {
 
   const [projectName, setProjectName] = useState("");
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
-  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
   const [messages, setMessagesState] = useState<StoredMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [credits, setCredits] = useState(0);
@@ -100,19 +99,7 @@ const EditorPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-            <LogOut className="h-4 w-4 mr-2" />
             Salir
-          </Button>
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Bot className="h-5 w-5 text-primary" />
-            <span>Dyad</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
-          >
-            <PanelRightClose className="h-5 w-5" />
           </Button>
         </div>
       </header>
