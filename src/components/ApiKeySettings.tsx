@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { KeyRound, Trash2, ExternalLink } from "lucide-react";
-import { AnthropicLogo, GoogleLogo, OpenAiLogo, OpenRouterLogo } from "./ProviderLogos";
 
 type Provider = {
   id: 'openai' | 'google' | 'anthropic' | 'openrouter';
@@ -25,10 +24,10 @@ type Provider = {
 };
 
 const providers: Provider[] = [
-  { id: 'openai', name: 'OpenAI', description: 'Powering models like GPT-4.', logo: <OpenAiLogo />, placeholder: 'sk-...', getApiKeyUrl: 'https://openai.com/api/', models: ['GPT-4o', 'GPT-4 Turbo', 'GPT-3.5 Turbo'] },
-  { id: 'google', name: 'Google', description: 'Home of the Gemini family of models.', logo: <GoogleLogo />, placeholder: 'AIzaSy...', getApiKeyUrl: 'https://aistudio.google.com/app/api-keys', models: ['Gemini 1.5 Pro', 'Gemini 1.5 Flash'] },
-  { id: 'anthropic', name: 'Anthropic', description: 'Building reliable, interpretable, and steerable AI systems.', logo: <AnthropicLogo />, placeholder: 'sk-ant-...', getApiKeyUrl: 'https://console.anthropic.com/login?returnTo=%2F%3F', models: ['Claude 3 Opus', 'Claude 3 Sonnet', 'Claude 3 Haiku'] },
-  { id: 'openrouter', name: 'OpenRouter', description: 'Access a variety of models through a single API.', logo: <OpenRouterLogo />, placeholder: 'sk-or-...', getApiKeyUrl: 'https://openrouter.ai/docs/api-reference/overview', models: ['Various', 'Llama 3', 'Mistral'] },
+  { id: 'openai', name: 'OpenAI', description: 'Powering models like GPT-4.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OA</div>, placeholder: 'sk-...', getApiKeyUrl: 'https://openai.com/api/', models: ['GPT-4o', 'GPT-4 Turbo', 'GPT-3.5 Turbo'] },
+  { id: 'google', name: 'Google', description: 'Home of the Gemini family of models.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">G</div>, placeholder: 'AIzaSy...', getApiKeyUrl: 'https://aistudio.google.com/app/api-keys', models: ['Gemini 1.5 Pro', 'Gemini 1.5 Flash'] },
+  { id: 'anthropic', name: 'Anthropic', description: 'Building reliable, interpretable, and steerable AI systems.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">A</div>, placeholder: 'sk-ant-...', getApiKeyUrl: 'https://console.anthropic.com/login?returnTo=%2F%3F', models: ['Claude 3 Opus', 'Claude 3 Sonnet', 'Claude 3 Haiku'] },
+  { id: 'openrouter', name: 'OpenRouter', description: 'Access a variety of models through a single API.', logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OR</div>, placeholder: 'sk-or-...', getApiKeyUrl: 'https://openrouter.ai/docs/api-reference/overview', models: ['Various', 'Llama 3', 'Mistral'] },
 ];
 
 const ApiKeySettings = () => {

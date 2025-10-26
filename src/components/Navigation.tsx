@@ -38,10 +38,6 @@ const Navigation = () => {
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm">
-              Log in
-            </Button>
-            <Button size="sm">Sign up</Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
               <Link to="/settings">
                 <Settings className="h-4 w-4" />
