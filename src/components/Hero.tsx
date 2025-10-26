@@ -5,8 +5,37 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import ModelsPopover from "./ModelsPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { createProjectFromPrompt, addMessage } from "@/lib/projects";
+import { createProjectFromPrompt, addMessage, setCode, decrementCredits } from "@/lib/projects";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
+import { storage } from "@/lib/storage";
+import { generateChat, ChatMessage, getProviderFromLabel } from "@/services/ai";
+
+const COST_PER_MESSAGE = 1;
+
+const SYSTEM_PROMPT = [
+  "You are a technical-strategic assistant. You help build and improve websites, apps, and businesses: architecture, UX, launch plans, metrics, marketing, and code (React, Tailwind, Node, SQL).",
+  "When the user asks to build or change UI, include a single full HTML document for live preview in a fenced code block labeled `html`.",
+  "Keep code minimal and production-friendly; prefer Tailwind classes.",
+].join(" ");
+
+function extractPreviewHtml(text: string): string | null {
+  const htmlFence = text.match(/```html\s*([\s\S]*?)```/i);
+  if (htmlFence && htmlFence[1] && htmlFence[1].includes("<html")) {
+    return htmlFence[1].trim();
+  }
+  const fences = text.match(/```[\w-]*\s*([\s\S]*?)```/g);
+  if (fences) {
+    for (const block of fences) {
+      const inner = block.replace(/```[\w-]*\s*/, "").replace(/```$/, "");
+      if (inner.includes("<html") && inner.includes("</html>")) {
+        return inner.trim();
+      }
+    }
+  }
+  const marker = text.match(/<!--\s*PREVIEW_HTML_START\s*-->([\s\S]*?)<!--\s*PREVIEW_HTML_END\s*-->/i);
+  if (marker && marker[1]) return marker[1].trim();
+  return null;
+}
 
 const Hero = () => {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +131,17 @@ const Hero = () => {
     }
 
     setLoading(true);
+
+    // Validar API key antes de crear el proyecto
+    const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
+    const provider = getProviderFromLabel(selectedModel);
+    if (!apiKeys[provider]) {
+      const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+      toast.error("Falta API Key", { description: `Configura tu clave de ${providerName} en Settings > API Keys.` });
+      setLoading(false);
+      return;
+    }
+
     const fullPrompt = pastedTextInfo?.content
       ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
       : prompt;
@@ -110,7 +150,35 @@ const Hero = () => {
     const proj = createProjectFromPrompt(prompt);
     addMessage(proj.id, { role: "user", content: fullPrompt });
 
-    // Navegar al editor
+    const tId = toast.loading("Consultando a la IA…");
+
+    // Preparar mensajes y llamar a la IA directamente desde el homepage
+    const chatMsgs: ChatMessage[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: fullPrompt },
+    ];
+
+    const reply = await generateChat({
+      messages: chatMsgs,
+      selectedModelLabel: selectedModel,
+      apiKeys,
+    });
+
+    // Guardar respuesta del asistente
+    addMessage(proj.id, { role: "assistant", content: reply });
+
+    // Extraer HTML para preview y guardar en el proyecto
+    const html = extractPreviewHtml(reply);
+    if (html) {
+      setCode(proj.id, html);
+    }
+
+    // Descontar créditos locales
+    decrementCredits(proj.id, COST_PER_MESSAGE);
+
+    toast.success("Listo", { id: tId, description: "Respuesta generada y guardada. Abriendo editor…" });
+
+    // Ir al editor ya con datos listos
     navigate(`/editor?id=${encodeURIComponent(proj.id)}`, { replace: false });
 
     setLoading(false);
