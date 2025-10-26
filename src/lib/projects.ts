@@ -113,11 +113,3 @@ export function setCode(projectId: string, code: string) {
   storage.setJSON(codeKey(projectId), code);
   touchProject(projectId);
 }
-
-export function deleteProject(projectId: string) {
-  const projects = listProjects().filter(p => p.id !== projectId);
-  upsertProjects(projects);
-  storage.remove(chatKey(projectId));
-  storage.remove(creditsKey(projectId));
-  storage.remove(codeKey(projectId));
-}
