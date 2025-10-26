@@ -1,22 +1,35 @@
+import React from "react";
+import { Settings, SlidersHorizontal, Cpu, Key, Plug, ShieldAlert } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import SettingsContent from "@/components/SettingsContent";
 
-const SettingsModal = () => {
+type Section = "general" | "ai" | "api" | "integrations" | "danger";
+
+const SettingsModal: React.FC = () => {
+  const [section, setSection] = React.useState<Section>("general");
+
+  const items: { key: Section; label: string; icon: React.ElementType }[] = [
+    { key: "general", label: "General", icon: SlidersHorizontal },
+    { key: "ai", label: "AI", icon: Cpu },
+    { key: "api", label: "API Keys", icon: Key },
+    { key: "integrations", label: "Integrations", icon: Plug },
+    { key: "danger", label: "Danger Zone", icon: ShieldAlert },
+  ];
+
   return (
     <Dialog>
       <DialogTrigger asChild>
         <button
           type="button"
-          className="p-2 rounded-md text-muted-foreground transition-colors hover:text-foreground hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="p-2 -mr-1 sm:mr-0 rounded-md text-muted-foreground transition-colors hover:text-foreground hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
           aria-label="Open settings"
         >
           <Settings className="h-5 w-5" />
@@ -24,49 +37,50 @@ const SettingsModal = () => {
       </DialogTrigger>
       <DialogContent
         className={[
-          "w-[96vw] max-w-4xl h-[600px] max-h-[80vh] p-0", // Set fixed width and height
+          "w-[96vw] sm:max-w-[1100px] max-w-[1200px] max-h-[78vh] p-0",
           "border border-white/10 bg-background/60 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/50",
-          "flex flex-col",
+          "shadow-2xl",
         ].join(" ")}
       >
-        <Tabs defaultValue="general" className="flex flex-col h-full">
-          <DialogHeader className="p-4 border-b">
-            <DialogTitle>Configuración</DialogTitle>
-            <DialogDescription>
-              Personaliza tu experiencia y gestiona tu cuenta.
-            </DialogDescription>
-            <TabsList className="grid w-full grid-cols-3 mt-2">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="appearance">Apariencia</TabsTrigger>
-              <TabsTrigger value="about">Acerca de</TabsTrigger>
-            </TabsList>
-          </DialogHeader>
+        <DialogHeader className="px-6 pt-6">
+          <DialogTitle className="text-xl">Settings</DialogTitle>
+          <DialogDescription>Configure your experience and connections</DialogDescription>
+        </DialogHeader>
 
-          <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-[calc(600px-8rem)]">
-              <div className="p-6">
-                <TabsContent value="general">
-                  <h3 className="text-lg font-medium">General</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Configuración general de la cuenta.
-                  </p>
-                </TabsContent>
-                <TabsContent value="appearance">
-                  <h3 className="text-lg font-medium">Apariencia</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Personaliza la apariencia de la aplicación.
-                  </p>
-                </TabsContent>
-                <TabsContent value="about">
-                  <h3 className="text-lg font-medium">Acerca de</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Información sobre la aplicación.
-                  </p>
-                </TabsContent>
+        <div className="px-4 sm:px-6 pb-6">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+            <aside className="sm:w-56 shrink-0">
+              <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
+                {items.map((it) => {
+                  const Icon = it.icon;
+                  const active = section === it.key;
+                  return (
+                    <Button
+                      key={it.key}
+                      variant="ghost"
+                      className={[
+                        "justify-start h-9",
+                        active
+                          ? "bg-muted text-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                        "focus-visible:ring-0 focus-visible:ring-offset-0",
+                      ].join(" ")}
+                      onClick={() => setSection(it.key)}
+                      aria-pressed={active}
+                    >
+                      <Icon className="h-4 w-4 mr-2" />
+                      {it.label}
+                    </Button>
+                  );
+                })}
               </div>
-            </ScrollArea>
+            </aside>
+
+            <section className="flex-1 overflow-y-auto max-h-[58vh] rounded-md">
+              <SettingsContent section={section} />
+            </section>
           </div>
-        </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   );
