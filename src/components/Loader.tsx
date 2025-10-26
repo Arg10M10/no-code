@@ -5,163 +5,73 @@ const Loader = () => {
   return (
     <StyledWrapper>
       <div className="loader">
-        <div className="box box-1">
-          <div className="side-left" />
-          <div className="side-right" />
-          <div className="side-top" />
-        </div>
-        <div className="box box-2">
-          <div className="side-left" />
-          <div className="side-right" />
-          <div className="side-top" />
-        </div>
-        <div className="box box-3">
-          <div className="side-left" />
-          <div className="side-right" />
-          <div className="side-top" />
-        </div>
-        <div className="box box-4">
-          <div className="side-left" />
-          <div className="side-right" />
-          <div className="side-top" />
-        </div>
+        <div className="circle" />
+        <div className="circle" />
+        <div className="circle" />
+        <div className="circle" />
       </div>
     </StyledWrapper>
   );
 }
 
 const StyledWrapper = styled.div`
-  /* 3D tower loader made by: csozi | Website: www.csozi.hu*/
-
   .loader {
-    scale: 3;
-    height: 50px;
-    width: 40px;
-  }
-
-  .box {
+    --dim: 3rem;
+    width: var(--dim);
+    height: var(--dim);
     position: relative;
-    opacity: 0;
-    left: 10px;
+    animation: spin988 2s linear infinite;
   }
 
-  .side-left {
+  .loader .circle {
+    --color: #333;
+    --dim: 1.2rem;
+    width: var(--dim);
+    height: var(--dim);
+    background-color: var(--color);
+    border-radius: 50%;
     position: absolute;
-    background-color: #286cb5;
-    width: 19px;
-    height: 5px;
-    transform: skew(0deg, -25deg);
-    top: 14px;
-    left: 10px;
   }
 
-  .side-right {
-    position: absolute;
-    background-color: #2f85e0;
-    width: 19px;
-    height: 5px;
-    transform: skew(0deg, 25deg);
-    top: 14px;
-    left: -9px;
+  .loader .circle:nth-child(1) {
+    top: 0;
+    left: 0;
   }
 
-  .side-top {
-    position: absolute;
-    background-color: #5fa8f5;
-    width: 20px;
-    height: 20px;
-    rotate: 45deg;
-    transform: skew(-20deg, -20deg);
+  .loader .circle:nth-child(2) {
+    top: 0;
+    right: 0;
   }
 
-  .box-1 {
-    animation: from-left 4s infinite;
+  .loader .circle:nth-child(3) {
+    bottom: 0;
+    left: 0;
   }
 
-  .box-2 {
-    animation: from-right 4s infinite;
-    animation-delay: 1s;
+  .loader .circle:nth-child(4) {
+    bottom: 0;
+    right: 0;
   }
 
-  .box-3 {
-    animation: from-left 4s infinite;
-    animation-delay: 2s;
-  }
-
-  .box-4 {
-    animation: from-right 4s infinite;
-    animation-delay: 3s;
-  }
-
-  @keyframes from-left {
+  @keyframes spin988 {
     0% {
-      z-index: 20;
-      opacity: 0;
-      translate: -20px -6px;
+      transform: scale(1) rotate(0);
     }
 
-    20% {
-      z-index: 10;
-      opacity: 1;
-      translate: 0px 0px;
+    20%, 25% {
+      transform: scale(1.3) rotate(90deg);
     }
 
-    40% {
-      z-index: 9;
-      translate: 0px 4px;
+    45%, 50% {
+      transform: scale(1) rotate(180deg);
     }
 
-    60% {
-      z-index: 8;
-      translate: 0px 8px;
+    70%, 75% {
+      transform: scale(1.3) rotate(270deg);
     }
 
-    80% {
-      z-index: 7;
-      opacity: 1;
-      translate: 0px 12px;
-    }
-
-    100% {
-      z-index: 5;
-      translate: 0px 30px;
-      opacity: 0;
-    }
-  }
-
-  @keyframes from-right {
-    0% {
-      z-index: 20;
-      opacity: 0;
-      translate: 20px -6px;
-    }
-
-    20% {
-      z-index: 10;
-      opacity: 1;
-      translate: 0px 0px;
-    }
-
-    40% {
-      z-index: 9;
-      translate: 0px 4px;
-    }
-
-    60% {
-      z-index: 8;
-      translate: 0px 8px;
-    }
-
-    80% {
-      z-index: 7;
-      opacity: 1;
-      translate: 0px 12px;
-    }
-
-    100% {
-      z-index: 5;
-      translate: 0px 30px;
-      opacity: 0;
+    95%, 100% {
+      transform: scale(1) rotate(360deg);
     }
   }`;
 
