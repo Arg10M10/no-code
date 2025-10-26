@@ -47,18 +47,55 @@ type GoogleResponse = {
 
 function mapLabelToModelId(label: string): { provider: ProviderId; model: string } {
   const provider = getProviderFromLabel(label);
-  // Map to valid models for each provider API
+  const normalized = label.toLowerCase();
+
   switch (provider) {
-    case "openai":
+    case "google": {
+      // UI: "Gemini 2.5 flash" / "Gemini 2.5 Pro" -> API: gemini-2.0-flash / gemini-2.0-pro
+      if (normalized.includes("2.5") && normalized.includes("flash")) {
+        return { provider, model: "gemini-2.0-flash" };
+      }
+      if (normalized.includes("2.5") && normalized.includes("pro")) {
+        return { provider, model: "gemini-2.0-pro" };
+      }
+      // Fallback seguro
+      return { provider, model: "gemini-2.0-flash" };
+    }
+    case "openai": {
+      // UI: "o4mini" -> API: o4-mini
+      if (normalized.includes("o4mini") || normalized.includes("o4-mini")) {
+        return { provider, model: "o4-mini" };
+      }
+      // UI: "GPT-5" variantes -> mapear a modelos disponibles
+      if (normalized.includes("gpt-5") && normalized.includes("mini")) {
+        return { provider, model: "gpt-4o-mini" };
+      }
+      if (normalized.includes("gpt-5") && normalized.includes("nano")) {
+        return { provider, model: "gpt-4o-mini" };
+      }
+      if (normalized.includes("gpt-5") && normalized.includes("codex")) {
+        return { provider, model: "gpt-4o-mini" };
+      }
+      if (normalized.includes("gpt-5")) {
+        return { provider, model: "gpt-4o" };
+      }
+      // Fallback seguro
       return { provider, model: "gpt-4o-mini" };
-    case "google":
-      // Usar alias soportado en v1beta para generateContent
-      return { provider, model: "gemini-1.5-flash-latest" };
-    case "anthropic":
+    }
+    case "anthropic": {
+      // Varias etiquetas de "Claude X Sonet" -> API estable
       return { provider, model: "claude-3-5-sonnet-latest" };
-    case "openrouter":
-      // Ejemplo free/cheap en OpenRouter
+    }
+    case "openrouter": {
+      if (normalized.includes("qwen") || normalized.includes("qween")) {
+        return { provider, model: "qwen/qwen2.5-coder" };
+      }
+      if (normalized.includes("deepseek")) {
+        return { provider, model: "deepseek/deepseek-chat" };
+      }
+      // Fallback
       return { provider, model: "deepseek/deepseek-chat" };
+    }
     default:
       return { provider: "openai", model: "gpt-4o-mini" };
   }
@@ -99,7 +136,6 @@ async function callAnthropic(params: {
   system?: string;
   temperature?: number;
 }): Promise<string> {
-  // Anthropic espera system separado y objetos de contenido
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
   const mapped = chatMessages.map((m) => ({
