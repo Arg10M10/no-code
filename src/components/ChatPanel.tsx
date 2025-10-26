@@ -78,13 +78,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 pt-3 pb-0 flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          Tokens restantes: <span className="font-medium text-foreground">{credits}</span>
-        </div>
-        {loading ? <div className="text-sm text-foreground/80 italic">Generando...</div> : null}
-      </div>
-
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-4 space-y-4">
           {messages.map((msg, index) => {
