@@ -8,7 +8,7 @@ import PreviewPanel from "@/components/PreviewPanel";
 import { useProject } from "@/hooks/useProject";
 import Loader from "@/components/Loader";
 
-const EditorPage: React.FC = () => {
+const ProjectPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const {
     project,
@@ -32,11 +32,7 @@ const EditorPage: React.FC = () => {
 
   return (
     <ResizablePanelGroup direction="horizontal" className="h-screen w-full">
-      <ResizablePanel defaultSize={58} minSize={40}>
-        <PreviewPanel project={project} onRebuild={rebuildProject} />
-      </ResizablePanel>
-      <ResizableHandle withHandle />
-      <ResizablePanel defaultSize={42} minSize={30} maxSize={60}>
+      <ResizablePanel defaultSize={50} minSize={30}>
         <ChatPanel
           messages={messages}
           loading={loading}
@@ -47,8 +43,12 @@ const EditorPage: React.FC = () => {
           onRevert={revertToVersion}
         />
       </ResizablePanel>
+      <ResizableHandle withHandle />
+      <ResizablePanel defaultSize={50} minSize={30}>
+        <PreviewPanel project={project} onRebuild={rebuildProject} />
+      </ResizablePanel>
     </ResizablePanelGroup>
   );
 };
 
-export default EditorPage;
+export default ProjectPage;

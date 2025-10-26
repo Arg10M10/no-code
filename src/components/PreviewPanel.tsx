@@ -1,124 +1,47 @@
+"use client";
+
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Code, Check, X } from "lucide-react";
-import { toast } from "sonner";
-import "./preview-loader.css";
+import { RefreshCw } from "lucide-react";
+import { Project } from "@/lib/projects";
 
 interface PreviewPanelProps {
-  code: string | null;
-  loading: boolean;
-  onApply: (code: string) => void;
+  project: Project;
+  onRebuild: () => void;
 }
 
-const PreviewPanel: React.FC<PreviewPanelProps> = ({ code, loading, onApply }) => {
-  const iframeRef = React.useRef<HTMLIFrameElement>(null);
-  const [showCode, setShowCode] = React.useState(false);
-  const [localCode, setLocalCode] = React.useState(code || "");
-  const [isDirty, setIsDirty] = React.useState(false);
+const PreviewPanel: React.FC<PreviewPanelProps> = ({ project, onRebuild }) => {
+  const [key, setKey] = React.useState(Date.now());
 
-  React.useEffect(() => {
-    if (code !== null) {
-      setLocalCode(code);
-      setIsDirty(false);
-    }
-  }, [code]);
-
-  React.useEffect(() => {
-    if (iframeRef.current && code) {
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(code);
-        doc.close();
-      }
-    }
-  }, [code]);
-
-  const handleApply = () => {
-    onApply(localCode);
-    setIsDirty(false);
-  };
-
-  const handleReset = () => {
-    if (code) {
-      setLocalCode(code);
-      setIsDirty(false);
-      toast.info("Código restablecido");
-    }
-  };
-
-  const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setLocalCode(e.target.value);
-    setIsDirty(e.target.value !== code);
+  const handleRefresh = () => {
+    setKey(Date.now());
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Barra superior del Preview */}
-      <div className="p-2 border-b border-border/60 bg-card/60 flex items-center justify-between">
-        <h3 className="text-xs uppercase tracking-wide text-muted-foreground">Live Preview</h3>
-        <Button variant="ghost" size="sm" onClick={() => setShowCode(!showCode)} className="h-8 px-2">
-          <Code className="h-4 w-4 mr-1.5" />
-          {showCode ? "Ocultar Código" : "Mostrar Código"}
-        </Button>
+    <div className="h-full flex flex-col bg-muted/20">
+      <div className="p-2 border-b border-border/40 flex items-center justify-between bg-background/80 backdrop-blur-sm">
+        <p className="text-sm font-medium">{project.name}</p>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={handleRefresh} className="h-8 w-8">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={onRebuild}>
+            Reconstruir
+          </Button>
+        </div>
       </div>
-
-      {/* Contenido principal: Preview o Editor */}
-      <div className="flex-grow relative overflow-hidden">
-        {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10">
-            <div className="loader">
-              <div className="box box-1">
-                <div className="side-left"></div>
-                <div className="side-right"></div>
-                <div className="side-top"></div>
-              </div>
-              <div className="box box-2">
-                <div className="side-left"></div>
-                <div className="side-right"></div>
-                <div className="side-top"></div>
-              </div>
-              <div className="box box-3">
-                <div className="side-left"></div>
-                <div className="side-right"></div>
-                <div className="side-top"></div>
-              </div>
-              <div className="box box-4">
-                <div className="side-left"></div>
-                <div className="side-right"></div>
-                <div className="side-top"></div>
-              </div>
-            </div>
-            <span className="sr-only">Generando Preview...</span>
-          </div>
-        )}
-
-        {showCode ? (
-          <div className="h-full flex flex-col">
-            <textarea
-              value={localCode}
-              onChange={handleCodeChange}
-              className="flex-grow p-4 font-mono text-xs bg-gray-900 text-white resize-none focus:outline-none"
-              placeholder="El código HTML generado aparecerá aquí..."
-            />
-            <div className="p-2 border-t border-border/60 bg-card/60 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={handleReset} disabled={!isDirty}>
-                <X className="h-4 w-4 mr-1.5" />
-                Descartar
-              </Button>
-              <Button size="sm" onClick={handleApply} disabled={!isDirty}>
-                <Check className="h-4 w-4 mr-1.5" />
-                Aplicar
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <iframe
-            ref={iframeRef}
-            title="Live Preview"
-            className="w-full h-full border-0 bg-white"
-            sandbox="allow-scripts allow-same-origin"
+      <div className="flex-1 relative">
+        {project.screenshot ? (
+          <img
+            key={key}
+            src={`file://${project.screenshot}?t=${key}`}
+            alt="Vista previa del proyecto"
+            className="w-full h-full object-contain"
           />
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p>No hay vista previa disponible.</p>
+          </div>
         )}
       </div>
     </div>
