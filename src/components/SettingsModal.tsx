@@ -37,8 +37,8 @@ const SettingsModal: React.FC = () => {
       </DialogTrigger>
       <DialogContent
         className={[
-          // Ancho grande y altura moderada (ancha, no larga)
-          "w-[96vw] sm:max-w-[1100px] max-w-[1200px] max-h-[78vh] p-0",
+          // Ancho grande y altura fija (igual a API Keys) para evitar saltos
+          "w-[96vw] sm:max-w-[1100px] max-w-[1200px] h-[78vh] p-0 overflow-hidden",
           // Efecto cristal
           "border border-white/10 bg-background/60 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/50",
           "shadow-2xl",
