@@ -132,4 +132,76 @@ All colors MUST be HSL.
       transform: translate(0, 0) scale(1) rotate(360deg);
     }
   }
+
+  /* Loader animation (from Uiverse.io by csozidev), adapted to theme */
+  .loader {
+    --size: 56px;
+    --gap: 10px;
+    --box: 14px;
+    width: calc(var(--size) + var(--gap));
+    display: grid;
+    grid-template-columns: repeat(2, var(--box));
+    grid-template-rows: repeat(2, var(--box));
+    gap: var(--gap);
+    transform: rotate(45deg);
+  }
+
+  .loader .box {
+    position: relative;
+    width: var(--box);
+    height: var(--box);
+    transform-style: preserve-3d;
+    animation: box-shift 1.25s ease-in-out infinite;
+  }
+
+  .loader .box-1 { animation-delay: 0s; }
+  .loader .box-2 { animation-delay: 0.1s; }
+  .loader .box-3 { animation-delay: 0.2s; }
+  .loader .box-4 { animation-delay: 0.3s; }
+
+  .loader .side-left {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: left;
+    transform: rotateY(90deg);
+    background: hsl(var(--primary) / 0.7);
+  }
+  .loader .side-right {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: right;
+    transform: rotateY(-90deg);
+    background: hsl(var(--accent) / 0.7);
+  }
+  .loader .side-top {
+    position: absolute;
+    inset: 0;
+    background: hsl(var(--primary));
+    transform-origin: top;
+    transform: rotateX(90deg);
+  }
+
+  @keyframes box-shift {
+    0%, 10% { transform: translateZ(0) rotate(0); }
+    50%     { transform: translateZ(12px) rotate(180deg); }
+    90%,100%{ transform: translateZ(0) rotate(360deg); }
+  }
+
+  /* Preview overlay */
+  .preview-loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, hsl(var(--background) / 0.6), hsl(var(--background) / 0.8));
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
 }

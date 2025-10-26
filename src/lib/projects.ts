@@ -82,3 +82,22 @@ export function setMessages(projectId: string, msgs: StoredMessage[]) {
   storage.setJSON(chatKey(projectId), msgs);
   touchProject(projectId);
 }
+
+/* Credits management */
+const DEFAULT_CREDITS = 100;
+function creditsKey(projectId: string) {
+  return `credits:${projectId}`;
+}
+export function getCredits(projectId: string): number {
+  return storage.getJSON<number>(creditsKey(projectId), DEFAULT_CREDITS);
+}
+export function setCredits(projectId: string, value: number) {
+  storage.setJSON(creditsKey(projectId), Math.max(0, Math.floor(value)));
+  touchProject(projectId);
+}
+export function decrementCredits(projectId: string, amount = 1): number {
+  const current = getCredits(projectId);
+  const next = Math.max(0, current - amount);
+  setCredits(projectId, next);
+  return next;
+}
