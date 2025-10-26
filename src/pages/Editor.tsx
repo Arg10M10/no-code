@@ -11,7 +11,7 @@ import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelRightClose, Bot } from "lucide-react";
-import { getProjectById, StoredMessage, setMessages, getMessages, getCredits, getCode } from "@/lib/projects";
+import { getProjectById, StoredMessage, setMessages, getMessages, getCredits, setCode } from "@/lib/projects";
 
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -22,7 +22,6 @@ const EditorPage: React.FC = () => {
   const [messages, setMessagesState] = useState<StoredMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [credits, setCredits] = useState(0);
-  const [code, setCode] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
@@ -31,7 +30,6 @@ const EditorPage: React.FC = () => {
       if (project) {
         setMessagesState(getMessages(projectId));
         setCredits(getCredits(projectId));
-        setCode(getCode(projectId) || "");
       } else {
         console.error("Project not found");
       }
@@ -48,42 +46,24 @@ const EditorPage: React.FC = () => {
     setLoading(true);
     setCredits(prev => Math.max(0, prev - 1));
 
-    // Simulate AI response and code generation
+    // Simulate AI thinking...
     setTimeout(() => {
       const aiResponse: StoredMessage = {
         role: "assistant",
-        content: "Aquí están los cambios que solicitaste. He actualizado el componente para incluir un nuevo botón y he ajustado el estilo.",
+        content: "Entendido. Estoy trabajando en tus cambios. Verás la vista previa actualizada en breve.",
         createdAt: Date.now(),
       };
-      
-      const generatedCode = `
-import React from 'react';
-import { Button } from '@/components/ui/button';
-
-const NewComponent = () => {
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Componente Actualizado</h1>
-      <p className="mb-4">Este es el nuevo contenido generado por la IA.</p>
-      <Button onClick={() => alert('¡Botón presionado!')}>Nuevo Botón</Button>
-    </div>
-  );
-};
-
-export default NewComponent;
-`.trim();
-
       const finalMessages = [...newMessages, aiResponse];
       setMessagesState(finalMessages);
       setMessages(projectId, finalMessages);
-      setCode(generatedCode);
       setLoading(false);
       
-      // Trigger preview refresh
+      // The preview will update automatically via HMR when Dyad writes the file.
+      // We can simulate a refresh for effect.
       setPreviewLoading(true);
       setTimeout(() => setPreviewLoading(false), 1500);
 
-    }, 2500);
+    }, 1000);
   }, [messages, projectId]);
 
   const handleRefreshPreview = () => {
@@ -93,7 +73,7 @@ export default NewComponent;
     }, 1500); // Simulate a refresh delay
   };
 
-  const previewUrl = `/`; // Using root for now
+  const previewUrl = `/preview`;
 
   if (!projectId) {
     return <div>Cargando proyecto...</div>;
@@ -148,7 +128,6 @@ export default NewComponent;
           <ResizablePanel defaultSize={75} minSize={40}>
             <PreviewPanel
               previewUrl={previewUrl}
-              code={code}
               loading={previewLoading}
               onRefresh={handleRefreshPreview}
             />

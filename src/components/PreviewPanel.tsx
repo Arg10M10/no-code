@@ -5,16 +5,14 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, Upload } from "lucide-react";
 import Loader from "./Loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PreviewPanelProps {
   previewUrl: string;
   loading: boolean;
   onRefresh: () => void;
-  code: string;
 }
 
-const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewUrl, loading, onRefresh, code }) => {
+const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewUrl, loading, onRefresh }) => {
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
   const handleRefresh = () => {
@@ -69,11 +67,11 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewUrl, loading, onRefr
         </TabsContent>
 
         <TabsContent value="code" className="flex-1 overflow-hidden bg-background/50">
-           <ScrollArea className="h-full">
-            <pre className="text-xs p-4 whitespace-pre-wrap break-words">
-              <code>{code || "No hay código para mostrar todavía."}</code>
-            </pre>
-          </ScrollArea>
+           <div className="p-6 text-center">
+            <p className="text-sm text-muted-foreground">
+                Los cambios de código se aplican directamente a los archivos del proyecto.
+            </p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

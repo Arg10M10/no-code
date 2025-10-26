@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 import Editor from "./pages/Editor";
+import PreviewPage from "./pages/Preview";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/editor" element={<Editor />} />
+          <Route path="/preview" element={<PreviewPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
