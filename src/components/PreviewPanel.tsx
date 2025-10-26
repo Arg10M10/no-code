@@ -1,68 +1,105 @@
-"use client";
-
 import React from "react";
 import { Button } from "@/components/ui/button";
-import Loader from "@/components/Loader";
+import { Code, RefreshCw, Check, X } from "lucide-react";
+import { toast } from "sonner";
 
 interface PreviewPanelProps {
   code: string | null;
-  loading?: boolean;
-  onApply: (nextCode: string) => void;
+  loading: boolean;
+  onApply: (code: string) => void;
 }
 
-const PreviewPanel: React.FC<PreviewPanelProps> = ({ code, loading = false, onApply }) => {
-  const [draft, setDraft] = React.useState<string>(code || "");
+const PreviewPanel: React.FC<PreviewPanelProps> = ({ code, loading, onApply }) => {
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+  const [showCode, setShowCode] = React.useState(false);
+  const [localCode, setLocalCode] = React.useState(code || "");
+  const [isDirty, setIsDirty] = React.useState(false);
 
   React.useEffect(() => {
-    setDraft(code || "");
+    if (code !== null) {
+      setLocalCode(code);
+      setIsDirty(false);
+    }
   }, [code]);
 
-  const canApply = draft.trim().length > 0 && draft !== (code || "");
+  React.useEffect(() => {
+    if (iframeRef.current && code) {
+      const doc = iframeRef.current.contentDocument;
+      if (doc) {
+        doc.open();
+        doc.write(code);
+        doc.close();
+      }
+    }
+  }, [code]);
+
+  const handleApply = () => {
+    onApply(localCode);
+    setIsDirty(false);
+  };
+
+  const handleReset = () => {
+    if (code) {
+      setLocalCode(code);
+      setIsDirty(false);
+      toast.info("Código restablecido");
+    }
+  };
+
+  const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setLocalCode(e.target.value);
+    setIsDirty(e.target.value !== code);
+  };
 
   return (
-    <div className="relative h-full p-2 sm:p-3">
-      <div className="h-full w-full rounded-xl border border-border/60 bg-black/40 overflow-hidden flex flex-col">
-        {/* Mini editor */}
-        <div className="p-2 border-b border-border/60 bg-card/60">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs uppercase tracking-wide text-muted-foreground">Mini editor (HTML/CSS/JS)</h3>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setDraft(code || "")}
-                disabled={!code || draft === code}
-              >
-                Descartar cambios
+    <div className="flex flex-col h-full">
+      {/* Barra superior del Preview */}
+      <div className="p-2 border-b border-border/60 bg-card/60 flex items-center justify-between">
+        <h3 className="text-xs uppercase tracking-wide text-muted-foreground">Live Preview</h3>
+        <Button variant="ghost" size="sm" onClick={() => setShowCode(!showCode)} className="h-8 px-2">
+          <Code className="h-4 w-4 mr-1.5" />
+          {showCode ? "Ocultar Código" : "Mostrar Código"}
+        </Button>
+      </div>
+
+      {/* Contenido principal: Preview o Editor */}
+      <div className="flex-grow relative overflow-hidden">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+            <div className="text-sm text-muted-foreground flex items-center">
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              Generando Preview...
+            </div>
+          </div>
+        )}
+
+        {showCode ? (
+          <div className="h-full flex flex-col">
+            <textarea
+              value={localCode}
+              onChange={handleCodeChange}
+              className="flex-grow p-4 font-mono text-xs bg-gray-900 text-white resize-none focus:outline-none"
+              placeholder="El código HTML generado aparecerá aquí..."
+            />
+            <div className="p-2 border-t border-border/60 bg-card/60 flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={handleReset} disabled={!isDirty}>
+                <X className="h-4 w-4 mr-1.5" />
+                Descartar
               </Button>
-              <Button size="sm" onClick={() => onApply(draft)} disabled={!canApply}>
-                Aplicar al Preview
+              <Button size="sm" onClick={handleApply} disabled={!isDirty}>
+                <Check className="h-4 w-4 mr-1.5" />
+                Aplicar
               </Button>
             </div>
           </div>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Aquí aparecerá el código generado por la IA…"
-            className="w-full h-40 md:h-48 bg-background rounded-md p-3 text-[13px] font-mono leading-relaxed border border-border focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-
-        <div className="relative flex-1">
-          {loading && (
-            <div className="preview-loading-overlay">
-              <div className="flex flex-col items-center gap-4">
-                <Loader aria-label="Cargando vista previa" />
-                <div className="text-xs text-muted-foreground">Cargando vista previa…</div>
-              </div>
-            </div>
-          )}
+        ) : (
           <iframe
-            title="Preview"
-            className="w-full h-full border-0"
-            srcDoc={code || "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Preview</title></head><body style='background:#0b0f14;color:#9db2c3;font:14px/1.6 system-ui, sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0'><div style=\"opacity:.7;text-align:center\">Aún no hay contenido<br/><small>Escribe en el chat para generar tu web</small></div></body></html>"}
+            ref={iframeRef}
+            title="Live Preview"
+            className="w-full h-full border-0 bg-white"
+            sandbox="allow-scripts allow-same-origin"
           />
-        </div>
+        )}
       </div>
     </div>
   );
