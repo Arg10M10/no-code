@@ -120,7 +120,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Describe los cambios que quieres hacer..."
-            className="pr-20 pl-12 py-4 min-h-[60px] resize-none bg-secondary/60 border-border/50 focus:bg-secondary/80"
+            className="pr-20 pl-12 py-4 min-h-[68px] resize-none bg-background/60 backdrop-blur-sm border-border/50 focus:bg-background/80"
             rows={1}
             disabled={loading}
           />
