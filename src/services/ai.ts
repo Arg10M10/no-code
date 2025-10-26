@@ -51,15 +51,15 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
 
   switch (provider) {
     case "google": {
-      // UI: "Gemini 2.5 flash" / "Gemini 2.5 Pro" -> API: gemini-2.0-flash / gemini-2.0-pro
+      // UI: "Gemini 2.5 flash" / "Gemini 2.5 Pro" -> API: gemini-2.5-flash / gemini-2.5-pro
       if (normalized.includes("2.5") && normalized.includes("flash")) {
-        return { provider, model: "gemini-2.0-flash" };
+        return { provider, model: "gemini-2.5-flash" };
       }
       if (normalized.includes("2.5") && normalized.includes("pro")) {
-        return { provider, model: "gemini-2.0-pro" };
+        return { provider, model: "gemini-2.5-pro" };
       }
-      // Fallback seguro
-      return { provider, model: "gemini-2.0-flash" };
+      // Fallback seguro a 2.5
+      return { provider, model: "gemini-2.5-flash" };
     }
     case "openai": {
       // UI: "o4mini" -> API: o4-mini
