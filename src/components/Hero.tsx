@@ -21,6 +21,25 @@ const Hero = () => {
   const [prompt, setPrompt] = useState("");
   const navigate = useNavigate();
 
+  const examplePrompts = [
+    {
+      title: "Landing page for a SaaS",
+      prompt: "Create a modern landing page for a new SaaS product that helps teams manage their projects. Include a hero section, features, pricing, and a footer.",
+    },
+    {
+      title: "To-do list app",
+      prompt: "Build a simple to-do list application. Users should be able to add tasks, mark them as complete, and delete them.",
+    },
+    {
+      title: "Photographer's portfolio",
+      prompt: "Design a clean and elegant portfolio website for a professional photographer. It should have a gallery, an about page, and a contact form.",
+    },
+    {
+      title: "Recipe sharing website",
+      prompt: "Develop a recipe sharing platform. Users can submit recipes with ingredients and instructions, and browse recipes by category.",
+    },
+  ];
+
   const handleUploadProjectClick = () => {
     projectFileInputRef.current?.click();
   };
@@ -232,6 +251,26 @@ const Hero = () => {
               <Camera className="h-4 w-4 mr-2" />
               Clone a Screenshot
             </Button>
+          </div>
+
+          <div
+            className="pt-8 text-center opacity-0 animate-fade-in-up"
+            style={{ animationDelay: "0.5s" }}
+          >
+            <p className="text-sm text-muted-foreground mb-4">Or try one of these examples:</p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {examplePrompts.map((example) => (
+                <Button
+                  key={example.title}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full bg-secondary border-border hover:bg-muted"
+                  onClick={() => setPrompt(example.prompt)}
+                >
+                  {example.title}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
