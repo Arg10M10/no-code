@@ -25,10 +25,14 @@ const Settings = () => {
   const { toast } = useToast();
 
   const handleResetAll = () => {
+    const apiKeys = localStorage.getItem('apiKeys');
     localStorage.clear();
+    if (apiKeys) {
+      localStorage.setItem('apiKeys', apiKeys);
+    }
     toast({
       title: "Reset Complete",
-      description: "All your chats and apps have been deleted from this browser.",
+      description: "All your chats and apps have been deleted. Your API key settings are preserved.",
     });
   };
 
