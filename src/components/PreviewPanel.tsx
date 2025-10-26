@@ -1,125 +1,83 @@
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { Code, Check, X } from "lucide-react";
-import { toast } from "sonner";
-import "./preview-loader.css";
+import { RefreshCw } from "lucide-react";
+import { Button } from "./ui/button";
+import { useProject } from "@/hooks/useProject";
+import { useEffect, useRef, useState } from "react";
+import { getPreviewUrl } from "@/lib/projects";
+import Loader from "./Loader";
 
 interface PreviewPanelProps {
-  code: string | null;
-  loading: boolean;
-  onApply: (code: string) => void;
+  projectId: string;
 }
 
-const PreviewPanel: React.FC<PreviewPanelProps> = ({ code, loading, onApply }) => {
-  const iframeRef = React.useRef<HTMLIFrameElement>(null);
-  const [showCode, setShowCode] = React.useState(false);
-  const [localCode, setLocalCode] = React.useState(code || "");
-  const [isDirty, setIsDirty] = React.useState(false);
+const PreviewPanel = ({ projectId }: PreviewPanelProps) => {
+  const { project, isLoading, error } = useProject(projectId);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [iframeKey, setIframeKey] = useState(Date.now());
 
-  React.useEffect(() => {
-    if (code !== null) {
-      setLocalCode(code);
-      setIsDirty(false);
-    }
-  }, [code]);
+  const previewUrl = getPreviewUrl(projectId);
 
-  React.useEffect(() => {
-    if (iframeRef.current && code) {
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(code);
-        doc.close();
-      }
-    }
-  }, [code]);
+  const handleRefresh = () => {
+    if (iframeRef.current) {
+      // Option 1: Simple reload
+      // iframeRef.current.src = previewUrl;
 
-  const handleApply = () => {
-    onApply(localCode);
-    setIsDirty(false);
-  };
+      // Option 2: Force reload without cache
+      // iframeRef.current.contentWindow?.location.reload(true);
 
-  const handleReset = () => {
-    if (code) {
-      setLocalCode(code);
-      setIsDirty(false);
-      toast.info("Código restablecido");
+      // Option 3: Remount the iframe by changing its key
+      setIframeKey(Date.now());
     }
   };
 
-  const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setLocalCode(e.target.value);
-    setIsDirty(e.target.value !== code);
-  };
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-background">
+        <div className="text-muted-foreground">Loading project...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center bg-background">
+        <div className="text-destructive">Error loading project: {error.message}</div>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="h-full flex items-center justify-center bg-background">
+        <div className="text-muted-foreground">Project not found.</div>
+      </div>
+    );
+  }
+
+  const isBuilding = project.status === "building";
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Barra superior del Preview */}
-      <div className="p-2 border-b border-border/60 bg-card/60 flex items-center justify-between">
-        <h3 className="text-xs uppercase tracking-wide text-muted-foreground">Live Preview</h3>
-        <Button variant="ghost" size="sm" onClick={() => setShowCode(!showCode)} className="h-8 px-2">
-          <Code className="h-4 w-4 mr-1.5" />
-          {showCode ? "Ocultar Código" : "Mostrar Código"}
+    <div className="h-full flex flex-col bg-muted/40">
+      <div className="flex items-center justify-between p-2 border-b bg-background">
+        <div className="text-sm font-medium">Preview</div>
+        <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh preview">
+          <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
-
-      {/* Contenido principal: Preview o Editor */}
-      <div className="flex-grow relative overflow-hidden">
-        {loading && (
+      <div className="flex-1 relative">
+        {isBuilding && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10">
-            <div className="loader">
-              <div className="box box-1">
-                <div className="side-left"></div>
-                <div className="side-right"></div>
-                <div className="side-top"></div>
-              </div>
-              <div className="box box-2">
-                <div className="side-left"></div>
-                <div className="side-right"></div>
-                <div className="side-top"></div>
-              </div>
-              <div className="box box-3">
-                <div className="side-left"></div>
-                <div className="side-right"></div>
-                <div className="side-top"></div>
-              </div>
-              <div className="box box-4">
-                <div className="side-left"></div>
-                <div className="side-right"></div>
-                <div className="side-top"></div>
-              </div>
-            </div>
-            <span className="sr-only">Generando Preview...</span>
+            <Loader />
+            <p className="mt-24 text-muted-foreground text-sm">Building your app...</p>
           </div>
         )}
-
-        {showCode ? (
-          <div className="h-full flex flex-col">
-            <textarea
-              value={localCode}
-              onChange={handleCodeChange}
-              className="flex-grow p-4 font-mono text-xs bg-gray-900 text-white resize-none focus:outline-none"
-              placeholder="El código HTML generado aparecerá aquí..."
-            />
-            <div className="p-2 border-t border-border/60 bg-card/60 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={handleReset} disabled={!isDirty}>
-                <X className="h-4 w-4 mr-1.5" />
-                Descartar
-              </Button>
-              <Button size="sm" onClick={handleApply} disabled={!isDirty}>
-                <Check className="h-4 w-4 mr-1.5" />
-                Aplicar
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <iframe
-            ref={iframeRef}
-            title="Live Preview"
-            className="w-full h-full border-0 bg-white"
-            sandbox="allow-scripts allow-same-origin"
-          />
-        )}
+        <iframe
+          key={iframeKey}
+          ref={iframeRef}
+          src={previewUrl}
+          title="Preview"
+          className="w-full h-full border-0"
+          sandbox="allow-scripts allow-same-origin"
+        />
       </div>
     </div>
   );
