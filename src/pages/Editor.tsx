@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import ModelsPopover from "@/components/ModelsPopover";
 import { storage } from "@/lib/storage";
 import { getProjectById, getMessages, addMessage, setMessages, StoredMessage, touchProject } from "@/lib/projects";
-import { generateChat, ChatMessage } from "@/services/ai";
+import { generateChat, ChatMessage, getProviderFromLabel } from "@/services/ai";
 import { toast } from "sonner";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
@@ -37,7 +37,6 @@ const EditorPage: React.FC = () => {
     setLocalMessages(msgs);
   }, [projectId, navigate]);
 
-  // If there is at least one user message and no assistant reply yet, auto-ask on mount
   React.useEffect(() => {
     if (!projectId) return;
     if (messages.length === 0) return;
@@ -52,12 +51,14 @@ const EditorPage: React.FC = () => {
 
   const askAssistant = async () => {
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
-    const openRouterApiKey = apiKeys["openrouter"];
-    if (!openRouterApiKey) {
-      toast.error("Missing API Key", { description: "Set your OpenRouter key in Settings > API Keys." });
+    const provider = getProviderFromLabel(selectedModel);
+    if (!apiKeys[provider]) {
+      const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+      toast.error("Missing API Key", { description: `Set your ${providerName} key in Settings > API Keys.` });
       return;
     }
     if (!projectId) return;
+
     const id = toast.loading("Asking the AI...");
     setLoading(true);
 
@@ -69,7 +70,7 @@ const EditorPage: React.FC = () => {
     const reply = await generateChat({
       messages: chatMsgs,
       selectedModelLabel: selectedModel,
-      openRouterApiKey,
+      apiKeys,
     });
 
     const assistantMsg: StoredMessage = { role: "assistant", content: reply, createdAt: Date.now() };
@@ -93,7 +94,6 @@ const EditorPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
       <div className="sticky top-0 z-10 border-b border-border/40 bg-background/90 backdrop-blur-sm">
         <div className="flex items-center gap-3 px-4 h-12">
           <Button variant="ghost" size="sm" onClick={onBack} className="px-2">
@@ -117,7 +117,6 @@ const EditorPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Split view */}
       <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-3rem)]">
         <ResizablePanel defaultSize={38} minSize={28} maxSize={60}>
           <div className="h-full flex flex-col">
@@ -163,11 +162,7 @@ const EditorPage: React.FC = () => {
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={62} minSize={40}>
           <div className="h-full">
-            <iframe
-              title="Preview"
-              src="/"
-              className="w-full h-full border-0"
-            />
+            <iframe title="Preview" src="/" className="w-full h-full border-0" />
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
