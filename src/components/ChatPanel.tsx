@@ -6,7 +6,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Send, Plus, Monitor, ImageUp, History } from "lucide-react";
-import Loader from "@/components/Loader";
 import { StoredMessage } from "@/lib/projects";
 
 interface ChatPanelProps {
@@ -16,42 +15,10 @@ interface ChatPanelProps {
   onSend: (text: string) => void;
 }
 
-const thinkingMessages = [
-  "Analizando tu petición...",
-  "Consultando la base de conocimiento...",
-  "Estructurando la respuesta...",
-  "Generando el código de la vista previa...",
-  "Revisando los detalles finales...",
-];
-
 const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSend }) => {
   const [input, setInput] = React.useState<string>("");
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
-
-  const [thinkingIndex, setThinkingIndex] = React.useState(0);
-  const [isThinkingTextVisible, setIsThinkingTextVisible] = React.useState(true);
-
-  React.useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (loading) {
-      setThinkingIndex(0);
-      setIsThinkingTextVisible(true);
-
-      interval = setInterval(() => {
-        setIsThinkingTextVisible(false); // Fade out
-
-        setTimeout(() => {
-          setThinkingIndex((prevIndex) => (prevIndex + 1) % thinkingMessages.length);
-          setIsThinkingTextVisible(true); // Fade in
-        }, 500); // Duration of the fade-out animation
-      }, 2500); // Time each message is visible
-    }
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [loading]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
@@ -135,14 +102,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
               <div className="flex flex-col items-start">
                 <p className="font-bold text-sm mb-1">Asistente</p>
                 <div className="p-3 rounded-lg bg-muted flex items-center gap-3">
-                  <Loader aria-label="Generando respuesta..." />
-                  <span
-                    className={`text-sm text-muted-foreground transition-opacity duration-500 ease-in-out ${
-                      isThinkingTextVisible ? "opacity-100" : "opacity-0"
-                    }`}
-                  >
-                    {thinkingMessages[thinkingIndex]}
-                  </span>
+                  <p className="text-sm text-muted-foreground animate-pulse">
+                    Generando respuesta...
+                  </p>
                 </div>
               </div>
             </div>
