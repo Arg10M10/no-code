@@ -5,37 +5,10 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import ModelsPopover from "./ModelsPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { createProjectFromPrompt, addMessage, setCode, decrementCredits } from "@/lib/projects";
+import { createProjectFromPrompt, addMessage } from "@/lib/projects";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
 import { storage } from "@/lib/storage";
-import { generateChat, ChatMessage, getProviderFromLabel } from "@/services/ai";
-
-const COST_PER_MESSAGE = 1;
-
-const SYSTEM_PROMPT = [
-  "You are a technical-strategic assistant. You help build and improve websites, apps, and businesses: architecture, UX, launch plans, metrics, marketing, and code (React, Tailwind, Node, SQL).",
-  "When the user asks to build or change UI, include a single full HTML document for live preview in a fenced code block labeled `html`.",
-  "Keep code minimal and production-friendly; prefer Tailwind classes.",
-].join(" ");
-
-function extractPreviewHtml(text: string): string | null {
-  const htmlFence = text.match(/```html\s*([\s\S]*?)```/i);
-  if (htmlFence && htmlFence[1] && htmlFence[1].includes("<html")) {
-    return htmlFence[1].trim();
-  }
-  const fences = text.match(/```[\w-]*\s*([\s\S]*?)```/g);
-  if (fences) {
-    for (const block of fences) {
-      const inner = block.replace(/```[\w-]*\s*/, "").replace(/```$/, "");
-      if (inner.includes("<html") && inner.includes("</html>")) {
-        return inner.trim();
-      }
-    }
-  }
-  const marker = text.match(/<!--\s*PREVIEW_HTML_START\s*-->([\s\S]*?)<!--\s*PREVIEW_HTML_END\s*-->/i);
-  if (marker && marker[1]) return marker[1].trim();
-  return null;
-}
+import { getProviderFromLabel } from "@/services/ai";
 
 const Hero = () => {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -132,7 +105,7 @@ const Hero = () => {
 
     setLoading(true);
 
-    // Validar API key antes de crear el proyecto
+    // Validar API key antes de crear el proyecto y navegar
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const provider = getProviderFromLabel(selectedModel);
     if (!apiKeys[provider]) {
@@ -146,39 +119,11 @@ const Hero = () => {
       ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
       : prompt;
 
-    // Crear proyecto y guardar primer mensaje
+    // Crear proyecto y guardar primer mensaje; la IA correrá en el editor
     const proj = createProjectFromPrompt(prompt);
     addMessage(proj.id, { role: "user", content: fullPrompt });
 
-    const tId = toast.loading("Consultando a la IA…");
-
-    // Preparar mensajes y llamar a la IA directamente desde el homepage
-    const chatMsgs: ChatMessage[] = [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: fullPrompt },
-    ];
-
-    const reply = await generateChat({
-      messages: chatMsgs,
-      selectedModelLabel: selectedModel,
-      apiKeys,
-    });
-
-    // Guardar respuesta del asistente
-    addMessage(proj.id, { role: "assistant", content: reply });
-
-    // Extraer HTML para preview y guardar en el proyecto
-    const html = extractPreviewHtml(reply);
-    if (html) {
-      setCode(proj.id, html);
-    }
-
-    // Descontar créditos locales
-    decrementCredits(proj.id, COST_PER_MESSAGE);
-
-    toast.success("Listo", { id: tId, description: "Respuesta generada y guardada. Abriendo editor…" });
-
-    // Ir al editor ya con datos listos
+    // Navegar de inmediato al editor; allí se generará y renderizará el preview automáticamente
     navigate(`/editor?id=${encodeURIComponent(proj.id)}`, { replace: false });
 
     setLoading(false);
@@ -294,7 +239,7 @@ const Hero = () => {
                   )}
                 </Button>
               </div>
-              <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-[15px]">{answer}</div>
+              <div className="whitespace-pre-wrap leading-relaxed text-sm md:text[15px]">{answer}</div>
             </div>
           )}
 

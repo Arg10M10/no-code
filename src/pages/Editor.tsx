@@ -82,15 +82,16 @@ const Editor: React.FC = () => {
     setCodeState(getCode(projectId));
   }, [projectId, navigate]);
 
+  // Arrancar la IA automáticamente si el último mensaje es del usuario
   React.useEffect(() => {
     if (!projectId) return;
     if (messages.length === 0) return;
     const last = messages[messages.length - 1];
-    if (last.role === "user") {
+    if (last.role === "user" && !loading) {
       void askAssistant();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  }, [projectId, messages, loading]);
 
   const onBack = () => navigate(-1);
 
@@ -149,7 +150,8 @@ const Editor: React.FC = () => {
     const next = [...messages, msg];
     setLocalMessages(next);
     setMessages(projectId, next);
-    await askAssistant();
+    // No llamamos a askAssistant aquí para evitar doble invocación;
+    // el efecto se encarga de detectarlo y disparar la IA.
   };
 
   const onApplyCode = (nextCode: string) => {
