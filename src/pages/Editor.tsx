@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -10,13 +10,15 @@ import {
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
-import { PanelLeftClose, PanelRightClose, Bot } from "lucide-react";
-import { getProjectById, StoredMessage, setMessages, getMessages, getCredits, setCode } from "@/lib/projects";
+import { PanelLeftClose, PanelRightClose, Bot, LogOut } from "lucide-react";
+import { getProjectById, StoredMessage, setMessages, getMessages, getCredits } from "@/lib/projects";
 
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const projectId = searchParams.get("id");
 
+  const [projectName, setProjectName] = useState("");
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
   const [messages, setMessagesState] = useState<StoredMessage[]>([]);
@@ -28,13 +30,17 @@ const EditorPage: React.FC = () => {
     if (projectId) {
       const project = getProjectById(projectId);
       if (project) {
+        setProjectName(project.name);
         setMessagesState(getMessages(projectId));
         setCredits(getCredits(projectId));
       } else {
         console.error("Project not found");
+        navigate("/"); // Redirect if project doesn't exist
       }
+    } else {
+      navigate("/"); // Redirect if no project ID
     }
-  }, [projectId]);
+  }, [projectId, navigate]);
 
   const handleNewMessage = useCallback((text: string) => {
     if (!projectId) return;
@@ -58,8 +64,6 @@ const EditorPage: React.FC = () => {
       setMessages(projectId, finalMessages);
       setLoading(false);
       
-      // The preview will update automatically via HMR when Dyad writes the file.
-      // We can simulate a refresh for effect.
       setPreviewLoading(true);
       setTimeout(() => setPreviewLoading(false), 1500);
 
@@ -90,9 +94,15 @@ const EditorPage: React.FC = () => {
           >
             <PanelLeftClose className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold">Editor del Proyecto</h1>
+          <h1 className="text-lg font-semibold truncate" title={projectName}>
+            {projectName || "Cargando..."}
+          </h1>
         </div>
         <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Salir
+          </Button>
           <div className="flex items-center gap-2 text-sm font-medium">
             <Bot className="h-5 w-5 text-primary" />
             <span>Dyad</span>
