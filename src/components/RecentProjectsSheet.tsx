@@ -29,6 +29,7 @@ const RecentProjectsSheet: React.FC = () => {
   const [showSearch, setShowSearch] = React.useState<boolean>(false);
   const [searchQuery, setSearchQuery] = React.useState<string>("");
 
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -36,6 +37,10 @@ const RecentProjectsSheet: React.FC = () => {
     const parsed: Project[] = raw ? JSON.parse(raw) : [];
     setProjects(parsed);
   }, []);
+
+  React.useEffect(() => {
+    if (showSearch) inputRef.current?.focus();
+  }, [showSearch]);
 
   const persist = (next: Project[]) => {
     setProjects(next);
@@ -85,7 +90,7 @@ const RecentProjectsSheet: React.FC = () => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Open recent chats">
+        <Button variant="ghost" size="icon" aria-label="Open recent chats" className="transition-transform duration-200 ease-out hover:scale-[1.03] active:scale-[0.98]">
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
@@ -100,48 +105,65 @@ const RecentProjectsSheet: React.FC = () => {
               size="sm"
               variant="outline"
               onClick={onNewChat}
-              className="w-full h-9 rounded-lg justify-start gap-3 border text-foreground bg-background hover:bg-accent"
+              className="w-full h-9 rounded-lg justify-start gap-3 border text-foreground bg-background hover:bg-accent transition-all duration-200 ease-out hover:translate-x-[1px] active:translate-x-0"
             >
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border transition-colors duration-200">
                 <Plus className="h-3.5 w-3.5" />
               </span>
               New Chat
             </Button>
 
-            {showSearch ? (
-              <div className="flex items-center gap-2">
+            <div className="relative h-9">
+              {/* Search button state */}
+              <div
+                className={[
+                  "absolute inset-0 flex",
+                  "transition-all duration-200 ease-out",
+                  showSearch ? "opacity-0 -translate-y-1 pointer-events-none" : "opacity-100 translate-y-0 pointer-events-auto",
+                ].join(" ")}
+              >
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onToggleSearch}
+                  className="w-full h-9 rounded-lg justify-start gap-3 border text-foreground bg-background hover:bg-accent transition-all duration-200 ease-out hover:translate-x-[1px] active:translate-x-0"
+                >
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border transition-colors duration-200">
+                    <Search className="h-3.5 w-3.5" />
+                  </span>
+                  Search chats
+                </Button>
+              </div>
+
+              {/* Search input state */}
+              <div
+                className={[
+                  "absolute inset-0 flex items-center gap-2",
+                  "transition-all duration-200 ease-out",
+                  showSearch ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-1 pointer-events-none",
+                ].join(" ")}
+              >
                 <div className="relative flex-1">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground transition-opacity" />
                   <Input
+                    ref={inputRef}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search chats..."
-                    className="h-9 pl-8 rounded-lg"
+                    className="h-9 pl-8 rounded-lg transition-[box-shadow,background-color] duration-200 focus:shadow-sm"
                   />
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9"
+                  className="h-9 w-9 transition-transform duration-200 ease-out hover:scale-105 active:scale-95"
                   onClick={onToggleSearch}
                   aria-label="Close search"
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onToggleSearch}
-                className="w-full h-9 rounded-lg justify-start gap-3 border text-foreground bg-background hover:bg-accent"
-              >
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border">
-                  <Search className="h-3.5 w-3.5" />
-                </span>
-                Search chats
-              </Button>
-            )}
+            </div>
           </div>
 
           <ScrollArea className="flex-1">
@@ -156,7 +178,7 @@ const RecentProjectsSheet: React.FC = () => {
                   .map((p) => (
                     <div
                       key={p.id}
-                      className="flex items-center gap-3 rounded-md border p-3"
+                      className="flex items-center gap-3 rounded-md border p-3 transition-shadow duration-200 hover:shadow-sm"
                     >
                       <Folder className="h-4 w-4 text-muted-foreground" />
                       {editingId === p.id ? (
@@ -197,7 +219,7 @@ const RecentProjectsSheet: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 transition-transform duration-200 hover:scale-105 active:scale-95"
                             onClick={() => startEdit(p.id)}
                             aria-label="Edit project"
                           >
