@@ -120,11 +120,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Describe los cambios que quieres hacer..."
-            className="pr-20 pl-12 min-h-[48px] resize-none"
+            className="pr-20 pl-12 py-4 min-h-[60px] resize-none bg-secondary/60 border-border/50 focus:bg-secondary/80"
             rows={1}
             disabled={loading}
           />
-          <div className="absolute left-2 bottom-1.5">
+          <div className="absolute left-2 top-1/2 -translate-y-1/2">
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -174,7 +174,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
           <Button
             type="submit"
             size="icon"
-            className="absolute right-3 bottom-2 h-8 w-8"
+            className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8"
             disabled={loading || !input.trim() || credits <= 0}
             title={credits <= 0 ? "Sin créditos disponibles" : "Enviar"}
           >
