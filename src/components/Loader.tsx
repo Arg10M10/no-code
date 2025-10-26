@@ -4,105 +4,220 @@ import styled from 'styled-components';
 const Loader = () => {
   return (
     <StyledWrapper>
-      <div className="container">
-        <div className="loader">
-          <div className="crystal" />
-          <div className="crystal" />
-          <div className="crystal" />
-          <div className="crystal" />
-          <div className="crystal" />
-          <div className="crystal" />
-        </div>
-      </div>
+      <svg className="pl" width={240} height={240} viewBox="0 0 240 240">
+        <circle className="pl__ring pl__ring--a" cx={120} cy={120} r={105} fill="none" stroke="#000" strokeWidth={20} strokeDasharray="0 660" strokeDashoffset={-330} strokeLinecap="round" />
+        <circle className="pl__ring pl__ring--b" cx={120} cy={120} r={35} fill="none" stroke="#000" strokeWidth={20} strokeDasharray="0 220" strokeDashoffset={-110} strokeLinecap="round" />
+        <circle className="pl__ring pl__ring--c" cx={85} cy={120} r={70} fill="none" stroke="#000" strokeWidth={20} strokeDasharray="0 440" strokeLinecap="round" />
+        <circle className="pl__ring pl__ring--d" cx={155} cy={120} r={70} fill="none" stroke="#000" strokeWidth={20} strokeDasharray="0 440" strokeLinecap="round" />
+      </svg>
     </StyledWrapper>
   );
 }
 
 const StyledWrapper = styled.div`
-  .container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .pl {
+    width: 6em;
+    height: 6em;
   }
 
-  .loader {
-    position: relative;
-    width: 200px;
-    height: 200px;
-    perspective: 800px;
+  .pl__ring {
+    animation: ringA 2s linear infinite;
   }
 
-  .crystal {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 60px;
-    height: 60px;
-    opacity: 0;
-    transform-origin: bottom center;
-    transform: translate(-50%, -50%) rotateX(45deg) rotateZ(0deg);
-    animation: spin 4s linear infinite, emerge 2s ease-in-out infinite alternate,
-      fadeIn 0.3s ease-out forwards;
-    border-radius: 10px;
-    visibility: hidden;
+  .pl__ring--a {
+    stroke: #f42f25;
   }
 
-  @keyframes spin {
+  .pl__ring--b {
+    animation-name: ringB;
+    stroke: #f49725;
+  }
+
+  .pl__ring--c {
+    animation-name: ringC;
+    stroke: #255ff4;
+  }
+
+  .pl__ring--d {
+    animation-name: ringD;
+    stroke: #f42582;
+  }
+
+  /* Animations */
+  @keyframes ringA {
+    from, 4% {
+      stroke-dasharray: 0 660;
+      stroke-width: 20;
+      stroke-dashoffset: -330;
+    }
+
+    12% {
+      stroke-dasharray: 60 600;
+      stroke-width: 30;
+      stroke-dashoffset: -335;
+    }
+
+    32% {
+      stroke-dasharray: 60 600;
+      stroke-width: 30;
+      stroke-dashoffset: -595;
+    }
+
+    40%, 54% {
+      stroke-dasharray: 0 660;
+      stroke-width: 20;
+      stroke-dashoffset: -660;
+    }
+
+    62% {
+      stroke-dasharray: 60 600;
+      stroke-width: 30;
+      stroke-dashoffset: -665;
+    }
+
+    82% {
+      stroke-dasharray: 60 600;
+      stroke-width: 30;
+      stroke-dashoffset: -925;
+    }
+
+    90%, to {
+      stroke-dasharray: 0 660;
+      stroke-width: 20;
+      stroke-dashoffset: -990;
+    }
+  }
+
+  @keyframes ringB {
+    from, 12% {
+      stroke-dasharray: 0 220;
+      stroke-width: 20;
+      stroke-dashoffset: -110;
+    }
+
+    20% {
+      stroke-dasharray: 20 200;
+      stroke-width: 30;
+      stroke-dashoffset: -115;
+    }
+
+    40% {
+      stroke-dasharray: 20 200;
+      stroke-width: 30;
+      stroke-dashoffset: -195;
+    }
+
+    48%, 62% {
+      stroke-dasharray: 0 220;
+      stroke-width: 20;
+      stroke-dashoffset: -220;
+    }
+
+    70% {
+      stroke-dasharray: 20 200;
+      stroke-width: 30;
+      stroke-dashoffset: -225;
+    }
+
+    90% {
+      stroke-dasharray: 20 200;
+      stroke-width: 30;
+      stroke-dashoffset: -305;
+    }
+
+    98%, to {
+      stroke-dasharray: 0 220;
+      stroke-width: 20;
+      stroke-dashoffset: -330;
+    }
+  }
+
+  @keyframes ringC {
     from {
-      transform: translate(-50%, -50%) rotateX(45deg) rotateZ(0deg);
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: 0;
     }
-    to {
-      transform: translate(-50%, -50%) rotateX(45deg) rotateZ(360deg);
+
+    8% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -5;
+    }
+
+    28% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -175;
+    }
+
+    36%, 58% {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: -220;
+    }
+
+    66% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -225;
+    }
+
+    86% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -395;
+    }
+
+    94%, to {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: -440;
     }
   }
 
-  @keyframes emerge {
-    0%,
-    100% {
-      transform: translate(-50%, -50%) scale(0.5);
-      opacity: 0;
+  @keyframes ringD {
+    from, 8% {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: 0;
     }
-    50% {
-      transform: translate(-50%, -50%) scale(1);
-      opacity: 1;
+
+    16% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -5;
     }
-  }
 
-  @keyframes fadeIn {
-    to {
-      visibility: visible;
-      opacity: 0.8;
+    36% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -175;
     }
-  }
 
-  .crystal:nth-child(1) {
-    background: linear-gradient(45deg, #003366, #336699);
-    animation-delay: 0s;
-  }
+    44%, 50% {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: -220;
+    }
 
-  .crystal:nth-child(2) {
-    background: linear-gradient(45deg, #003399, #3366cc);
-    animation-delay: 0.3s;
-  }
+    58% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -225;
+    }
 
-  .crystal:nth-child(3) {
-    background: linear-gradient(45deg, #0066cc, #3399ff);
-    animation-delay: 0.6s;
-  }
+    78% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -395;
+    }
 
-  .crystal:nth-child(4) {
-    background: linear-gradient(45deg, #0099ff, #66ccff);
-    animation-delay: 0.9s;
-  }
-
-  .crystal:nth-child(5) {
-    background: linear-gradient(45deg, #33ccff, #99ccff);
-    animation-delay: 1.2s;
-  }
-
-  .crystal:nth-child(6) {
-    background: linear-gradient(45deg, #66ffff, #ccffff);
-    animation-delay: 1.5s;
+    86%, to {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: -440;
+    }
   }
 `;
 
