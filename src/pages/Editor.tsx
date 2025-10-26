@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
-  ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
@@ -105,10 +104,10 @@ const EditorPage: React.FC = () => {
       </header>
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
-          {/* Left chat panel: use a smaller fixed width so the preview is more visible */}
+          {/* Left chat panel: un poco más grande (420px) para mayor legibilidad */}
           <ResizablePanel
-            defaultWidth={360}
-            minWidth={240}
+            defaultWidth={420}
+            minWidth={300}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
@@ -123,8 +122,12 @@ const EditorPage: React.FC = () => {
             />
           </ResizablePanel>
 
-          {/* Inert handle kept for compatibility but renders nothing */}
-          <ResizableHandle />
+          {/* Separador vertical entre el chat y la preview */}
+          <div
+            aria-hidden="true"
+            className="h-full w-px bg-border/40"
+            role="separator"
+          />
 
           <ResizablePanel>
             <PreviewPanel
