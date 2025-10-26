@@ -9,7 +9,6 @@ import {
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
-import { PanelLeftClose } from "lucide-react";
 import { getProjectById, StoredMessage, setMessages, getMessages, getCredits } from "@/lib/projects";
 
 const EditorPage: React.FC = () => {
@@ -40,7 +39,7 @@ const EditorPage: React.FC = () => {
     }
   }, [projectId, navigate]);
 
-  const handleNewMessage = useCallback((text: string) => {
+  const handleNewMessage = useCallback((text: string, image?: File | null) => {
     if (!projectId) return;
 
     const userMessage: StoredMessage = { role: "user", content: text, createdAt: Date.now() };
@@ -85,13 +84,6 @@ const EditorPage: React.FC = () => {
     <div className="h-screen w-screen flex flex-col bg-background text-foreground">
       <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
-          >
-            <PanelLeftClose className="h-5 w-5" />
-          </Button>
           <h1 className="text-lg font-semibold truncate" title={projectName}>
             {projectName || "Cargando..."}
           </h1>
