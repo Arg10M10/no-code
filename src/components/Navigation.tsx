@@ -21,6 +21,12 @@ const Navigation = () => {
               >
                 Pricing
               </Link>
+              <Link
+                to="/settings"
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Settings
+              </Link>
             </nav>
           </div>
         </div>
