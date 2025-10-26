@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import { Settings } from "lucide-react";
 import RecentProjectsSheet from "./RecentProjectsSheet";
+import SettingsModal from "./SettingsModal";
 
 const Navigation = () => {
   return (
@@ -27,13 +27,7 @@ const Navigation = () => {
             </nav>
           </div>
 
-          <Link
-            to="/settings"
-            className="p-2 -mr-1 sm:mr-0 rounded-md text-muted-foreground transition-colors hover:text-foreground hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-            aria-label="Abrir configuración"
-          >
-            <Settings className="h-5 w-5" />
-          </Link>
+          <SettingsModal />
         </div>
       </div>
     </header>
