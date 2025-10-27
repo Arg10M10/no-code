@@ -60,7 +60,12 @@ const selectionScript = `
     overlay.style.zIndex = '9999';
     overlay.style.display = 'none';
     overlay.style.transition = 'all 50ms ease-out';
-    document.body.appendChild(overlay);
+    // Append to body once it exists
+    document.addEventListener('DOMContentLoaded', () => {
+      if (document.body) {
+        document.body.appendChild(overlay);
+      }
+    });
 
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'toggleSelectionMode') {
@@ -72,7 +77,7 @@ const selectionScript = `
     });
 
     const showOverlay = (target) => {
-      if (!target || target === document.body || target === document.documentElement || target === overlay) return;
+      if (!target || !document.body.contains(target) || target === overlay) return;
       const rect = target.getBoundingClientRect();
       overlay.style.display = 'block';
       overlay.style.width = \`\${rect.width}px\`;
@@ -100,35 +105,40 @@ const selectionScript = `
       return description;
     };
 
-    const handleMouseOver = (e) => {
+    const handleInteraction = (e) => {
       if (isSelectionModeActive) {
-        showOverlay(e.target);
-      }
-    };
-
-    const handleClick = (e) => {
-      if (isSelectionModeActive) {
+        // In selection mode, every click is for selection
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
+        
         const description = getElementDescription(e.target);
         window.parent.postMessage({ type: 'elementSelected', payload: { description } }, '*');
         isSelectionModeActive = false;
         hideOverlay();
       } else {
-        // When not in selection mode, prevent navigation from links or form submissions from buttons
+        // Not in selection mode, prevent default actions for links and forms
         const link = e.target.closest('a[href]');
         const button = e.target.closest('button, input[type="submit"], input[type="button"]');
         
-        if (link || button) {
+        if (link || button || e.type === 'submit') {
           e.preventDefault();
           e.stopPropagation();
-          console.warn('Preview Mode: Navigation and button actions are disabled.');
+          e.stopImmediatePropagation();
+          console.warn('Preview Mode: Navigation and actions are disabled.');
         }
       }
     };
+
+    const handleMouseOver = (e) => {
+      if (isSelectionModeActive) {
+        showOverlay(e.target);
+      }
+    };
     
-    document.addEventListener('mouseover', handleMouseOver);
-    document.addEventListener('click', handleClick, true);
+    document.addEventListener('click', handleInteraction, true);
+    document.addEventListener('submit', handleInteraction, true);
+    document.addEventListener('mouseover', handleMouseOver, true);
   })();
 </script>
 `;
