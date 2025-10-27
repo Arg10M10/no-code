@@ -74,6 +74,11 @@ const EditorPage: React.FC = () => {
 
     try {
       const generatedCode = await generateAnswer({ prompt, selectedModelLabel: selectedModel, apiKeys, signal: abortControllerRef.current.signal });
+      
+      if (includesSupabaseIntent(generatedCode)) {
+        setSupabaseIntentCounter((c) => c + 1);
+      }
+
       toast.success("Generación completada");
       setCode(projId, generatedCode);
       setCodeState(generatedCode);
@@ -187,6 +192,11 @@ const EditorPage: React.FC = () => {
           codeContext: code,
           signal: abortControllerRef.current.signal,
         });
+        
+        if (includesSupabaseIntent(generatedCode)) {
+          setSupabaseIntentCounter((c) => c + 1);
+        }
+
         setCode(projectId, generatedCode);
         setCodeState(generatedCode);
         aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización.";
