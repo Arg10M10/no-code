@@ -224,7 +224,7 @@ async function callGoogle(params: { messages: ChatMessage[]; model: string; apiK
 async function callOpenRouter(params: { messages: ChatMessage[]; model: string; apiKey: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
   const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${params.apiKey}`, "HTTP-Referer": window.location.origin, "X-Title": document.title || "ByDamian App" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${params.apiKey}`, "HTTP-Referer": window.location.origin, "X-Title": document.title || "Brimy" },
     body: JSON.stringify({ model: params.model, messages: params.messages, stream: false, temperature: params.temperature ?? 0.7 }),
     signal: params.signal,
   });
