@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import RecentProjectsSheet from "./RecentProjectsSheet";
 import SettingsModal from "./SettingsModal";
 
 const Navigation = () => {
@@ -7,6 +8,7 @@ const Navigation = () => {
       <div className="mx-auto w-full px-3 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 max-w-[1800px]">
         <div className="flex h-14 sm:h-16 items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3 md:gap-6 lg:gap-8">
+            <RecentProjectsSheet />
             <Link to="/" className="flex items-center gap-2">
               <div className="flex gap-0.5">
                 <span className="h-5 w-2.5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600"></span>
