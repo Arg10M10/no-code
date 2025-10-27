@@ -20,6 +20,13 @@ type ChatPanelProps = {
 
 const MODEL_TOKEN_LIMIT = 1_000_000;
 
+const isErrorMessage = (content: string) => {
+  const lowerContent = content.toLowerCase();
+  return lowerContent.includes('ha fallado') || 
+         lowerContent.includes('atención!') || 
+         lowerContent.includes('missing api key');
+};
+
 const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
   loading,
@@ -139,23 +146,32 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             const isAssistant = msg.role === "assistant";
             const isUser = msg.role === "user";
             const key = msg.createdAt ? `${msg.createdAt}-${index}` : `${index}`;
+            const isError = isAssistant && isErrorMessage(msg.content);
 
             return (
               <div key={key} className="min-w-0">
                 <div
                   className={[
-                    "p-3 rounded-lg transition-shadow",
-                    isAssistant
-                      ? "bg-white/3 border border-green-600/30 ring-2 ring-green-500/20 shadow-sm"
+                    "p-3 rounded-lg border shadow-sm",
+                    isError
+                      ? "bg-yellow-500/10 border-yellow-500/60"
+                      : isAssistant
+                      ? "bg-green-500/10 border-green-500/60"
                       : isUser
-                      ? "bg-white/3 border border-blue-500/10 shadow-[0_8px_30px_rgba(59,130,246,0.18)]"
-                      : "bg-muted-foreground/5 border border-transparent",
+                      ? "bg-blue-500/10 border-blue-500/60"
+                      : "bg-muted-foreground/5 border-transparent",
                   ].join(" ")}
                 >
                   <p
                     className={[
                       "text-sm leading-relaxed break-words",
-                      isAssistant ? "text-green-100" : isUser ? "text-blue-100" : "text-muted-foreground",
+                      isError
+                        ? "text-yellow-200"
+                        : isAssistant
+                        ? "text-green-200"
+                        : isUser
+                        ? "text-blue-200"
+                        : "text-muted-foreground",
                     ].join(" ")}
                   >
                     {msg.content}
@@ -167,7 +183,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           {loading && (
             <div className="min-w-0">
               <div
-                className="p-3 rounded-lg bg-white/3 border border-green-600/30 ring-2 ring-green-500/20 shadow-sm flex items-center"
+                className="p-3 rounded-lg bg-green-500/10 border border-green-500/60 flex items-center"
               >
                 <TypingIndicator />
               </div>
