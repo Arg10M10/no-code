@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PreviewPanelProps {
   previewUrl: string;
-  previewLoading: boolean;
+  loading: boolean;
   onRefresh: () => void;
   isSelectionModeActive: boolean;
   onToggleSelectionMode: () => void;
@@ -21,7 +21,7 @@ interface PreviewPanelProps {
 
 const PreviewPanel: React.FC<PreviewPanelProps> = ({
   previewUrl,
-  previewLoading,
+  loading,
   onRefresh,
   isSelectionModeActive,
   onToggleSelectionMode,
@@ -94,7 +94,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </div>
         
         <TabsContent value="preview" className="flex-1 relative">
-          {previewLoading && (
+          {loading && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
               <Loader />
             </div>
