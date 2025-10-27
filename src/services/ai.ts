@@ -222,10 +222,31 @@ async function callOpenRouter(params: { messages: ChatMessage[]; model: string; 
   return content;
 }
 
-function buildMessagesForPrompt(system: string | undefined, prompt: string): ChatMessage[] {
-  const baseSystem =
-    system ??
-    `You are an expert web developer. Your task is to generate a complete, standalone HTML file based on the user's prompt.
+function buildGenerationMessages(prompt: string, system?: string, codeContext?: string | null): ChatMessage[] {
+  if (codeContext) {
+    // Editing existing code
+    const systemPrompt = system ?? `You are an expert web developer. Your task is to modify the provided HTML code based on the user's request.
+RULES:
+1.  You will be given the user's modification request and the full current HTML.
+2.  You MUST respond with ONLY the complete, modified HTML file.
+3.  The response MUST start with \`<!DOCTYPE html>\` and end with \`</html>\`.
+4.  Do NOT include any explanations, comments, or markdown code blocks like \`\`\`html ... \`\`\` around the code.
+5.  Ensure all necessary scripts (like Tailwind CDN and the selection script) are preserved in the final output.`;
+    
+    const userPrompt = `Based on the current HTML code, apply the following change: "${prompt}"
+
+Here is the current HTML code:
+\`\`\`html
+${codeContext}
+\`\`\``;
+
+    return [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ];
+  } else {
+    // Generating new code from scratch
+    const systemPrompt = system ?? `You are an expert web developer. Your task is to generate a complete, standalone HTML file based on the user's prompt.
 RULES:
 1.  ALWAYS respond with a single, complete HTML file.
 2.  The response MUST start with \`<!DOCTYPE html>\` and end with \`</html>\`.
@@ -233,17 +254,19 @@ RULES:
 4.  Use Tailwind CSS for styling. Include the Tailwind CDN script in the \`<head>\`: \`<script src="https://cdn.tailwindcss.com"></script>\`.
 5.  Create a visually appealing, modern, and dark-themed design unless specified otherwise.
 6.  ALWAYS include the following script tag just before the closing \`</body>\` tag: ${selectionScript}`;
-  return [
-    { role: "system", content: baseSystem },
-    { role: "user", content: prompt },
-  ];
+    
+    return [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: prompt },
+    ];
+  }
 }
 
-export async function generateAnswer(req: { prompt: string; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; }): Promise<string> {
+export async function generateAnswer(req: { prompt: string; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; codeContext?: string | null; }): Promise<string> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
   if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
-  const messages = buildMessagesForPrompt(req.system, req.prompt);
+  const messages = buildGenerationMessages(req.prompt, req.system, req.codeContext);
   switch (provider) {
     case "openai": return callOpenAI({ messages, model, apiKey, temperature: req.temperature });
     case "google": return callGoogle({ messages, model, apiKey, system: req.system, temperature: req.temperature });

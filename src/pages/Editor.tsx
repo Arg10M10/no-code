@@ -149,6 +149,7 @@ const EditorPage: React.FC = () => {
           prompt: messageContent,
           selectedModelLabel: selectedModel,
           apiKeys,
+          codeContext: code, // Pass current code as context
         });
         setCode(projectId, generatedCode);
         setCodeState(generatedCode);
@@ -187,7 +188,7 @@ const EditorPage: React.FC = () => {
       setLoading(false);
       if (!isAsk) setPreviewLoading(false);
     }
-  }, [messages, projectId, selectedElement]);
+  }, [messages, projectId, selectedElement, code]);
 
   const handleRefreshPreview = () => {
     setPreviewLoading(true);
