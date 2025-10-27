@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Project, deleteProject, listProjects } from "@/lib/projects";
+import { Project, deleteProject, listProjects, getCode } from "@/lib/projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -102,18 +102,29 @@ const ProjectsGallery: React.FC = () => {
     return filteredProjects.map((project, index) => {
       const gradient = gradientPalette[index % gradientPalette.length];
       const showPublished = index % 3 === 0; // simple hint badge like the screenshot
+      const code = getCode(project.id);
+
       return (
         <article
           key={project.id}
           className="group overflow-hidden rounded-2xl border border-border/50 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 transition-colors hover:border-primary/60"
         >
           <div className={`relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br ${gradient}`}>
+            {code ? (
+              <iframe
+                title={`${project.name} preview`}
+                srcDoc={code}
+                sandbox="allow-scripts allow-same-origin"
+                className="absolute inset-0 w-full h-full border-0 pointer-events-none"
+              />
+            ) : null}
+
             {showPublished && (
-              <span className="absolute left-3 bottom-3 text-[11px] font-semibold rounded-md bg-white/10 text-white/90 px-2 py-0.5 border border-white/20">
+              <span className="absolute left-3 bottom-3 z-10 text-[11px] font-semibold rounded-md bg-white/10 text-white/90 px-2 py-0.5 border border-white/20">
                 Published
               </span>
             )}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20" />
+            <div className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20" />
           </div>
 
           <div className="px-5 pb-5 pt-4 space-y-4">
