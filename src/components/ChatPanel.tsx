@@ -272,8 +272,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                   size="icon"
                   onClick={() => setShowTokensPopup((s) => !s)}
                   className="h-9 w-9 rounded-md p-0 text-primary"
-                  aria-label="Mostrar tokens"
-                  title="Mostrar tokens disponibles"
+                  aria-label="Show tokens"
+                  title="Show available tokens"
                 >
                   <Info className="h-4 w-4" />
                 </Button>
@@ -284,7 +284,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                     ref={popupRef}
                     className="absolute right-0 bottom-full mb-3 w-[260px] max-w-[95vw] z-50 rounded-md bg-[#0b0b0b] border border-neutral-700 p-3 shadow-lg text-sm text-white"
                     role="dialog"
-                    aria-label="Tokens disponibles"
+                    aria-label="Available tokens"
                   >
                     <div className="flex items-center justify-between text-xs text-white/90 mb-2">
                       <div className="truncate">Tokens: <span className="font-medium">{credits.toLocaleString()}</span></div>

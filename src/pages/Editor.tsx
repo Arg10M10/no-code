@@ -20,7 +20,7 @@ const EditorPage: React.FC = () => {
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [messages, setMessagesState] = useState<StoredMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [credits, setCredits] = useState(0); // iniciar con 0 tokens
+  const [credits, setCredits] = useState(0); // start with 0 tokens
   const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ const EditorPage: React.FC = () => {
       if (project) {
         setProjectName(project.name);
         setMessagesState(getMessages(projectId));
-        // Iniciamos los créditos en 0 (se gastará 1k-5k por pregunta)
+        // We start credits at 0 (1k-5k will be spent per question)
         setCredits(0);
       } else {
         console.error("Project not found");
@@ -41,7 +41,7 @@ const EditorPage: React.FC = () => {
   }, [projectId, navigate]);
 
   const computeCost = (text: string) => {
-    // Heurística simple: preguntas cortas = 1k, medianas = 3k, largas = 5k
+    // Simple heuristic: short questions = 1k, medium = 3k, long = 5k
     const len = (text || "").trim().length;
     if (len === 0) return 1000;
     if (len < 50) return 1000;
@@ -58,7 +58,7 @@ const EditorPage: React.FC = () => {
     setMessages(projectId, newMessages);
     setLoading(true);
 
-    // Descontar tokens según tipo/pregunta
+    // Deduct tokens based on type/question
     const cost = computeCost(text);
     setCredits((prev) => Math.max(0, prev - cost));
 
@@ -66,7 +66,7 @@ const EditorPage: React.FC = () => {
     setTimeout(() => {
       const aiResponse: StoredMessage = {
         role: "assistant",
-        content: "Entendido. Estoy trabajando en tus cambios. Verás la vista previa actualizada en breve.",
+        content: "Understood. I'm working on your changes. You'll see the updated preview shortly.",
         createdAt: Date.now(),
       };
       const finalMessages = [...newMessages, aiResponse];
@@ -90,7 +90,7 @@ const EditorPage: React.FC = () => {
   const previewUrl = `/preview`;
 
   if (!projectId) {
-    return <div>Cargando proyecto...</div>;
+    return <div>Loading project...</div>;
   }
 
   return (
@@ -98,18 +98,18 @@ const EditorPage: React.FC = () => {
       <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold truncate" title={projectName}>
-            {projectName || "Cargando..."}
+            {projectName || "Loading..."}
           </h1>
         </div>
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-            Salir
+            Exit
           </Button>
         </div>
       </header>
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
-          {/* Left chat panel: un poco más grande (420px) para mayor legibilidad */}
+          {/* Left chat panel: a bit larger (420px) for better readability */}
           <ResizablePanel
             defaultWidth={420}
             minWidth={300}
@@ -127,7 +127,7 @@ const EditorPage: React.FC = () => {
             />
           </ResizablePanel>
 
-          {/* Separador vertical entre el chat y la preview */}
+          {/* Vertical separator between chat and preview */}
           <div
             aria-hidden="true"
             className="h-full w-px bg-border/40"

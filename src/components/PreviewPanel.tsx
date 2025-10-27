@@ -29,16 +29,16 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewUrl, loading, onRefr
         <div className="flex items-center justify-between p-2 border-b bg-background flex-shrink-0">
           <TabsList>
             <TabsTrigger value="preview">Preview</TabsTrigger>
-            <TabsTrigger value="issues">Problemas</TabsTrigger>
-            <TabsTrigger value="code">Código</TabsTrigger>
+            <TabsTrigger value="issues">Issues</TabsTrigger>
+            <TabsTrigger value="code">Code</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refrescar preview">
+            <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh preview">
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button>
               <Upload className="h-4 w-4 mr-2" />
-              Publicar
+              Publish
             </Button>
           </div>
         </div>
@@ -59,9 +59,9 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewUrl, loading, onRefr
 
         <TabsContent value="issues" className="p-6 flex-1 overflow-y-auto">
           <div className="max-w-md mx-auto text-center">
-            <h2 className="text-lg font-semibold mb-2">Problemas Detectados</h2>
+            <h2 className="text-lg font-semibold mb-2">Issues Detected</h2>
             <p className="text-sm text-muted-foreground">
-              No se han detectado problemas. Aquí se mostrarán los errores o advertencias.
+              No issues have been detected. Errors or warnings will be shown here.
             </p>
           </div>
         </TabsContent>
@@ -69,7 +69,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewUrl, loading, onRefr
         <TabsContent value="code" className="flex-1 overflow-hidden bg-background/50">
            <div className="p-6 text-center">
             <p className="text-sm text-muted-foreground">
-                Los cambios de código se aplican directamente a los archivos del proyecto.
+                Code changes are applied directly to the project files.
             </p>
           </div>
         </TabsContent>
