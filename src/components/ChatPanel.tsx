@@ -4,7 +4,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Paperclip, Settings, Info } from "lucide-react";
+import { ArrowUp, X, Paperclip, Settings, Info, ChevronsUpDown, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
@@ -26,6 +26,12 @@ const isErrorMessage = (content: string) => {
          lowerContent.includes('atención!') || 
          lowerContent.includes('missing api key');
 };
+
+const availableModels = [
+    { id: 'claude-3-opus', name: 'Claude 3 Opus' },
+    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+    { id: 'llama-3-70b', name: 'Llama 3 70b' },
+];
 
 const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
@@ -49,6 +55,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const popupRef = React.useRef<HTMLDivElement | null>(null);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
 
+  // Model state + refs
+  const [isModelPopupOpen, setIsModelPopupOpen] = React.useState(false);
+  const [selectedModel, setSelectedModel] = React.useState('claude-3-opus');
+  const modelButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const modelPopupRef = React.useRef<HTMLDivElement | null>(null);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -67,7 +79,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     return () => URL.revokeObjectURL(url);
   }, [selectedImage]);
 
-  // Close popup on outside click or Escape
+  // Close popups on outside click or Escape
   React.useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
       const target = e.target as Node | null;
@@ -81,9 +93,22 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           setShowTokensPopup(false);
         }
       }
+      if (isModelPopupOpen) {
+        if (
+          modelPopupRef.current &&
+          !modelPopupRef.current.contains(target) &&
+          modelButtonRef.current &&
+          !modelButtonRef.current.contains(target)
+        ) {
+          setIsModelPopupOpen(false);
+        }
+      }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShowTokensPopup(false);
+      if (e.key === "Escape") {
+        setShowTokensPopup(false);
+        setIsModelPopupOpen(false);
+      }
     };
     document.addEventListener("mousedown", onMouseDown);
     document.addEventListener("keydown", onKey);
@@ -91,7 +116,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       document.removeEventListener("mousedown", onMouseDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [showTokensPopup]);
+  }, [showTokensPopup, isModelPopupOpen]);
 
   const handleAttachClick = () => {
     fileInputRef.current?.click();
@@ -265,6 +290,45 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 >
                   {chatMode === 'build' ? 'Build' : 'Ask'}
                 </button>
+
+                <div className="relative">
+                    <button
+                        ref={modelButtonRef}
+                        type="button"
+                        className="inline-flex items-center justify-center gap-1 text-sm font-medium px-3 py-1 rounded-md transition-all select-none bg-transparent border border-border text-primary hover:bg-primary/5"
+                        onClick={() => setIsModelPopupOpen(prev => !prev)}
+                    >
+                        <span>Models</span>
+                        <ChevronsUpDown className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                    {isModelPopupOpen && (
+                        <div
+                            ref={modelPopupRef}
+                            className="absolute left-0 bottom-full mb-2 w-[200px] z-50 rounded-md bg-[#0b0b0b] border border-neutral-700 p-2 shadow-lg"
+                            role="dialog"
+                            aria-label="Select a model"
+                        >
+                            <p className="text-xs text-white/70 px-2 pb-1">Select a model</p>
+                            <div className="space-y-1">
+                                {availableModels.map(model => (
+                                    <button
+                                        key={model.id}
+                                        type="button"
+                                        className={`w-full text-left px-2 py-1.5 rounded-md text-sm flex items-center justify-between hover:bg-white/10 ${selectedModel === model.id ? 'text-white' : 'text-white/80'}`}
+                                        onClick={() => {
+                                            setSelectedModel(model.id);
+                                            setIsModelPopupOpen(false);
+                                        }}
+                                    >
+                                        <span>{model.name}</span>
+                                        {selectedModel === model.id && <Check className="h-4 w-4 text-green-400" />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {chips.map((c) => (
                   <button
                     key={c.id}
