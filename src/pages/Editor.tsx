@@ -9,7 +9,7 @@ import {
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
-import { getProjectById, StoredMessage, setMessages, getMessages, getCredits } from "@/lib/projects";
+import { getProjectById, StoredMessage, setMessages, getMessages } from "@/lib/projects";
 
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -20,7 +20,7 @@ const EditorPage: React.FC = () => {
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [messages, setMessagesState] = useState<StoredMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [credits, setCredits] = useState(0);
+  const [credits, setCredits] = useState(1_000_000); // inicializar con 1M tokens
   const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
@@ -29,7 +29,8 @@ const EditorPage: React.FC = () => {
       if (project) {
         setProjectName(project.name);
         setMessagesState(getMessages(projectId));
-        setCredits(getCredits(projectId));
+        // Todos los modelos disponen de 1,000,000 tokens — fijamos el crédito inicial a 1M
+        setCredits(1_000_000);
       } else {
         console.error("Project not found");
         navigate("/"); // Redirect if project doesn't exist
@@ -39,6 +40,15 @@ const EditorPage: React.FC = () => {
     }
   }, [projectId, navigate]);
 
+  const computeCost = (text: string) => {
+    // Heurística simple: preguntas cortas = 1k, medianas = 3k, largas = 5k
+    const len = (text || "").trim().length;
+    if (len === 0) return 1000;
+    if (len < 50) return 1000;
+    if (len < 200) return 3000;
+    return 5000;
+  };
+
   const handleNewMessage = useCallback((text: string, image?: File | null) => {
     if (!projectId) return;
 
@@ -47,7 +57,10 @@ const EditorPage: React.FC = () => {
     setMessagesState(newMessages);
     setMessages(projectId, newMessages);
     setLoading(true);
-    setCredits(prev => Math.max(0, prev - 1));
+
+    // Descontar tokens según tipo/pregunta
+    const cost = computeCost(text);
+    setCredits((prev) => Math.max(0, prev - cost));
 
     // Simulate AI thinking...
     setTimeout(() => {

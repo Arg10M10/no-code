@@ -4,7 +4,8 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { Send, X, Paperclip, Settings } from "lucide-react";
+import { Send, X, Paperclip, Settings, Info } from "lucide-react";
+import { toast } from "sonner";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -69,12 +70,18 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
     }
   };
 
-  // Chips/buttons shown below the input area (now placed at the bottom)
+  // Chips/models — todos con 1,000,000 tokens por petición
   const chips = [
-    { id: "build", label: "Build", filled: false },
-    { id: "gpt5mini", label: "GPT 5 Mini", filled: false },
-    { id: "pro", label: "Pro", filled: true },
+    { id: "build", label: "Build", filled: false, tokens: 1_000_000 },
+    { id: "gpt5mini", label: "GPT 5 Mini", filled: false, tokens: 1_000_000 },
+    { id: "pro", label: "Pro", filled: true, tokens: 1_000_000 },
   ];
+
+  const showTokensToast = () => {
+    toast(`Tienes ${credits.toLocaleString()} tokens disponibles`, {
+      description: "Cada modelo dispone de 1,000,000 tokens. Cada pregunta consume entre 1,000 y 5,000 tokens según su tipo.",
+    });
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -177,6 +184,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                 <Settings className="h-4 w-4" />
               </Button>
 
+              {/* Icon para mostrar tokens */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={showTokensToast}
+                className="h-9 w-9 rounded-md p-0 text-primary"
+                aria-label="Mostrar tokens"
+                title="Mostrar tokens disponibles"
+              >
+                <Info className="h-4 w-4" />
+              </Button>
+
               <Button
                 type="submit"
                 disabled={loading || (!text.trim() && !selectedImage)}
@@ -203,6 +223,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                   ].join(" ")}
                   onClick={() => {
                     // kept non-functional for now; can be wired later
+                    toast(`${c.label}: ${c.tokens.toLocaleString()} tokens disponibles`);
                   }}
                   aria-pressed={c.filled}
                 >
