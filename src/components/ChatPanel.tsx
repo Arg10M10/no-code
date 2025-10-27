@@ -105,6 +105,18 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
     }
   };
 
+  // Chips/models — todos con 1,000,000 tokens por petición
+  const chips = [
+    { id: "build", label: "Build", filled: false, tokens: MODEL_TOKEN_LIMIT },
+    { id: "gpt5mini", label: "GPT 5 Mini", filled: false, tokens: MODEL_TOKEN_LIMIT },
+    { id: "pro", label: "Pro", filled: true, tokens: MODEL_TOKEN_LIMIT },
+  ];
+
+  const showTokensToast = () => {
+    // fallback: keep this for quick feedback; main UI is popup
+    toast(`Tienes ${credits.toLocaleString()} tokens disponibles`);
+  };
+
   // Values for popup display
   const percentOfLimit = Math.round((credits / MODEL_TOKEN_LIMIT) * 100);
   const progressWidth = `${Math.max(0, Math.min(100, percentOfLimit))}%`;
@@ -270,6 +282,31 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                   </div>
                 </div>
               ) : null}
+            </div>
+          </div>
+
+          {/* Chips row moved to the bottom, more squared buttons */}
+          <div className="mt-3 border-t border-border pt-3">
+            <div className="flex items-center gap-2 justify-start flex-wrap">
+              {chips.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={[
+                    "inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none",
+                    c.filled
+                      ? "bg-primary text-primary-foreground hover:brightness-95"
+                      : "bg-transparent border border-border text-primary hover:bg-primary/5",
+                  ].join(" ")}
+                  onClick={() => {
+                    // kept non-functional for now; can be wired later
+                    toast(`${c.label}: ${c.tokens.toLocaleString()} tokens disponibles`);
+                  }}
+                  aria-pressed={c.filled}
+                >
+                  {c.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
