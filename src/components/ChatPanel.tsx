@@ -101,8 +101,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Send on Ctrl/Cmd+Enter
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    // Send on Enter, new line on Shift+Enter
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Evita el salto de línea
       handleSubmit();
     }
   };
