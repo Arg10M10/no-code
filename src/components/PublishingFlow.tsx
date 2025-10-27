@@ -76,11 +76,14 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       });
 
       if (error) {
-        const contextError = (error.context as any)?.data?.error;
-        throw new Error(contextError || error.message);
+        let detailedMessage = error.message;
+        if (error.context && typeof error.context === 'object' && 'error' in error.context) {
+          detailedMessage = (error.context as any).error;
+        }
+        throw new Error(detailedMessage);
       }
       
-      if (data.error) {
+      if (data && data.error) {
         throw new Error(data.error);
       }
 
