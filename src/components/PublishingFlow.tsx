@@ -76,7 +76,8 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       });
 
       if (error) {
-        throw new Error(error.message);
+        const contextError = (error.context as any)?.data?.error;
+        throw new Error(contextError || error.message);
       }
       
       if (data.error) {
@@ -87,8 +88,10 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       setPublishState('published');
       toast.success('Project published successfully!');
     } catch (err: any) {
-      console.error(err);
-      toast.error('Failed to publish project', { description: err.message });
+      console.error("Full publishing error:", err);
+      toast.error('Failed to publish project', { 
+        description: err.message || "An unknown error occurred. Check the browser console for more details." 
+      });
       setPublishState('idle');
     }
   };
@@ -156,6 +159,7 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
                     onChange={(e) => setRepoName(e.target.value)}
                     disabled={publishState === 'publishing'}
                   />
+                  <p className="text-xs text-muted-foreground">Make sure this repository name doesn't already exist in your GitHub account.</p>
                 </div>
                 <Button onClick={handlePublish} className="mt-4" disabled={publishState === 'publishing'}>
                   {publishState === 'publishing' ? (
