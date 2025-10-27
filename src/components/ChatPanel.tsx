@@ -4,7 +4,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { Send, X, Paperclip, Settings, Info } from "lucide-react";
+import { ArrowUp, X, Paperclip, Settings, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom"; // Importar useNavigate
 
@@ -198,7 +198,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
               className="h-9 w-9 rounded-md p-0 bg-primary text-primary-foreground hover:bg-primary/90"
               aria-label="Send"
             >
-              <Send className="h-4 w-4" />
+              <ArrowUp className="h-4 w-4" />
             </Button>
           </div>
 
