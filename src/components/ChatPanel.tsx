@@ -280,7 +280,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                       }}
                       className="w-full text-left text-xs text-sky-400 hover:underline"
                     >
-                      Optimize your tokens with Dyad Pro's Smart Context
+                      Optimize your tokens with Pro Plan
                     </button>
                   </div>
                 </div>

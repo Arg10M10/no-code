@@ -20,7 +20,7 @@ const EditorPage: React.FC = () => {
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [messages, setMessagesState] = useState<StoredMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [credits, setCredits] = useState(1_000_000); // inicializar con 1M tokens
+  const [credits, setCredits] = useState(0); // iniciar con 0 tokens
   const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
@@ -29,8 +29,8 @@ const EditorPage: React.FC = () => {
       if (project) {
         setProjectName(project.name);
         setMessagesState(getMessages(projectId));
-        // Todos los modelos disponen de 1,000,000 tokens — fijamos el crédito inicial a 1M
-        setCredits(1_000_000);
+        // Iniciamos los créditos en 0 (se gastará 1k-5k por pregunta)
+        setCredits(0);
       } else {
         console.error("Project not found");
         navigate("/"); // Redirect if project doesn't exist
