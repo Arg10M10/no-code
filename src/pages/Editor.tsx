@@ -15,7 +15,6 @@ import { storage } from "@/lib/storage";
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
 import { cn } from "@/lib/utils";
-import { UploadCloud } from "lucide-react";
 
 function includesSupabaseIntent(text: string): boolean {
   const t = (text || "").toLowerCase();
@@ -256,12 +255,6 @@ const EditorPage: React.FC = () => {
     setIsSelectionModeActive(false);
   };
 
-  const handlePublish = () => {
-    if (projectId) {
-      navigate(`/publish?id=${projectId}`);
-    }
-  };
-
   if (!projectId) {
     return <div>Cargando proyecto...</div>;
   }
@@ -274,13 +267,9 @@ const EditorPage: React.FC = () => {
             {projectName || "Cargando..."}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={() => navigate('/')}>
             Salir
-          </Button>
-          <Button size="sm" onClick={handlePublish} disabled={!code}>
-            <UploadCloud className="h-4 w-4 mr-2" />
-            Publish
           </Button>
         </div>
       </header>
