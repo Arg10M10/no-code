@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Github, Loader2, CheckCircle, ArrowRight, ExternalLink, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
+import { User, FunctionsError } from '@supabase/supabase-js';
 
 interface PublishingFlowProps {
   projectName: string;
@@ -76,11 +76,20 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       });
 
       if (error) {
-        throw new Error(error.message); // Network or function invocation error
+        // This is the key change: we now inspect the error context for the detailed message.
+        const functionError = (error as FunctionsError).context;
+        let errorMessage = error.message; // Fallback to the generic message
+
+        if (functionError && typeof functionError === 'object' && 'details' in functionError) {
+          // We found our detailed error message from the function!
+          errorMessage = functionError.details as string;
+        }
+        
+        // Throw with the more specific message
+        throw new Error(errorMessage);
       }
       
-      if (data.error) {
-        // Application-level error from our function's JSON response
+      if (data && data.error) {
         throw new Error(data.details || data.error);
       }
 
@@ -93,7 +102,7 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       
       toast.error('Failed to publish project', { 
         description: errorMessage,
-        duration: 15000, // Give more time to read the detailed error
+        duration: 15000,
       });
       setPublishState('idle');
     }
