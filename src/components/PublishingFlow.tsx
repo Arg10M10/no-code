@@ -14,12 +14,20 @@ interface PublishingFlowProps {
   projectId: string;
 }
 
+const sanitizeRepoName = (name: string) => {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-') // Reemplazar espacios con guiones
+    .replace(/[^a-z0-9-._]/g, ''); // Eliminar caracteres inválidos para nombres de repo
+};
+
 const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCode, projectId }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishState, setPublishState] = useState<'idle' | 'publishing' | 'published'>('idle');
-  const [repoName, setRepoName] = useState(projectName.replace(/\s+/g, '-').toLowerCase());
+  const [repoName, setRepoName] = useState(sanitizeRepoName(projectName));
   const [publishedUrl, setPublishedUrl] = useState('');
 
   useEffect(() => {
@@ -165,7 +173,7 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
                   <Input
                     id="repo-name"
                     value={repoName}
-                    onChange={(e) => setRepoName(e.target.value)}
+                    onChange={(e) => setRepoName(sanitizeRepoName(e.target.value))}
                     disabled={publishState === 'publishing'}
                   />
                   <p className="text-xs text-muted-foreground">Make sure this repository name doesn't already exist.</p>
