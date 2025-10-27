@@ -45,11 +45,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
-
-  // Popup state + refs
-  const [showTokensPopup, setShowTokensPopup] = React.useState(false);
-  const tokenButtonRef = React.useRef<HTMLButtonElement | null>(null);
-  const popupRef = React.useRef<HTMLDivElement | null>(null);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
 
   // Model state
@@ -72,34 +67,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [selectedImage]);
-
-  // Close popups on outside click or Escape
-  React.useEffect(() => {
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node | null;
-      if (showTokensPopup) {
-        if (
-          popupRef.current &&
-          !popupRef.current.contains(target) &&
-          tokenButtonRef.current &&
-          !tokenButtonRef.current.contains(target)
-        ) {
-          setShowTokensPopup(false);
-        }
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setShowTokensPopup(false);
-      }
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [showTokensPopup]);
 
   const handleAttachClick = () => {
     fileInputRef.current?.click();
@@ -318,7 +285,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 ))}
               </div>
 
-              <div className="relative flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="ghost"
@@ -343,25 +310,23 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   <Settings className="h-4 w-4" />
                 </Button>
 
-                <Button
-                  ref={tokenButtonRef}
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowTokensPopup((s) => !s)}
-                  className="h-9 w-9 rounded-md p-0 text-primary"
-                  aria-label="Show tokens"
-                  title="Show available tokens"
-                >
-                  <Info className="h-4 w-4" />
-                </Button>
-
-                {showTokensPopup ? (
-                  <div
-                    ref={popupRef}
-                    className="absolute right-0 bottom-full mb-3 w-[260px] max-w-[95vw] z-50 rounded-md bg-[#0b0b0b] border border-neutral-700 p-3 shadow-lg text-sm text-white"
-                    role="dialog"
-                    aria-label="Available tokens"
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-md p-0 text-primary"
+                      aria-label="Show tokens"
+                      title="Show available tokens"
+                    >
+                      <Info className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="top"
+                    align="end"
+                    className="w-[260px] max-w-[95vw] rounded-md bg-[#0b0b0b] border-neutral-700 p-3 text-sm text-white shadow-lg"
                   >
                     <div className="flex items-center justify-between text-xs text-white/90 mb-2">
                       <div className="truncate">Tokens: <span className="font-medium">{credits.toLocaleString()}</span></div>
@@ -381,17 +346,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     <div className="pt-2 border-t border-white/6">
                       <button
                         type="button"
-                        onClick={() => {
-                          setShowTokensPopup(false);
-                          navigate('/pricing');
-                        }}
+                        onClick={() => navigate('/pricing')}
                         className="w-full text-left text-xs text-sky-400 hover:underline"
                       >
                         Optimize your tokens with Pro Plan
                       </button>
                     </div>
-                  </div>
-                ) : null}
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </div>
