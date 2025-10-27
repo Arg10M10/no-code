@@ -114,7 +114,7 @@ const EditorPage: React.FC = () => {
     }
   }, [projectId, navigate, triggerInitialGeneration]);
 
-  const handleNewMessage = useCallback(async (text: string, image?: File | null) => {
+  const handleNewMessage = useCallback(async (text: string, images?: File[]) => {
     if (!projectId) return;
 
     const isAsk = text.trim().startsWith("[ASK]");

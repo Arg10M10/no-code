@@ -10,13 +10,13 @@ import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ModelsPopover from "./ModelsPopover";
-import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
+import { getSelectedModelLabel, setSelectedModelLabel, getUserPlan } from "@/lib/settings";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
   loading: boolean;
   credits: number;
-  onSend: (text: string, image?: File | null) => void;
+  onSend: (text: string, images?: File[]) => void;
   selectedElement: string | null;
   onClearSelection: () => void;
 };
@@ -30,6 +30,9 @@ const isErrorMessage = (content: string) => {
          lowerContent.includes('missing api key');
 };
 
+const FREE_MAX_IMAGES = 3;
+const PRO_MAX_IMAGES = 10;
+
 const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
   loading,
@@ -41,14 +44,18 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const navigate = useNavigate();
   const [text, setText] = React.useState("");
   const [chatMode, setChatMode] = React.useState<'build' | 'ask'>('build');
-  const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+
+  // Múltiples imágenes
+  const [selectedImages, setSelectedImages] = React.useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = React.useState<string[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
 
   // Model state
   const [selectedModel, setSelectedModel] = React.useState<string>(getSelectedModelLabel());
+  const userPlan = getUserPlan();
+  const maxImages = userPlan === "pro" ? PRO_MAX_IMAGES : FREE_MAX_IMAGES;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -58,44 +65,65 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     scrollToBottom();
   }, [messages, loading]);
 
+  // Crear y limpiar object URLs de previews
   React.useEffect(() => {
-    if (!selectedImage) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(selectedImage);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [selectedImage]);
+    const urls = selectedImages.map((f) => URL.createObjectURL(f));
+    setPreviewUrls(urls);
+    return () => {
+      urls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [selectedImages]);
 
   const handleAttachClick = () => {
     fileInputRef.current?.click();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] ?? null;
-    if (f) {
-      setSelectedImage(f);
-    }
+    const files = Array.from(e.target.files || []).filter(Boolean);
     e.currentTarget.value = "";
+
+    if (files.length === 0) return;
+
+    const remainingSlots = Math.max(0, maxImages - selectedImages.length);
+    const allowedFiles = files.slice(0, remainingSlots);
+
+    if (allowedFiles.length < files.length) {
+      const msg =
+        userPlan === "pro"
+          ? `Máximo ${PRO_MAX_IMAGES} imágenes por mensaje en Pro.`
+          : `Máximo ${FREE_MAX_IMAGES} imágenes por mensaje en el plan gratuito.`;
+      toast.warning("Límite de adjuntos alcanzado", {
+        description: msg,
+        action: userPlan === "pro" ? undefined : {
+          label: "Ir a Pro",
+          onClick: () => navigate("/pricing"),
+        },
+      });
+    }
+
+    if (allowedFiles.length === 0) return;
+    setSelectedImages((prev) => [...prev, ...allowedFiles]);
   };
 
-  const removeImage = (e?: React.MouseEvent) => {
+  const removeImageAt = (index: number) => {
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearImages = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setSelectedImage(null);
-    setPreviewUrl(null);
+    setSelectedImages([]);
   };
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!text.trim() && !selectedImage) return;
+    if (!text.trim() && selectedImages.length === 0) return;
     
     const messageToSend = chatMode === 'ask' ? `[ASK] ${text.trim()}` : text.trim();
     
-    onSend(messageToSend, selectedImage ?? undefined);
+    onSend(messageToSend, selectedImages.length ? selectedImages : undefined);
     
     setText("");
-    removeImage();
+    clearImages();
     textareaRef.current?.focus();
   };
 
@@ -183,17 +211,35 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
       <form onSubmit={handleSubmit} className="p-4">
         <div className="rounded-xl bg-secondary border border-border p-3 shadow-sm">
-          {previewUrl ? (
-            <div className="relative rounded-md overflow-hidden border border-white/6 mb-3">
-              <img src={previewUrl} alt="Preview" className="w-full max-h-40 object-contain bg-black/5" />
-              <button
-                type="button"
-                onClick={removeImage}
-                className="absolute top-2 right-2 inline-flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20 p-1"
-                aria-label="Remove attached image"
-              >
-                <X className="h-4 w-4 text-white/90" />
-              </button>
+          {selectedImages.length > 0 ? (
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs text-muted-foreground">
+                  Adjuntos: {selectedImages.length}/{maxImages} {userPlan === "pro" ? "(Pro)" : "(Free)"}
+                </div>
+                <button
+                  type="button"
+                  onClick={clearImages}
+                  className="inline-flex items-center justify-center text-xs rounded-md px-2 py-1 bg-white/10 hover:bg-white/15"
+                >
+                  Quitar todos
+                </button>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {previewUrls.map((url, idx) => (
+                  <div key={idx} className="relative rounded-md overflow-hidden border border-white/10">
+                    <img src={url} alt={`Adjunto ${idx + 1}`} className="w-full aspect-square object-cover bg-black/5" />
+                    <button
+                      type="button"
+                      onClick={() => removeImageAt(idx)}
+                      className="absolute top-1 right-1 inline-flex items-center justify-center rounded-md bg-black/60 hover:bg-black/70 p-1"
+                      aria-label="Remove image"
+                    >
+                      <X className="h-3.5 w-3.5 text-white/90" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : null}
 
@@ -213,6 +259,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
               onChange={handleFileChange}
               aria-hidden
@@ -220,7 +267,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
             <Button
               type="submit"
-              disabled={loading || (!text.trim() && !selectedImage)}
+              disabled={loading || (!text.trim() && selectedImages.length === 0)}
               className="h-9 w-9 rounded-md p-0 bg-primary text-primary-foreground hover:bg-primary/90"
               aria-label="Send"
             >
@@ -263,53 +310,17 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   </PopoverContent>
                 </Popover>
 
-                {chips.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={[
-                      "inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none",
-                      c.filled
-                        ? "bg-primary text-primary-foreground hover:brightness-95"
-                        : "bg-transparent border border-border text-primary hover:bg-primary/5",
-                    ].join(" ")}
-                    onClick={() => {
-                      if (c.id === 'pro') {
-                        navigate('/pricing');
-                      }
-                    }}
-                    aria-pressed={c.filled}
-                  >
-                    {c.label}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  onClick={handleAttachClick}
+                  className="inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none bg-transparent border border-border text-primary hover:bg-primary/5"
+                >
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Adjuntar imágenes
+                </button>
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleAttachClick}
-                  className="h-9 w-9 rounded-md p-0 text-primary"
-                  aria-label="Attach image"
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-md p-0 text-primary"
-                  onClick={() => {
-                    // settings action placeholder
-                  }}
-                  aria-label="Settings"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -343,17 +354,35 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                       />
                     </div>
 
-                    <div className="pt-2 border-t border-white/6">
-                      <button
-                        type="button"
-                        onClick={() => navigate('/pricing')}
-                        className="w-full text-left text-xs text-sky-400 hover:underline"
-                      >
-                        Optimize your tokens with Pro Plan
-                      </button>
+                    <div className="pt-2 border-t border-white/6 space-y-2">
+                      <div className="text-xs text-white/80">
+                        Límite de imágenes por mensaje: {maxImages} {userPlan === "pro" ? "(Pro)" : "(Free)"}
+                      </div>
+                      {userPlan !== "pro" && (
+                        <button
+                          type="button"
+                          onClick={() => navigate('/pricing')}
+                          className="w-full text-left text-xs text-sky-400 hover:underline"
+                        >
+                          Sube a Pro para hasta 10 imágenes por mensaje
+                        </button>
+                      )}
                     </div>
                   </PopoverContent>
                 </Popover>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-md p-0 text-primary"
+                  onClick={() => {
+                    // Placeholder de settings
+                  }}
+                  aria-label="Settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
