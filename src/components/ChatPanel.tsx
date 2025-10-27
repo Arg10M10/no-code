@@ -108,14 +108,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
   // Chips/models — todos con 1,000,000 tokens por petición
   const chips = [
     { id: "build", label: "Build", filled: false, tokens: MODEL_TOKEN_LIMIT },
-    { id: "gpt5mini", label: "GPT 5 Mini", filled: false, tokens: MODEL_TOKEN_LIMIT },
     { id: "pro", label: "Pro", filled: true, tokens: MODEL_TOKEN_LIMIT },
   ];
-
-  const showTokensToast = () => {
-    // fallback: keep this for quick feedback; main UI is popup
-    toast(`Tienes ${credits.toLocaleString()} tokens disponibles`);
-  };
 
   // Values for popup display
   const percentOfLimit = Math.round((credits / MODEL_TOKEN_LIMIT) * 100);
