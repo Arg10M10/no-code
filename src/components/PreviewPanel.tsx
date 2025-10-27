@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Upload, MousePointerClick } from "lucide-react";
 import Loader from "./Loader";
@@ -8,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import SupabaseConnectModal from "@/components/supabase/SupabaseConnectModal";
 import CodePanel from "@/components/CodePanel";
+import { toast } from "sonner";
 
 interface PreviewPanelProps {
   previewUrl: string;
@@ -19,6 +21,7 @@ interface PreviewPanelProps {
   onElementSelected: (description: string) => void;
   projectName?: string;
   supabaseIntent?: number;
+  projectId: string | null;
 }
 
 const SUPABASE_PROJECT_ID = "xkcnbvcjzezhjaoxojsv";
@@ -34,13 +37,25 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   onElementSelected,
   projectName,
   supabaseIntent = 0,
+  projectId,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [openSupabaseModal, setOpenSupabaseModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("preview");
+  const navigate = useNavigate();
 
   const handleRefresh = () => {
     onRefresh();
+  };
+
+  const handlePublish = () => {
+    if (projectId) {
+      navigate(`/publish?id=${encodeURIComponent(projectId)}`);
+    } else {
+      toast.error("Project ID not found", {
+        description: "Cannot publish without a valid project.",
+      });
+    }
   };
 
   // Notificar al iframe sobre cambios del modo de selección
@@ -110,7 +125,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
             <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh preview">
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button>
+            <Button onClick={handlePublish}>
               <Upload className="h-4 w-4 mr-2" />
               Publish
             </Button>

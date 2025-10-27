@@ -311,6 +311,7 @@ const EditorPage: React.FC = () => {
               onElementSelected={handleElementSelected}
               projectName={projectName}
               supabaseIntent={supabaseIntentCounter}
+              projectId={projectId}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
