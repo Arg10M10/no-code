@@ -310,14 +310,17 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   </PopoverContent>
                 </Popover>
 
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-md p-0 text-primary"
                   onClick={handleAttachClick}
-                  className="inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none bg-transparent border border-border text-primary hover:bg-primary/5"
+                  aria-label="Adjuntar imágenes"
+                  title="Adjuntar imágenes"
                 >
-                  <Paperclip className="h-4 w-4 mr-2" />
-                  Adjuntar imágenes
-                </button>
+                  <Paperclip className="h-4 w-4" />
+                </Button>
               </div>
 
               <div className="flex items-center gap-2">
@@ -337,7 +340,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   <PopoverContent
                     side="top"
                     align="end"
-                    className="w-[260px] max-w-[95vw] rounded-md bg-[#0b0b0b] border-neutral-700 p-3 text-sm text-white shadow-lg"
+                    className="w/[260px] max-w-[95vw] rounded-md bg-[#0b0b0b] border-neutral-700 p-3 text-sm text-white shadow-lg"
                   >
                     <div className="flex items-center justify-between text-xs text-white/90 mb-2">
                       <div className="truncate">Tokens: <span className="font-medium">{credits.toLocaleString()}</span></div>
