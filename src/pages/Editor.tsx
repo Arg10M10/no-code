@@ -147,7 +147,7 @@ export default GeneratedComponent;
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel
-            defaultSize={35}
+            defaultSize={40}
             minSize={25}
             collapsible
             collapsedSize={0}
@@ -169,7 +169,7 @@ export default GeneratedComponent;
             className="h-full w-px bg-border/40"
             role="separator"
           />
-          <ResizablePanel defaultSize={65}>
+          <ResizablePanel defaultSize={60}>
             <PreviewPanel
               previewUrl={previewUrl}
               previewLoading={previewLoading}
