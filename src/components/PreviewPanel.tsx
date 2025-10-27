@@ -1,27 +1,70 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Upload } from "lucide-react";
+import { RefreshCw, Upload, MousePointerClick } from "lucide-react";
 import Loader from "./Loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 interface PreviewPanelProps {
   previewUrl: string;
   loading: boolean;
   onRefresh: () => void;
+  isSelectionModeActive: boolean;
+  onToggleSelectionMode: () => void;
+  onElementSelected: (description: string) => void;
 }
 
-const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewUrl, loading, onRefresh }) => {
-  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+const PreviewPanel: React.FC<PreviewPanelProps> = ({
+  previewUrl,
+  loading,
+  onRefresh,
+  isSelectionModeActive,
+  onToggleSelectionMode,
+  onElementSelected,
+}) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleRefresh = () => {
     if (iframeRef.current) {
-      // A more robust way to refresh an iframe
       iframeRef.current.src = iframeRef.current.src;
     }
     onRefresh();
   };
+
+  // Effect to notify iframe about selection mode changes
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (iframe && iframe.contentWindow) {
+      const message = {
+        type: 'toggleSelectionMode',
+        payload: { isActive: isSelectionModeActive },
+      };
+      // The iframe might not be loaded yet. Post message on load.
+      const post = () => iframe.contentWindow?.postMessage(message, '*');
+      iframe.addEventListener('load', post);
+      post(); // Also try immediately
+      return () => iframe.removeEventListener('load', post);
+    }
+  }, [isSelectionModeActive]);
+
+  // Effect to listen for messages from the iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Basic security: check origin if the iframe could be from a different source
+      // if (event.origin !== window.location.origin) return;
+
+      if (event.data && event.data.type === 'elementSelected') {
+        onElementSelected(event.data.payload.description);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [onElementSelected]);
 
   return (
     <div className="h-full flex flex-col bg-muted/40">
@@ -33,6 +76,15 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewUrl, loading, onRefr
             <TabsTrigger value="code">Code</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleSelectionMode}
+              title="Select element"
+              className={cn(isSelectionModeActive && "bg-accent text-accent-foreground")}
+            >
+              <MousePointerClick className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh preview">
               <RefreshCw className="h-4 w-4" />
             </Button>

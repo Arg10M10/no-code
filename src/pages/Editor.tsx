@@ -22,6 +22,10 @@ const EditorPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [credits, setCredits] = useState(0); // start with 0 tokens
   const [previewLoading, setPreviewLoading] = useState(false);
+  
+  // New state for selection mode
+  const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
+  const [selectedElement, setSelectedElement] = useState<string | null>(null);
 
   useEffect(() => {
     if (projectId) {
@@ -52,7 +56,13 @@ const EditorPage: React.FC = () => {
   const handleNewMessage = useCallback((text: string, image?: File | null) => {
     if (!projectId) return;
 
-    const userMessage: StoredMessage = { role: "user", content: text, createdAt: Date.now() };
+    let messageContent = text;
+    if (selectedElement) {
+      messageContent = `Regarding the element "${selectedElement}", please do the following: ${text}`;
+      setSelectedElement(null); // Clear selection after sending
+    }
+
+    const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
     const newMessages = [...messages, userMessage];
     setMessagesState(newMessages);
     setMessages(projectId, newMessages);
@@ -78,13 +88,18 @@ const EditorPage: React.FC = () => {
       setTimeout(() => setPreviewLoading(false), 1500);
 
     }, 1000);
-  }, [messages, projectId]);
+  }, [messages, projectId, selectedElement]);
 
   const handleRefreshPreview = () => {
     setPreviewLoading(true);
     setTimeout(() => {
       setPreviewLoading(false);
     }, 1500); // Simulate a refresh delay
+  };
+
+  const handleElementSelected = (description: string) => {
+    setSelectedElement(description);
+    setIsSelectionModeActive(false); // Automatically turn off selection mode
   };
 
   const previewUrl = `/preview`;
@@ -124,6 +139,8 @@ const EditorPage: React.FC = () => {
               loading={loading}
               credits={credits}
               onSend={handleNewMessage}
+              selectedElement={selectedElement}
+              onClearSelection={() => setSelectedElement(null)}
             />
           </ResizablePanel>
 
@@ -139,6 +156,9 @@ const EditorPage: React.FC = () => {
               previewUrl={previewUrl}
               loading={previewLoading}
               onRefresh={handleRefreshPreview}
+              isSelectionModeActive={isSelectionModeActive}
+              onToggleSelectionMode={() => setIsSelectionModeActive(prev => !prev)}
+              onElementSelected={handleElementSelected}
             />
           </ResizablePanel>
         </ResizablePanelGroup>

@@ -6,20 +6,28 @@ import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
 import { ArrowUp, X, Paperclip, Settings, Info } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom"; // Importar useNavigate
+import { useNavigate } from "react-router-dom";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
   loading: boolean;
   credits: number;
-  // onSend accepts optional image file
   onSend: (text: string, image?: File | null) => void;
+  selectedElement: string | null;
+  onClearSelection: () => void;
 };
 
 const MODEL_TOKEN_LIMIT = 1_000_000;
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSend }) => {
-  const navigate = useNavigate(); // Inicializar useNavigate
+const ChatPanel: React.FC<ChatPanelProps> = ({
+  messages,
+  loading,
+  credits,
+  onSend,
+  selectedElement,
+  onClearSelection,
+}) => {
+  const navigate = useNavigate();
   const [text, setText] = React.useState("");
   const [chatMode, setChatMode] = React.useState<'build' | 'ask'>('build');
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
@@ -77,7 +85,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
     if (f) {
       setSelectedImage(f);
     }
-    // reset input so same file can be selected again later if needed
     e.currentTarget.value = "";
   };
 
@@ -101,19 +108,16 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Send on Enter, new line on Shift+Enter
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Evita el salto de línea
+      e.preventDefault();
       handleSubmit();
     }
   };
 
-  // Chips/models — todos con 1,000,000 tokens por petición
   const chips = [
     { id: "pro", label: "Pro", filled: true, tokens: MODEL_TOKEN_LIMIT },
   ];
 
-  // Values for popup display
   const percentOfLimit = Math.round((credits / MODEL_TOKEN_LIMIT) * 100);
   const progressWidth = `${Math.max(0, Math.min(100, percentOfLimit))}%`;
 
@@ -153,10 +157,21 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
         </div>
       </ScrollArea>
 
-      {/* Redesigned input area: dark rounded container with blue accents */}
+      {selectedElement && (
+        <div className="px-4 pt-2">
+          <div className="bg-secondary border border-border rounded-md p-2 flex items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground truncate">
+              Editing: <code className="text-foreground font-medium bg-background/50 px-1.5 py-0.5 rounded">{selectedElement}</code>
+            </span>
+            <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={onClearSelection}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="p-4">
         <div className="rounded-xl bg-secondary border border-border p-3 shadow-sm">
-          {/* Image preview (if any) */}
           {previewUrl ? (
             <div className="relative rounded-md overflow-hidden border border-white/6 mb-3">
               <img src={previewUrl} alt="Preview" className="w-full max-h-40 object-contain bg-black/5" />
@@ -171,14 +186,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
             </div>
           ) : null}
 
-          {/* Input row */}
           <div className="flex items-center gap-3">
             <textarea
               ref={textareaRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={chatMode === 'build' ? "Ask AI to build..." : "Ask AI a question..."}
+              placeholder={selectedElement ? "Describe the changes..." : (chatMode === 'build' ? "Ask AI to build..." : "Ask AI a question...")}
               className="resize-none flex-1 min-h-[44px] max-h-36 bg-transparent text-foreground placeholder:text-muted-foreground outline-none px-3 py-2 rounded-md"
               rows={1}
               aria-label="Message"
@@ -203,10 +217,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
             </Button>
           </div>
 
-          {/* Chips and actions row */}
           <div className="mt-3 border-t border-border pt-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              {/* Left side: Mode buttons */}
               <div className="flex items-center gap-2 justify-start flex-wrap">
                 <button
                   type="button"
@@ -239,7 +251,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                 ))}
               </div>
 
-              {/* Right side: Action buttons */}
               <div className="relative flex items-center gap-2">
                 <Button
                   type="button"
@@ -278,7 +289,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                   <Info className="h-4 w-4" />
                 </Button>
 
-                {/* Tokens popup */}
                 {showTokensPopup ? (
                   <div
                     ref={popupRef}
@@ -305,8 +315,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                       <button
                         type="button"
                         onClick={() => {
-                          setShowTokensPopup(false); // Cerrar popup
-                          navigate('/pricing'); // Navegar a /pricing
+                          setShowTokensPopup(false);
+                          navigate('/pricing');
                         }}
                         className="w-full text-left text-xs text-sky-400 hover:underline"
                       >
