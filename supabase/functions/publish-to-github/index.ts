@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
@@ -32,7 +33,7 @@ serve(async (req) => {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
     if (sessionError || !session) {
-      return new Response("Not authenticated", {
+      return new Response("Not authenticated. Your session may have expired.", {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
@@ -40,7 +41,8 @@ serve(async (req) => {
 
     const githubToken = session.provider_token;
     if (!githubToken) {
-      return new Response("GitHub provider token not found. Please re-authenticate.", {
+      const detailedError = "GitHub provider token not found. This can happen if repository access was not granted during login. Please try this: 1) Go to your GitHub settings -> Applications -> Authorized OAuth Apps. 2) Revoke access for this application. 3) Log out and log back in here, ensuring you grant repository access.";
+      return new Response(detailedError, {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
