@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
 import { Send, X, Paperclip, Settings, Info } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // Importar useNavigate
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -18,12 +18,8 @@ type ChatPanelProps = {
 
 const MODEL_TOKEN_LIMIT = 1_000_000;
 
-const AVAILABLE_APIS = ["OpenAI", "Anthropic", "Local"] as const;
-type ApiOption = (typeof AVAILABLE_APIS)[number];
-
 const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSend }) => {
-  const navigate = useNavigate();
-
+  const navigate = useNavigate(); // Inicializar useNavigate
   const [text, setText] = React.useState("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
@@ -34,23 +30,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
   const [showTokensPopup, setShowTokensPopup] = React.useState(false);
   const tokenButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const popupRef = React.useRef<HTMLDivElement | null>(null);
-
-  // Model & API selection (persisted)
-  const [selectedModel, setSelectedModel] = React.useState<string>(() => {
-    try {
-      return localStorage.getItem("dyad.selectedModel") || "pro";
-    } catch {
-      return "pro";
-    }
-  });
-  const [selectedApi, setSelectedApi] = React.useState<ApiOption>(() => {
-    try {
-      const v = localStorage.getItem("dyad.selectedApi");
-      return (v as ApiOption) || "OpenAI";
-    } catch {
-      return "OpenAI";
-    }
-  });
 
   React.useEffect(() => {
     if (!selectedImage) {
@@ -128,9 +107,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
 
   // Chips/models — todos con 1,000,000 tokens por petición
   const chips = [
-    { id: "build", label: "Build", tokens: MODEL_TOKEN_LIMIT },
-    { id: "gpt5mini", label: "GPT 5 Mini", tokens: MODEL_TOKEN_LIMIT },
-    { id: "pro", label: "Pro", tokens: MODEL_TOKEN_LIMIT },
+    { id: "build", label: "Build", filled: false, tokens: MODEL_TOKEN_LIMIT },
+    { id: "gpt5mini", label: "GPT 5 Mini", filled: false, tokens: MODEL_TOKEN_LIMIT },
+    { id: "pro", label: "Pro", filled: true, tokens: MODEL_TOKEN_LIMIT },
   ];
 
   const showTokensToast = () => {
@@ -141,24 +120,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
   // Values for popup display
   const percentOfLimit = Math.round((credits / MODEL_TOKEN_LIMIT) * 100);
   const progressWidth = `${Math.max(0, Math.min(100, percentOfLimit))}%`;
-
-  // Handlers for model & API selection
-  const handleSelectModel = (id: string) => {
-    setSelectedModel(id);
-    try {
-      localStorage.setItem("dyad.selectedModel", id);
-    } catch {}
-    const label = chips.find((c) => c.id === id)?.label ?? id;
-    toast.success(`Modelo cambiado a ${label}`);
-  };
-
-  const handleSelectApi = (api: ApiOption) => {
-    setSelectedApi(api);
-    try {
-      localStorage.setItem("dyad.selectedApi", api);
-    } catch {}
-    toast.success(`API cambiada a ${api}`);
-  };
 
   return (
     <div className="flex flex-col h-full">
@@ -280,7 +241,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                 disabled={loading || (!text.trim() && !selectedImage)}
                 className="h-9 w-9 rounded-md p-0 bg-primary text-primary-foreground hover:bg-primary/90"
                 aria-label="Send"
-                title={`Modelo: ${chips.find((c) => c.id === selectedModel)?.label ?? selectedModel} • API: ${selectedApi}`}
               >
                 <Send className="h-4 w-4" />
               </Button>
@@ -312,8 +272,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                     <button
                       type="button"
                       onClick={() => {
-                        setShowTokensPopup(false);
-                        navigate("/pricing");
+                        setShowTokensPopup(false); // Cerrar popup
+                        navigate('/pricing'); // Navegar a /pricing
                       }}
                       className="w-full text-left text-xs text-sky-400 hover:underline"
                     >
@@ -325,51 +285,28 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
             </div>
           </div>
 
-          {/* Chips + API selector row */}
+          {/* Chips row moved to the bottom, more squared buttons */}
           <div className="mt-3 border-t border-border pt-3">
-            <div className="flex items-center gap-3 justify-between flex-wrap">
-              <div className="flex items-center gap-2">
-                {chips.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={[
-                      "inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none",
-                      selectedModel === c.id
-                        ? "bg-primary text-primary-foreground hover:brightness-95"
-                        : "bg-transparent border border-border text-primary hover:bg-primary/5",
-                    ].join(" ")}
-                    onClick={() => handleSelectModel(c.id)}
-                    aria-pressed={selectedModel === c.id}
-                    title={`${c.label} — ${c.tokens.toLocaleString()} tokens`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2">
-                {AVAILABLE_APIS.map((api) => {
-                  const active = selectedApi === api;
-                  return (
-                    <button
-                      key={api}
-                      type="button"
-                      onClick={() => handleSelectApi(api)}
-                      className={[
-                        "inline-flex items-center justify-center text-xs font-medium px-2 py-1 rounded-md transition-all select-none",
-                        active
-                          ? "bg-emerald-600 text-white hover:brightness-95"
-                          : "bg-transparent border border-border text-white/80 hover:bg-white/3",
-                      ].join(" ")}
-                      aria-pressed={active}
-                      title={`Usar ${api}`}
-                    >
-                      {api}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="flex items-center gap-2 justify-start flex-wrap">
+              {chips.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={[
+                    "inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none",
+                    c.filled
+                      ? "bg-primary text-primary-foreground hover:brightness-95"
+                      : "bg-transparent border border-border text-primary hover:bg-primary/5",
+                  ].join(" ")}
+                  onClick={() => {
+                    // kept non-functional for now; can be wired later
+                    toast(`${c.label}: ${c.tokens.toLocaleString()} tokens disponibles`);
+                  }}
+                  aria-pressed={c.filled}
+                >
+                  {c.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
