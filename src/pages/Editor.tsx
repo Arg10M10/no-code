@@ -148,7 +148,7 @@ export default GeneratedComponent;
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel
             defaultSize={30}
-            minSize={25}
+            minSize={20}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
