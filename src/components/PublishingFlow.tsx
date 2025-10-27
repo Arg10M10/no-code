@@ -45,7 +45,7 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        scopes: 'repo', // Solicitar permiso para crear repositorios
+        scopes: 'repo',
       },
     });
     if (error) {
@@ -70,46 +70,39 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
     setPublishState('publishing');
     toast.message('Creating repository and publishing your project...');
 
-    const { data, error } = await supabase.functions.invoke('publish-to-github', {
-      body: { repoName: repoName.trim(), fileContent: projectCode },
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('publish-to-github', {
+        body: { repoName: repoName.trim(), fileContent: projectCode },
+      });
 
-    if (error) {
-      console.error("Full publishing error object:", error);
-      let errorMessage = "An unknown error occurred during function invocation.";
+      if (error) {
+        const functionError = (error as FunctionsError).context;
+        let errorMessage = error.message;
 
-      if (error instanceof FunctionsError) {
-        const context = error.context;
-        console.log("FunctionError context:", context);
-        if (context && typeof context === 'object' && 'details' in context && typeof context.details === 'string') {
-          errorMessage = context.details;
-        } else {
-          errorMessage = error.message;
+        if (functionError && typeof functionError === 'object' && 'details' in functionError) {
+          errorMessage = functionError.details as string;
         }
-      } else {
-        errorMessage = error.message;
+        
+        throw new Error(errorMessage);
+      }
+      
+      if (data && data.error) {
+        throw new Error(data.details || data.error);
       }
 
+      setPublishedUrl(data.html_url);
+      setPublishState('published');
+      toast.success('Project published successfully!');
+    } catch (err: any) {
+      console.error("Full publishing error:", err);
+      const errorMessage = err.message || "An unknown error occurred.";
+      
       toast.error('Failed to publish project', { 
         description: errorMessage,
         duration: 15000,
       });
       setPublishState('idle');
-      return;
     }
-    
-    if (data && data.error) {
-      toast.error('Failed to publish project', { 
-        description: data.details || data.error,
-        duration: 15000,
-      });
-      setPublishState('idle');
-      return;
-    }
-
-    setPublishedUrl(data.html_url);
-    setPublishState('published');
-    toast.success('Project published successfully!');
   };
 
   const authState = loading ? 'authenticating' : user ? 'authenticated' : 'idle';
@@ -130,7 +123,7 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
           <h2 className="font-semibold">Connect to GitHub</h2>
           {authState === 'idle' && (
             <>
-              <p className="text-sm text-muted-foreground mt-1">You need to sign in to publish your project.</p>
+              <p className="text-sm text-muted-foreground mt-1">You need to sign in with GitHub to verify your identity.</p>
               <Button onClick={handleLogin} className="mt-4">
                 <Github className="h-4 w-4 mr-2" />
                 Login with GitHub
@@ -146,7 +139,7 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
           {authState === 'authenticated' && (
             <div className="space-y-2">
               <p className="text-sm text-green-400 mt-1">Successfully connected as {user?.user_metadata.user_name || 'your GitHub account'}.</p>
-              <p className="text-xs text-muted-foreground">If publishing fails, try logging out and back in to refresh permissions.</p>
+              <p className="text-xs text-muted-foreground">Publishing uses a pre-configured application key.</p>
               <Button onClick={handleLogout} variant="outline" size="sm">
                 <LogOut className="h-3 w-3 mr-2" />
                 Logout
@@ -166,7 +159,7 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
             <h2 className="font-semibold">Create Repository</h2>
             {publishState !== 'published' && (
               <>
-                <p className="text-sm text-muted-foreground mt-1">A new private repository will be created on your GitHub account.</p>
+                <p className="text-sm text-muted-foreground mt-1">A new private repository will be created on the application's GitHub account.</p>
                 <div className="mt-4 space-y-2 max-w-sm">
                   <Label htmlFor="repo-name">Repository Name</Label>
                   <Input
@@ -175,7 +168,7 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
                     onChange={(e) => setRepoName(e.target.value)}
                     disabled={publishState === 'publishing'}
                   />
-                  <p className="text-xs text-muted-foreground">Make sure this repository name doesn't already exist in your GitHub account.</p>
+                  <p className="text-xs text-muted-foreground">Make sure this repository name doesn't already exist.</p>
                 </div>
                 <Button onClick={handlePublish} className="mt-4" disabled={publishState === 'publishing'}>
                   {publishState === 'publishing' ? (

@@ -24,49 +24,53 @@ serve(async (req) => {
       });
     }
 
+    // Step 1: Get the system's GitHub Token from environment variables
+    const githubToken = Deno.env.get("GITHUB_PRIVATE_KEY");
+    if (!githubToken) {
+      const errorMsg = "Configuration error: GITHUB_PRIVATE_KEY is not set in the server environment. Please contact support.";
+      console.error(errorMsg);
+      return new Response(JSON.stringify({ error: "Server Configuration Error", details: errorMsg }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Step 2: Authenticate the user with Supabase to ensure they are logged in
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    // Enhanced logging for debugging
-    console.log("Session retrieved in edge function:", {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userId: session?.user?.id,
-      hasProviderToken: !!session?.provider_token,
-      hasAccessToken: !!session?.access_token,
-    });
-
-    if (sessionError) {
-      console.error("Supabase session error:", sessionError);
-      return new Response(JSON.stringify({ error: "Authentication Error", details: `Failed to retrieve session: ${sessionError.message}` }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (!session) {
-      return new Response(JSON.stringify({ error: "Not Authenticated", details: "No active session found. Please log in again." }), {
+    if (userError || !user) {
+      console.error("Supabase auth error:", userError);
+      return new Response(JSON.stringify({ error: "Authentication Required", details: "You must be logged in to perform this action." }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    
+    // The owner of the repository will be the owner of the token.
+    // We fetch the user associated with the token to get the correct owner login.
+    const userResponse = await fetch(`${GITHUB_API_URL}/user`, {
+      headers: {
+        'Authorization': `token ${githubToken}`,
+        'Accept': 'application/vnd.github.v3+json',
+      },
+    });
 
-    const githubToken = session.provider_token;
-    if (!githubToken) {
-      const detailedError = "GitHub provider token not found. This indicates that the necessary 'repo' permissions were not granted. Please try the following: 1) Go to your GitHub settings -> Applications -> Authorized OAuth Apps. 2) Revoke access for this application. 3) Log out and log back in here, ensuring you grant repository access when prompted by GitHub.";
-      console.error("Provider token missing for user:", session.user.id);
-      return new Response(JSON.stringify({ error: "Permission Denied", details: detailedError }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (!userResponse.ok) {
+        return new Response(JSON.stringify({ error: "GitHub API Error", details: "The server's GitHub token is invalid or has expired. Please contact support." }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
     }
+    const githubUserData = await userResponse.json();
+    const owner = githubUserData.login;
 
-    // 1. Create Repository
+    // Step 3: Create the repository under the token owner's account
     const repoResponse = await fetch(`${GITHUB_API_URL}/user/repos`, {
       method: 'POST',
       headers: {
@@ -77,7 +81,7 @@ serve(async (req) => {
       body: JSON.stringify({
         name: repoName,
         private: true,
-        description: 'Project generated with Brimy, ready for Vercel/Netlify deployment.',
+        description: `Project generated for user ${user.id} by Brimy.`,
       }),
     });
 
@@ -85,15 +89,20 @@ serve(async (req) => {
       const errorData = await repoResponse.json();
       console.error("GitHub repo creation error:", errorData);
       const errorMessage = errorData.errors?.[0]?.message || errorData.message || "Failed to create repository.";
+      if (repoResponse.status === 422) {
+         return new Response(JSON.stringify({ error: "GitHub API Error", details: `Could not create repository. Reason: ${errorMessage}. This usually means the repository already exists or the name is invalid.` }), {
+            status: repoResponse.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(JSON.stringify({ error: "GitHub API Error", details: errorMessage }), {
         status: repoResponse.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     const repoData = await repoResponse.json();
-    const owner = repoData.owner.login;
 
-    // 2. Create and commit index.html
+    // Step 4: Create and commit index.html
     const contentEncoded = btoa(unescape(encodeURIComponent(fileContent)));
     const fileResponse = await fetch(`${GITHUB_API_URL}/repos/${owner}/${repoName}/contents/index.html`, {
       method: 'PUT',
@@ -114,7 +123,7 @@ serve(async (req) => {
       
       const errorData = await fileResponse.json();
       const errorMessage = errorData.message || "Failed to create file in repository.";
-      return new Response(JSON.stringify({ error: "GitHub API Error", details: errorMessage }), {
+      return new Response(JSON.stringify({ error: "GitHub API Error", details: `Repository was created but file commit failed: ${errorMessage}. The empty repository has been deleted.` }), {
         status: fileResponse.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
