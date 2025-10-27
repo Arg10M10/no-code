@@ -27,7 +27,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDelete }) => {
     navigate(`/editor?id=${project.id}`);
   };
 
-  const timeAgo = formatDistanceToNow(new Date(project.lastEdited), {
+  const timeAgo = formatDistanceToNow(new Date(project.updatedAt), {
     addSuffix: true,
   });
 
