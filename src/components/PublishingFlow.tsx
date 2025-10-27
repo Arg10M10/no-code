@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Github, Loader2, CheckCircle, ArrowRight, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { User } from '@supabase/supabase-js';
 
 interface PublishingFlowProps {
   projectName: string;
@@ -12,36 +14,78 @@ interface PublishingFlowProps {
   projectId: string;
 }
 
-const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectId }) => {
+const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCode, projectId }) => {
   const navigate = useNavigate();
-  const [authState, setAuthState] = useState<'idle' | 'authenticating' | 'authenticated'>('idle');
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [publishState, setPublishState] = useState<'idle' | 'publishing' | 'published'>('idle');
   const [repoName, setRepoName] = useState(projectName.replace(/\s+/g, '-').toLowerCase());
   const [publishedUrl, setPublishedUrl] = useState('');
 
-  const handleLogin = () => {
-    setAuthState('authenticating');
-    toast.message('Redirecting to GitHub for authentication...');
-    setTimeout(() => {
-      setAuthState('authenticated');
-      toast.success('Successfully authenticated with GitHub.');
-    }, 2000);
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setUser(data.session?.user ?? null);
+      setLoading(false);
+    };
+    checkSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        scopes: 'repo', // Solicitar permiso para crear repositorios
+      },
+    });
+    if (error) {
+      toast.error('GitHub login failed', { description: error.message });
+      setLoading(false);
+    }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!repoName.trim()) {
       toast.error('Repository name cannot be empty.');
       return;
     }
     setPublishState('publishing');
     toast.message('Creating repository and publishing your project...');
-    setTimeout(() => {
-      const url = `https://github.com/bydamian-user/${repoName}`;
-      setPublishedUrl(url);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('publish-to-github', {
+        body: { repoName: repoName.trim(), fileContent: projectCode },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setPublishedUrl(data.html_url);
       setPublishState('published');
       toast.success('Project published successfully!');
-    }, 3000);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to publish project', { description: err.message });
+      setPublishState('idle');
+    }
   };
+
+  const authState = loading ? 'authenticating' : user ? 'authenticated' : 'idle';
 
   return (
     <div className="space-y-8 p-8 border border-border/60 bg-card/60 backdrop-blur-sm rounded-2xl">
@@ -73,7 +117,7 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectId 
             </div>
           )}
           {authState === 'authenticated' && (
-            <p className="text-sm text-green-400 mt-1">Successfully connected as @bydamian-user.</p>
+            <p className="text-sm text-green-400 mt-1">Successfully connected as {user?.user_metadata.user_name || 'your GitHub account'}.</p>
           )}
         </div>
       </div>
