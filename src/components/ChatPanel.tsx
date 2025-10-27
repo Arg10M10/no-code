@@ -293,8 +293,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                       : "bg-transparent border border-border text-primary hover:bg-primary/5",
                   ].join(" ")}
                   onClick={() => {
-                    // kept non-functional for now; can be wired later
-                    toast(`${c.label}: ${c.tokens.toLocaleString()} tokens disponibles`);
+                    if (c.id === 'pro') {
+                      navigate('/pricing');
+                    } else {
+                      toast(`${c.label}: ${c.tokens.toLocaleString()} tokens disponibles`);
+                    }
                   }}
                   aria-pressed={c.filled}
                 >
