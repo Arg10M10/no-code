@@ -16,6 +16,13 @@ import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
 import { cn } from "@/lib/utils";
 
+function includesSupabaseIntent(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  if (!t.includes("supabase")) return false;
+  const keys = ["conectar", "connect", "integrar", "integration", "auth", "database"];
+  return keys.some((k) => t.includes(k));
+}
+
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -31,6 +38,9 @@ const EditorPage: React.FC = () => {
   
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
+
+  // Señal para abrir Integrations/Supabase cuando la IA lo sugiera
+  const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
 
   const triggerInitialGeneration = useCallback(async (projId: string, prompt: string) => {
     setLoading(true);
@@ -156,10 +166,16 @@ const EditorPage: React.FC = () => {
         aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización.";
       }
 
+      // Si la IA sugiere conectar Supabase -> abrir Integrations automáticamente
+      if (includesSupabaseIntent(aiResponseContent)) {
+        setSupabaseIntentCounter((c) => c + 1);
+      }
+
       const cost = Math.floor(Math.random() * 4001) + 1000; // 1k to 5k
       const newCredits = decrementCredits(projectId, cost);
       setCredits(newCredits);
-      toast.info(`${cost.toLocaleString()} tokens used.`);
+      // No es necesario notificar siempre, se mantiene el comportamiento actual
+      // toast.info(`${cost.toLocaleString()} tokens used.`);
 
       const aiResponse: StoredMessage = {
         role: "assistant",
@@ -173,6 +189,8 @@ const EditorPage: React.FC = () => {
     } catch (err: any) {
       const errorMessage = err?.message || "Ocurrió un error desconocido.";
       console.error("Error en la operación de IA:", err);
+      // Mantener toasts existentes
+      const isAsk = text.trim().startsWith("[ASK]");
       toast.error(isAsk ? "La pregunta a la IA ha fallado" : "La generación con IA ha fallado", {
         description: errorMessage,
       });
@@ -254,6 +272,7 @@ const EditorPage: React.FC = () => {
               onToggleSelectionMode={() => setIsSelectionModeActive(prev => !prev)}
               onElementSelected={handleElementSelected}
               projectName={projectName}
+              supabaseIntent={supabaseIntentCounter}
             />
           </ResizablePanel>
         </ResizablePanelGroup>

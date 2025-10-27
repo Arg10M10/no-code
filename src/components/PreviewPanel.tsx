@@ -18,6 +18,7 @@ interface PreviewPanelProps {
   onToggleSelectionMode: () => void;
   onElementSelected: (description: string) => void;
   projectName?: string;
+  supabaseIntent?: number;
 }
 
 const SUPABASE_PROJECT_ID = "xkcnbvcjzezhjaoxojsv";
@@ -32,9 +33,11 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   onToggleSelectionMode,
   onElementSelected,
   projectName,
+  supabaseIntent = 0,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [openSupabaseModal, setOpenSupabaseModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("preview");
 
   const handleRefresh = () => {
     onRefresh();
@@ -69,6 +72,14 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
     };
   }, [onElementSelected]);
 
+  // Si el asistente sugiere conectar Supabase, llevar al tab Integrations y abrir el modal
+  useEffect(() => {
+    if (supabaseIntent > 0) {
+      setActiveTab("integrations");
+      setOpenSupabaseModal(true);
+    }
+  }, [supabaseIntent]);
+
   const openSupabaseAuthorization = () => {
     const url = `https://supabase.com/dashboard/project/${encodeURIComponent(
       SUPABASE_PROJECT_ID
@@ -78,7 +89,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-muted/40">
-      <Tabs defaultValue="preview" className="flex flex-col flex-1 min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
         <div className="flex items-center justify-between p-2 border-b bg-background flex-shrink-0">
           <TabsList>
             <TabsTrigger value="preview">Preview</TabsTrigger>
