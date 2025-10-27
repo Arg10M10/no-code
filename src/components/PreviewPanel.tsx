@@ -7,6 +7,7 @@ import Loader from "./Loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import SupabaseConnectModal from "@/components/supabase/SupabaseConnectModal";
+import CodePanel from "@/components/CodePanel";
 
 interface PreviewPanelProps {
   previewUrl: string;
@@ -16,6 +17,7 @@ interface PreviewPanelProps {
   isSelectionModeActive: boolean;
   onToggleSelectionMode: () => void;
   onElementSelected: (description: string) => void;
+  projectName?: string;
 }
 
 const SUPABASE_PROJECT_ID = "xkcnbvcjzezhjaoxojsv";
@@ -29,6 +31,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   isSelectionModeActive,
   onToggleSelectionMode,
   onElementSelected,
+  projectName,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [openSupabaseModal, setOpenSupabaseModal] = useState(false);
@@ -129,11 +132,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </TabsContent>
 
         <TabsContent value="code" className="flex-1 overflow-hidden bg-background/50">
-          <div className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Code changes are applied directly to the project files.
-            </p>
-          </div>
+          <CodePanel code={code || null} projectName={projectName} />
         </TabsContent>
 
         <TabsContent value="integrations" className="flex-1 overflow-auto">

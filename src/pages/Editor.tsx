@@ -253,6 +253,7 @@ const EditorPage: React.FC = () => {
               isSelectionModeActive={isSelectionModeActive}
               onToggleSelectionMode={() => setIsSelectionModeActive(prev => !prev)}
               onElementSelected={handleElementSelected}
+              projectName={projectName}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
