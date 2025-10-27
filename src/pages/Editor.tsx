@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { getProjectById, StoredMessage, setMessages, getMessages, addMessage, getCode, setCode } from "@/lib/projects";
 import { storage } from "@/lib/storage";
 import { getSelectedModelLabel } from "@/lib/settings";
-import { getProviderFromLabel, generateAnswer } from "@/services/ai";
+import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
 import { cn } from "@/lib/utils";
 
 const EditorPage: React.FC = () => {
@@ -108,35 +108,84 @@ const EditorPage: React.FC = () => {
     }
   }, [projectId, navigate, triggerInitialGeneration]);
 
-  const handleNewMessage = useCallback((text: string, image?: File | null) => {
+  const handleNewMessage = useCallback(async (text: string, image?: File | null) => {
     if (!projectId) return;
 
-    let messageContent = text;
+    const isAsk = text.trim().startsWith("[ASK]");
+    const cleanedText = isAsk ? text.replace(/^\[ASK\]\s*/i, "") : text;
+
+    let messageContent = cleanedText;
     if (selectedElement) {
-      messageContent = `Respecto al elemento "${selectedElement}", por favor haz lo siguiente: ${text}`;
+      messageContent = `Respecto al elemento "${selectedElement}", por favor haz lo siguiente: ${cleanedText}`;
       setSelectedElement(null);
     }
 
+    // Guardar el mensaje del usuario sin el prefijo [ASK]
     const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
     const newMessages = [...messages, userMessage];
     setMessagesState(newMessages);
     setMessages(projectId, newMessages);
     setLoading(true);
 
-    setTimeout(() => {
+    const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
+    const selectedModel = getSelectedModelLabel();
+
+    try {
+      if (isAsk) {
+        // Solo responder en chat, sin construir
+        const answer = await generateChat({
+          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          selectedModelLabel: selectedModel,
+          apiKeys,
+        });
+
+        const aiResponse: StoredMessage = {
+          role: "assistant",
+          content: answer,
+          createdAt: Date.now(),
+        };
+        const finalMessages = [...newMessages, aiResponse];
+        setMessagesState(finalMessages);
+        setMessages(projectId, finalMessages);
+      } else {
+        // Build: construir sitio y actualizar preview
+        setPreviewLoading(true);
+        const generatedCode = await generateAnswer({
+          prompt: messageContent,
+          selectedModelLabel: selectedModel,
+          apiKeys,
+        });
+
+        setCode(projectId, generatedCode);
+        setCodeState(generatedCode);
+
+        const aiResponse: StoredMessage = {
+          role: "assistant",
+          content: "Listo. He aplicado tus cambios y actualizado la previsualización.",
+          createdAt: Date.now(),
+        };
+        const finalMessages = [...newMessages, aiResponse];
+        setMessagesState(finalMessages);
+        setMessages(projectId, finalMessages);
+      }
+    } catch (err: any) {
+      const errorMessage = err?.message || "Ocurrió un error desconocido.";
+      console.error("Error en la operación de IA:", err);
+      toast.error(isAsk ? "La pregunta a la IA ha fallado" : "La generación con IA ha fallado", {
+        description: errorMessage,
+      });
       const aiResponse: StoredMessage = {
         role: "assistant",
-        content: "Entendido. Estoy trabajando en tus cambios. Verás la previsualización actualizada en breve.",
+        content: `La operación de IA ha fallado:\n\n> ${errorMessage}`,
         createdAt: Date.now(),
       };
       const finalMessages = [...newMessages, aiResponse];
       setMessagesState(finalMessages);
       setMessages(projectId, finalMessages);
+    } finally {
       setLoading(false);
-      
-      setPreviewLoading(true);
-      setTimeout(() => setPreviewLoading(false), 1500);
-    }, 1000);
+      if (!isAsk) setPreviewLoading(false);
+    }
   }, [messages, projectId, selectedElement]);
 
   const handleRefreshPreview = () => {
