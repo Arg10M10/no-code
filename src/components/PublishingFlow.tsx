@@ -76,10 +76,8 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       });
 
       if (error) {
-        let detailedMessage = error.message;
-        if (error.context && typeof error.context === 'object' && 'error' in error.context) {
-          detailedMessage = (error.context as any).error;
-        }
+        // The context should now be a plain text error message from the function
+        const detailedMessage = (error.context as any)?.toString() || error.message;
         throw new Error(detailedMessage);
       }
       
@@ -92,8 +90,14 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       toast.success('Project published successfully!');
     } catch (err: any) {
       console.error("Full publishing error:", err);
+      let finalMessage = err.message || "An unknown error occurred.";
+      if (finalMessage.includes("non-2xx status code")) {
+        finalMessage = "The publishing function failed unexpectedly. Please ensure the repository name is unique and try logging out and back in to refresh permissions.";
+      }
+      
       toast.error('Failed to publish project', { 
-        description: err.message || "An unknown error occurred. Check the browser console for more details." 
+        description: finalMessage,
+        duration: 10000,
       });
       setPublishState('idle');
     }

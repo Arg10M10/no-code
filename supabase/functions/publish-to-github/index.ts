@@ -17,9 +17,9 @@ serve(async (req) => {
     const { repoName, fileContent } = await req.json();
 
     if (!repoName || !fileContent) {
-      return new Response(JSON.stringify({ error: "repoName and fileContent are required" }), {
+      return new Response("repoName and fileContent are required", {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
     }
 
@@ -32,20 +32,21 @@ serve(async (req) => {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
     if (sessionError || !session) {
-      return new Response(JSON.stringify({ error: "Not authenticated" }), {
+      return new Response("Not authenticated", {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
     }
 
     const githubToken = session.provider_token;
     if (!githubToken) {
-      return new Response(JSON.stringify({ error: "GitHub provider token not found. Please re-authenticate." }), {
+      return new Response("GitHub provider token not found. Please re-authenticate.", {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
     }
 
+    // 1. Create Repository
     const repoResponse = await fetch(`${GITHUB_API_URL}/user/repos`, {
       method: 'POST',
       headers: {
@@ -55,7 +56,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         name: repoName,
-        private: true, // Crear repositorio como privado
+        private: true,
         description: 'Project generated with Brimy, ready for Vercel/Netlify deployment.',
       }),
     });
@@ -64,16 +65,16 @@ serve(async (req) => {
       const errorData = await repoResponse.json();
       console.error("GitHub repo creation error:", errorData);
       const errorMessage = errorData.errors?.[0]?.message || errorData.message || "Failed to create repository.";
-      return new Response(JSON.stringify({ error: `GitHub Error: ${errorMessage}` }), {
+      return new Response(`GitHub Error: ${errorMessage}`, {
         status: repoResponse.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
     }
-
     const repoData = await repoResponse.json();
     const owner = repoData.owner.login;
-    const contentEncoded = btoa(unescape(encodeURIComponent(fileContent)));
 
+    // 2. Create and commit index.html
+    const contentEncoded = btoa(unescape(encodeURIComponent(fileContent)));
     const fileResponse = await fetch(`${GITHUB_API_URL}/repos/${owner}/${repoName}/contents/index.html`, {
       method: 'PUT',
       headers: {
@@ -88,16 +89,18 @@ serve(async (req) => {
     });
 
     if (!fileResponse.ok) {
-      const errorData = await fileResponse.json();
-      console.error("GitHub file creation error:", errorData);
+      console.error("GitHub file creation failed. Deleting repository to clean up.");
       await fetch(repoData.url, { method: 'DELETE', headers: { 'Authorization': `token ${githubToken}` } });
+      
+      const errorData = await fileResponse.json();
       const errorMessage = errorData.message || "Failed to create file in repository.";
-      return new Response(JSON.stringify({ error: `GitHub Error: ${errorMessage}` }), {
+      return new Response(`GitHub Error: ${errorMessage}`, {
         status: fileResponse.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
       });
     }
 
+    // Success
     return new Response(JSON.stringify({ html_url: repoData.html_url }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -105,9 +108,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Internal server error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(error.message, {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
     });
   }
 });
