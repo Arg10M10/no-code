@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
 import { Send, X, Paperclip, Settings, Info } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom"; // Importar useNavigate
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -18,6 +19,7 @@ type ChatPanelProps = {
 const MODEL_TOKEN_LIMIT = 1_000_000;
 
 const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSend }) => {
+  const navigate = useNavigate(); // Inicializar useNavigate
   const [text, setText] = React.useState("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
@@ -266,15 +268,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                     />
                   </div>
 
-                  {/* Texto eliminado aquí */}
-
                   <div className="pt-2 border-t border-white/6">
                     <button
                       type="button"
                       onClick={() => {
-                        // simple action placeholder: show toast and close popup
-                        showTokensToast();
-                        setShowTokensPopup(false);
+                        setShowTokensPopup(false); // Cerrar popup
+                        navigate('/pricing'); // Navegar a /pricing
                       }}
                       className="w-full text-left text-xs text-sky-400 hover:underline"
                     >
