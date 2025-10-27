@@ -9,7 +9,7 @@ import {
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
-import { getProjectById, StoredMessage, setMessages, getMessages, getCode, setCode } from "@/lib/projects";
+import { getProjectById, StoredMessage, setMessages, getMessages } from "@/lib/projects";
 
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -20,10 +20,10 @@ const EditorPage: React.FC = () => {
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [messages, setMessagesState] = useState<StoredMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [credits, setCredits] = useState(0);
+  const [credits, setCredits] = useState(0); // start with 0 tokens
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   
+  // New state for selection mode
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
 
@@ -33,18 +33,19 @@ const EditorPage: React.FC = () => {
       if (project) {
         setProjectName(project.name);
         setMessagesState(getMessages(projectId));
-        setGeneratedCode(getCode(projectId));
+        // We start credits at 0 (1k-5k will be spent per question)
         setCredits(0);
       } else {
         console.error("Project not found");
-        navigate("/");
+        navigate("/"); // Redirect if project doesn't exist
       }
     } else {
-      navigate("/");
+      navigate("/"); // Redirect if no project ID
     }
   }, [projectId, navigate]);
 
   const computeCost = (text: string) => {
+    // Simple heuristic: short questions = 1k, medium = 3k, long = 5k
     const len = (text || "").trim().length;
     if (len === 0) return 1000;
     if (len < 50) return 1000;
@@ -52,92 +53,56 @@ const EditorPage: React.FC = () => {
     return 5000;
   };
 
-  // NOTE: signature expected by ChatPanel is (text: string, image?: File | null)
   const handleNewMessage = useCallback((text: string, image?: File | null) => {
     if (!projectId) return;
 
-    const userMessage: StoredMessage = { role: "user", content: text, createdAt: Date.now() };
+    let messageContent = text;
+    if (selectedElement) {
+      messageContent = `Regarding the element "${selectedElement}", please do the following: ${text}`;
+      setSelectedElement(null); // Clear selection after sending
+    }
+
+    const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
     const newMessages = [...messages, userMessage];
     setMessagesState(newMessages);
     setMessages(projectId, newMessages);
-
-    // Show both chat and preview loaders immediately
     setLoading(true);
-    setPreviewLoading(true);
 
-    // Start streaming the generated code: initialize to empty string
-    setGeneratedCode("");
-    setCode(projectId, "");
-
+    // Deduct tokens based on type/question
     const cost = computeCost(text);
     setCredits((prev) => Math.max(0, prev - cost));
 
-    // Simulate AI assistant immediate acknowledgement
+    // Simulate AI thinking...
     setTimeout(() => {
       const aiResponse: StoredMessage = {
         role: "assistant",
-        content: "Understood. I'm generating the code for you now.",
+        content: "Understood. I'm working on your changes. You'll see the updated preview shortly.",
         createdAt: Date.now(),
       };
-      const updatedMessages = [...newMessages, aiResponse];
-      setMessagesState(updatedMessages);
-      setMessages(projectId, updatedMessages);
-    }, 800);
+      const finalMessages = [...newMessages, aiResponse];
+      setMessagesState(finalMessages);
+      setMessages(projectId, finalMessages);
+      setLoading(false);
+      
+      setPreviewLoading(true);
+      setTimeout(() => setPreviewLoading(false), 1500);
 
-    // Prepare fake generated code, include info about the single image if present
-    const imagesCount = image ? 1 : 0;
-    const fakeGeneratedCode = `import React from 'react';
-
-const GeneratedComponent = () => {
-  return (
-    <div className="p-6 bg-gray-800 border border-dashed border-gray-600 rounded-lg text-white">
-      <h2 className="text-xl font-bold text-cyan-400 mb-2">Generated Component</h2>
-      <p className="text-gray-300">This component was generated based on your prompt.</p>
-      ${imagesCount > 0 ? `<p className="text-gray-400 text-sm mt-2">Received ${imagesCount} image(s) for context.</p>` : ''}
-    </div>
-  );
-};
-
-export default GeneratedComponent;
-`;
-
-    // Break the fake code into chunks (by lines) to simulate streaming
-    const lines = fakeGeneratedCode.split("\n");
-    let idx = 0;
-    const chunkInterval = 180; // ms between chunks
-    const intervalId = setInterval(() => {
-      if (idx >= lines.length) {
-        clearInterval(intervalId);
-        // finished generation
-        setLoading(false);
-        // leave a small delay for preview rendering, then hide preview loader
-        setTimeout(() => setPreviewLoading(false), 600);
-        return;
-      }
-      // append next line plus newline
-      setGeneratedCode((prev) => {
-        const next = (prev ?? "") + lines[idx] + "\n";
-        // persist as we stream so preview/code tab can read it live
-        setCode(projectId, next);
-        return next;
-      });
-      idx += 1;
-    }, chunkInterval);
-  }, [messages, projectId]);
+    }, 1000);
+  }, [messages, projectId, selectedElement]);
 
   const handleRefreshPreview = () => {
     setPreviewLoading(true);
     setTimeout(() => {
       setPreviewLoading(false);
-    }, 1500);
+    }, 1500); // Simulate a refresh delay
   };
 
   const handleElementSelected = (description: string) => {
     setSelectedElement(description);
-    setIsSelectionModeActive(false);
+    setIsSelectionModeActive(false); // Automatically turn off selection mode
   };
 
-  const previewUrl = `/preview?id=${projectId}`;
+  const previewUrl = `/preview`;
 
   if (!projectId) {
     return <div>Loading project...</div>;
@@ -159,9 +124,10 @@ export default GeneratedComponent;
       </header>
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
+          {/* Left chat panel: a bit larger (420px) for better readability */}
           <ResizablePanel
-            defaultSize={30}
-            minSize={20}
+            defaultWidth={420}
+            minWidth={300}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
@@ -177,21 +143,22 @@ export default GeneratedComponent;
               onClearSelection={() => setSelectedElement(null)}
             />
           </ResizablePanel>
+
+          {/* Vertical separator between chat and preview */}
           <div
             aria-hidden="true"
             className="h-full w-px bg-border/40"
             role="separator"
           />
-          <ResizablePanel defaultSize={70}>
+
+          <ResizablePanel>
             <PreviewPanel
               previewUrl={previewUrl}
-              previewLoading={previewLoading}
+              loading={previewLoading}
               onRefresh={handleRefreshPreview}
               isSelectionModeActive={isSelectionModeActive}
               onToggleSelectionMode={() => setIsSelectionModeActive(prev => !prev)}
               onElementSelected={handleElementSelected}
-              generatedCode={generatedCode}
-              codeLoading={loading && !generatedCode}
             />
           </ResizablePanel>
         </ResizablePanelGroup>

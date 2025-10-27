@@ -6,28 +6,23 @@ import { RefreshCw, Upload, MousePointerClick } from "lucide-react";
 import Loader from "./Loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PreviewPanelProps {
   previewUrl: string;
-  previewLoading: boolean;
+  loading: boolean;
   onRefresh: () => void;
   isSelectionModeActive: boolean;
   onToggleSelectionMode: () => void;
   onElementSelected: (description: string) => void;
-  generatedCode: string | null;
-  codeLoading: boolean;
 }
 
 const PreviewPanel: React.FC<PreviewPanelProps> = ({
   previewUrl,
-  previewLoading,
+  loading,
   onRefresh,
   isSelectionModeActive,
   onToggleSelectionMode,
   onElementSelected,
-  generatedCode,
-  codeLoading,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -38,6 +33,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
     onRefresh();
   };
 
+  // Effect to notify iframe about selection mode changes
   useEffect(() => {
     const iframe = iframeRef.current;
     if (iframe && iframe.contentWindow) {
@@ -45,19 +41,25 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         type: 'toggleSelectionMode',
         payload: { isActive: isSelectionModeActive },
       };
+      // The iframe might not be loaded yet. Post message on load.
       const post = () => iframe.contentWindow?.postMessage(message, '*');
       iframe.addEventListener('load', post);
-      post();
+      post(); // Also try immediately
       return () => iframe.removeEventListener('load', post);
     }
   }, [isSelectionModeActive]);
 
+  // Effect to listen for messages from the iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Basic security: check origin if the iframe could be from a different source
+      // if (event.origin !== window.location.origin) return;
+
       if (event.data && event.data.type === 'elementSelected') {
         onElementSelected(event.data.payload.description);
       }
     };
+
     window.addEventListener('message', handleMessage);
     return () => {
       window.removeEventListener('message', handleMessage);
@@ -94,7 +96,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </div>
         
         <TabsContent value="preview" className="flex-1 relative">
-          {previewLoading && (
+          {loading && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
               <Loader />
             </div>
@@ -117,21 +119,11 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </TabsContent>
 
         <TabsContent value="code" className="flex-1 overflow-hidden bg-background/50">
-          {codeLoading ? (
-            <div className="h-full flex items-center justify-center">
-              <Loader />
-            </div>
-          ) : generatedCode ? (
-            <ScrollArea className="h-full">
-              <pre className="text-sm p-4"><code className="font-mono">{generatedCode}</code></pre>
-            </ScrollArea>
-          ) : (
-            <div className="p-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Generated code will appear here.
-              </p>
-            </div>
-          )}
+           <div className="p-6 text-center">
+            <p className="text-sm text-muted-foreground">
+                Code changes are applied directly to the project files.
+            </p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

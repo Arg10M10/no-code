@@ -1,32 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { getCode } from '@/lib/projects';
 
 const GeneratedPreview = () => {
-  const [searchParams] = useSearchParams();
-  const projectId = searchParams.get('id');
-  const [code, setCode] = useState<string | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (projectId) {
-      const storedCode = getCode(projectId);
-      setCode(storedCode);
-    }
-    
-    // Listen for storage changes to update preview in real-time
-    const handleStorageChange = () => {
-      if (projectId) {
-        setCode(getCode(projectId));
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [projectId]);
-
+  // Listen for messages from the parent window (Editor)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Optional: Add origin check for security
+      // if (event.origin !== 'http://your-editor-domain.com') return;
+
       if (event.data.type === 'toggleSelectionMode') {
         setIsSelectionMode(event.data.payload.isActive);
       }
@@ -35,6 +18,7 @@ const GeneratedPreview = () => {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  // Add/remove event listeners for element selection
   useEffect(() => {
     const overlay = overlayRef.current;
     if (!isSelectionMode || !overlay) return;
@@ -91,6 +75,7 @@ const GeneratedPreview = () => {
 
     document.addEventListener('mouseover', handleMouseOver);
     document.addEventListener('mouseout', handleMouseOut);
+    // Use capture phase to intercept clicks before they trigger actions like navigation
     document.addEventListener('click', handleClick, true);
 
     return () => {
@@ -103,6 +88,7 @@ const GeneratedPreview = () => {
 
   return (
     <>
+      {/* This overlay will highlight elements on hover during selection mode */}
       <div
         ref={overlayRef}
         style={{
@@ -116,17 +102,11 @@ const GeneratedPreview = () => {
           transition: 'all 50ms ease-out',
         }}
       />
-      <div className="p-4 bg-background text-foreground min-h-screen">
-        {code ? (
-          <pre className="text-xs bg-gray-900 text-white p-4 rounded-md overflow-auto whitespace-pre-wrap break-words"><code className="font-mono">{code}</code></pre>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center p-8 border border-dashed border-border rounded-lg">
-              <h1 className="text-2xl font-bold mb-2">Preview Area</h1>
-              <p className="text-muted-foreground">Ask me to generate a component and you'll see it here.</p>
-            </div>
-          </div>
-        )}
+      <div className="flex items-center justify-center h-screen bg-background text-foreground">
+        <div className="text-center p-8 border border-dashed border-border rounded-lg">
+          <h1 className="text-2xl font-bold mb-2">Preview Area</h1>
+          <p className="text-muted-foreground">Ask me to generate a component and you'll see it here.</p>
+        </div>
       </div>
     </>
   );
