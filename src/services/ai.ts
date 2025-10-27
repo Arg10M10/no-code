@@ -104,6 +104,28 @@ function ensureMessages(messages: unknown): asserts messages is ChatMessage[] {
   }
 }
 
+/**
+ * Helper wrapper for fetch that augments network-level failures (e.g. CORS / failed to fetch)
+ * with a clearer, actionable error message. Errors are re-thrown so they bubble up for
+ * global handling (we don't swallow them).
+ */
+async function safeFetch(input: RequestInfo, init?: RequestInit, contextHint?: string): Promise<Response> {
+  try {
+    const res = await fetch(input, init);
+    return res;
+  } catch (err) {
+    // Network-level error (TypeError: Failed to fetch)
+    const hint = contextHint ? ` (${contextHint})` : "";
+    throw new Error(
+      `Network request failed for ${typeof input === "string" ? input : "resource"}${hint}. ` +
+        `This commonly happens when calling third-party APIs directly from the browser due to CORS or connectivity issues. ` +
+        `To fix this, either use a server-side proxy (recommended) or an API provider that supports browser requests (e.g. OpenRouter with proper CORS). Original error: ${String(
+          err,
+        )}`,
+    );
+  }
+}
+
 async function callOpenAI(params: {
   messages: ChatMessage[];
   model: string;
@@ -113,7 +135,7 @@ async function callOpenAI(params: {
   // Validate input to avoid runtime map/filter errors
   ensureMessages(params.messages);
 
-  const r = await fetch("https://api.openai.com/v1/chat/completions", {
+  const r = await safeFetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -124,7 +146,8 @@ async function callOpenAI(params: {
       messages: params.messages,
       temperature: params.temperature ?? 0.7,
     }),
-  });
+  }, "OpenAI Chat API");
+
   if (!r.ok) {
     const text = await r.text();
     throw new Error(`OpenAI error: ${r.status} ${text}`);
@@ -150,7 +173,8 @@ async function callAnthropic(params: {
     role: m.role,
     content: [{ type: "text", text: m.content }],
   }));
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+
+  const r = await safeFetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -164,7 +188,8 @@ async function callAnthropic(params: {
       messages: mapped,
       temperature: params.temperature ?? 0.7,
     }),
-  });
+  }, "Anthropic API");
+
   if (!r.ok) {
     const text = await r.text();
     throw new Error(`Anthropic error: ${r.status} ${text}`);
@@ -206,11 +231,12 @@ async function callGoogle(params: {
     params.model,
   )}:generateContent?key=${encodeURIComponent(params.apiKey)}`;
 
-  const r = await fetch(url, {
+  const r = await safeFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
+  }, "Google Generative Language API");
+
   if (!r.ok) {
     const text = await r.text();
     throw new Error(`Google error: ${r.status} ${text}`);
@@ -230,7 +256,7 @@ async function callOpenRouter(params: {
 }): Promise<string> {
   ensureMessages(params.messages);
 
-  const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const r = await safeFetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -244,7 +270,8 @@ async function callOpenRouter(params: {
       stream: false,
       temperature: params.temperature ?? 0.7,
     }),
-  });
+  }, "OpenRouter API");
+
   if (!r.ok) {
     const text = await r.text();
     throw new Error(`OpenRouter error: ${r.status} ${text}`);
