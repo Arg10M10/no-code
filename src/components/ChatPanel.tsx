@@ -177,7 +177,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={chatMode === 'build' ? "Ask Dyad to build..." : "Ask Dyad a question..."}
+              placeholder={chatMode === 'build' ? "Ask AI to build..." : "Ask AI a question..."}
               className="resize-none flex-1 min-h-[44px] max-h-36 bg-transparent text-foreground placeholder:text-muted-foreground outline-none px-3 py-2 rounded-md"
               rows={1}
               aria-label="Message"
