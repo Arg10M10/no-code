@@ -7,6 +7,7 @@ import type { StoredMessage } from "@/lib/projects";
 import { ArrowUp, X, Paperclip, Settings, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import TypingIndicator from "./TypingIndicator";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -39,6 +40,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const [showTokensPopup, setShowTokensPopup] = React.useState(false);
   const tokenButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const popupRef = React.useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  React.useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
 
   React.useEffect(() => {
     if (!selectedImage) {
@@ -154,6 +164,16 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               </div>
             );
           })}
+          {loading && (
+            <div className="min-w-0">
+              <div
+                className="p-3 rounded-lg bg-white/3 border border-green-600/30 ring-2 ring-green-500/20 shadow-sm flex items-center"
+              >
+                <TypingIndicator />
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
