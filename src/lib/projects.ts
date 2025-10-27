@@ -84,7 +84,7 @@ export function setMessages(projectId: string, msgs: StoredMessage[]) {
 }
 
 /* Credits management */
-const DEFAULT_CREDITS = 100;
+const DEFAULT_CREDITS = 100000;
 function creditsKey(projectId: string) {
   return `credits:${projectId}`;
 }

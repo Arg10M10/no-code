@@ -10,7 +10,7 @@ import {
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
-import { getProjectById, StoredMessage, setMessages, getMessages, addMessage, getCode, setCode } from "@/lib/projects";
+import { getProjectById, StoredMessage, setMessages, getMessages, addMessage, getCode, setCode, getCredits, decrementCredits } from "@/lib/projects";
 import { storage } from "@/lib/storage";
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
@@ -67,6 +67,12 @@ const EditorPage: React.FC = () => {
       setCode(projId, generatedCode);
       setCodeState(generatedCode);
       addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización está lista." });
+
+      const cost = Math.floor(Math.random() * 4001) + 1000; // 1k to 5k
+      const newCredits = decrementCredits(projId, cost);
+      setCredits(newCredits);
+      toast.info(`${cost.toLocaleString()} tokens used.`);
+
     } catch (err: any) {
       const errorMessage = err.message || "Ocurrió un error desconocido.";
       console.error("La generación con IA ha fallado:", err);
@@ -94,7 +100,7 @@ const EditorPage: React.FC = () => {
         const loadedMessages = getMessages(projectId);
         setMessagesState(loadedMessages);
         setCodeState(getCode(projectId));
-        setCredits(0);
+        setCredits(getCredits(projectId));
 
         if (loadedMessages.length === 1 && loadedMessages[0].role === 'user') {
           triggerInitialGeneration(projectId, loadedMessages[0].content);
@@ -120,7 +126,6 @@ const EditorPage: React.FC = () => {
       setSelectedElement(null);
     }
 
-    // Guardar el mensaje del usuario sin el prefijo [ASK]
     const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
     const newMessages = [...messages, userMessage];
     setMessagesState(newMessages);
@@ -131,43 +136,39 @@ const EditorPage: React.FC = () => {
     const selectedModel = getSelectedModelLabel();
 
     try {
+      let aiResponseContent: string;
       if (isAsk) {
-        // Solo responder en chat, sin construir
-        const answer = await generateChat({
+        aiResponseContent = await generateChat({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           selectedModelLabel: selectedModel,
           apiKeys,
         });
-
-        const aiResponse: StoredMessage = {
-          role: "assistant",
-          content: answer,
-          createdAt: Date.now(),
-        };
-        const finalMessages = [...newMessages, aiResponse];
-        setMessagesState(finalMessages);
-        setMessages(projectId, finalMessages);
       } else {
-        // Build: construir sitio y actualizar preview
         setPreviewLoading(true);
         const generatedCode = await generateAnswer({
           prompt: messageContent,
           selectedModelLabel: selectedModel,
           apiKeys,
         });
-
         setCode(projectId, generatedCode);
         setCodeState(generatedCode);
-
-        const aiResponse: StoredMessage = {
-          role: "assistant",
-          content: "Listo. He aplicado tus cambios y actualizado la previsualización.",
-          createdAt: Date.now(),
-        };
-        const finalMessages = [...newMessages, aiResponse];
-        setMessagesState(finalMessages);
-        setMessages(projectId, finalMessages);
+        aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización.";
       }
+
+      const cost = Math.floor(Math.random() * 4001) + 1000; // 1k to 5k
+      const newCredits = decrementCredits(projectId, cost);
+      setCredits(newCredits);
+      toast.info(`${cost.toLocaleString()} tokens used.`);
+
+      const aiResponse: StoredMessage = {
+        role: "assistant",
+        content: aiResponseContent,
+        createdAt: Date.now(),
+      };
+      const finalMessages = [...newMessages, aiResponse];
+      setMessagesState(finalMessages);
+      setMessages(projectId, finalMessages);
+
     } catch (err: any) {
       const errorMessage = err?.message || "Ocurrió un error desconocido.";
       console.error("Error en la operación de IA:", err);
