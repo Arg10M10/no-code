@@ -147,7 +147,7 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
             <h2 className="font-semibold">Create Repository</h2>
             {publishState !== 'published' && (
               <>
-                <p className="text-sm text-muted-foreground mt-1">A new public repository will be created on your GitHub account.</p>
+                <p className="text-sm text-muted-foreground mt-1">A new private repository will be created on your GitHub account.</p>
                 <div className="mt-4 space-y-2 max-w-sm">
                   <Label htmlFor="repo-name">Repository Name</Label>
                   <Input

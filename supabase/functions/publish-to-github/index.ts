@@ -23,7 +23,6 @@ serve(async (req) => {
       });
     }
 
-    // Crear un cliente de Supabase para obtener la sesión del usuario
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -47,7 +46,6 @@ serve(async (req) => {
       });
     }
 
-    // 1. Crear el repositorio en GitHub
     const repoResponse = await fetch(`${GITHUB_API_URL}/user/repos`, {
       method: 'POST',
       headers: {
@@ -57,15 +55,16 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         name: repoName,
-        private: false,
-        description: 'Project generated with Brimy',
+        private: true, // Crear repositorio como privado
+        description: 'Project generated with Brimy, ready for Vercel/Netlify deployment.',
       }),
     });
 
     if (!repoResponse.ok) {
       const errorData = await repoResponse.json();
       console.error("GitHub repo creation error:", errorData);
-      return new Response(JSON.stringify({ error: `Failed to create repository: ${errorData.message}` }), {
+      const errorMessage = errorData.errors?.[0]?.message || errorData.message || "Failed to create repository.";
+      return new Response(JSON.stringify({ error: `GitHub Error: ${errorMessage}` }), {
         status: repoResponse.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -73,8 +72,6 @@ serve(async (req) => {
 
     const repoData = await repoResponse.json();
     const owner = repoData.owner.login;
-
-    // 2. Subir el archivo index.html al nuevo repositorio
     const contentEncoded = btoa(unescape(encodeURIComponent(fileContent)));
 
     const fileResponse = await fetch(`${GITHUB_API_URL}/repos/${owner}/${repoName}/contents/index.html`, {
@@ -93,9 +90,9 @@ serve(async (req) => {
     if (!fileResponse.ok) {
       const errorData = await fileResponse.json();
       console.error("GitHub file creation error:", errorData);
-      // Intenta eliminar el repositorio si la subida del archivo falla
       await fetch(repoData.url, { method: 'DELETE', headers: { 'Authorization': `token ${githubToken}` } });
-      return new Response(JSON.stringify({ error: `Failed to create file: ${errorData.message}` }), {
+      const errorMessage = errorData.message || "Failed to create file in repository.";
+      return new Response(JSON.stringify({ error: `GitHub Error: ${errorMessage}` }), {
         status: fileResponse.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
