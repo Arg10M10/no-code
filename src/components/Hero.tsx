@@ -258,7 +258,7 @@ const Hero: React.FC = () => {
       </div>
 
       {/* Projects section below the examples, full-width like the reference */}
-      <div className="w-full max-w-6xl mx-auto mt-12 opacity-0 animate-fade-in-up" style={{ animationDelay: "0.6s" }}>
+      <div className="w-full max-w-6xl mx-auto mt-16 opacity-0 animate-fade-in-up" style={{ animationDelay: "0.6s" }}>
         <ProjectsGallery />
       </div>
     </section>
