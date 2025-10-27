@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Github, Loader2, CheckCircle, ArrowRight, ExternalLink } from 'lucide-react';
+import { Github, Loader2, CheckCircle, ArrowRight, ExternalLink, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -52,6 +52,14 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       toast.error('GitHub login failed', { description: error.message });
       setLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    setLoading(true);
+    await supabase.auth.signOut();
+    setUser(null);
+    setLoading(false);
+    toast.info("You have been logged out.");
   };
 
   const handlePublish = async () => {
@@ -117,7 +125,14 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
             </div>
           )}
           {authState === 'authenticated' && (
-            <p className="text-sm text-green-400 mt-1">Successfully connected as {user?.user_metadata.user_name || 'your GitHub account'}.</p>
+            <div className="space-y-2">
+              <p className="text-sm text-green-400 mt-1">Successfully connected as {user?.user_metadata.user_name || 'your GitHub account'}.</p>
+              <p className="text-xs text-muted-foreground">If publishing fails, try logging out and back in to refresh permissions.</p>
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="h-3 w-3 mr-2" />
+                Logout
+              </Button>
+            </div>
           )}
         </div>
       </div>
