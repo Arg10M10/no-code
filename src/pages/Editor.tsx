@@ -169,8 +169,8 @@ const EditorPage: React.FC = () => {
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel
-            defaultSize={20}
-            minSize={20}
+            defaultSize={15}
+            minSize={15}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
@@ -191,7 +191,7 @@ const EditorPage: React.FC = () => {
             className="h-full w-px bg-border/40"
             role="separator"
           />
-          <ResizablePanel defaultSize={80}>
+          <ResizablePanel defaultSize={85}>
             <PreviewPanel
               previewUrl="/preview"
               code={code}
