@@ -192,126 +192,129 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
               aria-hidden
             />
 
-            <div className="relative flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={handleAttachClick}
-                className="h-9 w-9 rounded-md p-0 text-primary"
-                aria-label="Attach image"
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-md p-0 text-primary"
-                onClick={() => {
-                  // settings action placeholder
-                }}
-                aria-label="Settings"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-
-              {/* Icon para mostrar tokens (abre popup) */}
-              <Button
-                ref={tokenButtonRef}
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowTokensPopup((s) => !s)}
-                className="h-9 w-9 rounded-md p-0 text-primary"
-                aria-label="Mostrar tokens"
-                title="Mostrar tokens disponibles"
-              >
-                <Info className="h-4 w-4" />
-              </Button>
-
-              <Button
-                type="submit"
-                disabled={loading || (!text.trim() && !selectedImage)}
-                className="h-9 w-9 rounded-md p-0 bg-primary text-primary-foreground hover:bg-primary/90"
-                aria-label="Send"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-
-              {/* Tokens popup */}
-              {showTokensPopup ? (
-                <div
-                  ref={popupRef}
-                  className="absolute right-0 bottom-full mb-3 w-[260px] max-w-[95vw] z-50 rounded-md bg-[#0b0b0b] border border-neutral-700 p-3 shadow-lg text-sm text-white"
-                  role="dialog"
-                  aria-label="Tokens disponibles"
-                >
-                  <div className="flex items-center justify-between text-xs text-white/90 mb-2">
-                    <div className="truncate">Tokens: <span className="font-medium">{credits.toLocaleString()}</span></div>
-                    <div className="text-right text-[11px] text-white/70">
-                      {percentOfLimit}% of {MODEL_TOKEN_LIMIT.toLocaleString()}
-                    </div>
-                  </div>
-
-                  <div className="w-full h-2 rounded-md bg-white/6 overflow-hidden mb-2">
-                    <div
-                      className="h-2 rounded-md bg-gradient-to-r from-emerald-400 via-indigo-400 to-pink-400"
-                      style={{ width: progressWidth }}
-                      aria-hidden
-                    />
-                  </div>
-
-                  <div className="pt-2 border-t border-white/6">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowTokensPopup(false); // Cerrar popup
-                        navigate('/pricing'); // Navegar a /pricing
-                      }}
-                      className="w-full text-left text-xs text-sky-400 hover:underline"
-                    >
-                      Optimize your tokens with Pro Plan
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
+            <Button
+              type="submit"
+              disabled={loading || (!text.trim() && !selectedImage)}
+              className="h-9 w-9 rounded-md p-0 bg-primary text-primary-foreground hover:bg-primary/90"
+              aria-label="Send"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
 
-          {/* Chips row moved to the bottom, more squared buttons */}
+          {/* Chips and actions row */}
           <div className="mt-3 border-t border-border pt-3">
-            <div className="flex items-center gap-2 justify-start flex-wrap">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none bg-transparent border border-border text-primary hover:bg-primary/5"
-                onClick={() => {
-                  setChatMode(prev => (prev === 'build' ? 'ask' : 'build'));
-                }}
-              >
-                {chatMode === 'build' ? 'Build' : 'Ask'}
-              </button>
-              {chips.map((c) => (
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              {/* Left side: Mode buttons */}
+              <div className="flex items-center gap-2 justify-start flex-wrap">
                 <button
-                  key={c.id}
                   type="button"
-                  className={[
-                    "inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none",
-                    c.filled
-                      ? "bg-primary text-primary-foreground hover:brightness-95"
-                      : "bg-transparent border border-border text-primary hover:bg-primary/5",
-                  ].join(" ")}
+                  className="inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none bg-transparent border border-border text-primary hover:bg-primary/5"
                   onClick={() => {
-                    if (c.id === 'pro') {
-                      navigate('/pricing');
-                    }
+                    setChatMode(prev => (prev === 'build' ? 'ask' : 'build'));
                   }}
-                  aria-pressed={c.filled}
                 >
-                  {c.label}
+                  {chatMode === 'build' ? 'Build' : 'Ask'}
                 </button>
-              ))}
+                {chips.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={[
+                      "inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none",
+                      c.filled
+                        ? "bg-primary text-primary-foreground hover:brightness-95"
+                        : "bg-transparent border border-border text-primary hover:bg-primary/5",
+                    ].join(" ")}
+                    onClick={() => {
+                      if (c.id === 'pro') {
+                        navigate('/pricing');
+                      }
+                    }}
+                    aria-pressed={c.filled}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Right side: Action buttons */}
+              <div className="relative flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleAttachClick}
+                  className="h-9 w-9 rounded-md p-0 text-primary"
+                  aria-label="Attach image"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-md p-0 text-primary"
+                  onClick={() => {
+                    // settings action placeholder
+                  }}
+                  aria-label="Settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  ref={tokenButtonRef}
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowTokensPopup((s) => !s)}
+                  className="h-9 w-9 rounded-md p-0 text-primary"
+                  aria-label="Mostrar tokens"
+                  title="Mostrar tokens disponibles"
+                >
+                  <Info className="h-4 w-4" />
+                </Button>
+
+                {/* Tokens popup */}
+                {showTokensPopup ? (
+                  <div
+                    ref={popupRef}
+                    className="absolute right-0 bottom-full mb-3 w-[260px] max-w-[95vw] z-50 rounded-md bg-[#0b0b0b] border border-neutral-700 p-3 shadow-lg text-sm text-white"
+                    role="dialog"
+                    aria-label="Tokens disponibles"
+                  >
+                    <div className="flex items-center justify-between text-xs text-white/90 mb-2">
+                      <div className="truncate">Tokens: <span className="font-medium">{credits.toLocaleString()}</span></div>
+                      <div className="text-right text-[11px] text-white/70">
+                        {percentOfLimit}% of {MODEL_TOKEN_LIMIT.toLocaleString()}
+                      </div>
+                    </div>
+
+                    <div className="w-full h-2 rounded-md bg-white/6 overflow-hidden mb-2">
+                      <div
+                        className="h-2 rounded-md bg-gradient-to-r from-emerald-400 via-indigo-400 to-pink-400"
+                        style={{ width: progressWidth }}
+                        aria-hidden
+                      />
+                    </div>
+
+                    <div className="pt-2 border-t border-white/6">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowTokensPopup(false); // Cerrar popup
+                          navigate('/pricing'); // Navegar a /pricing
+                        }}
+                        className="w-full text-left text-xs text-sky-400 hover:underline"
+                      >
+                        Optimize your tokens with Pro Plan
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
