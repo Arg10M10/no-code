@@ -7,10 +7,10 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import ModelsPopover from "./ModelsPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { createProjectFromPrompt, addMessage, setCode } from "@/lib/projects";
+import { createProjectFromPrompt, addMessage } from "@/lib/projects";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
 import { storage } from "@/lib/storage";
-import { getProviderFromLabel, generateAnswer } from "@/services/ai";
+import { getProviderFromLabel } from "@/services/ai";
 
 const Hero = () => {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -107,12 +107,12 @@ const Hero = () => {
 
     setLoading(true);
 
-    // Validate API key before creating the project and navigating
+    // Validar API key antes de crear el proyecto y navegar
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const provider = getProviderFromLabel(selectedModel);
     if (!apiKeys[provider]) {
       const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-      toast.error("Missing API Key", { description: `Set your ${providerName} key in Settings > API Keys.` });
+      toast.error("Falta API Key", { description: `Configura tu clave de ${providerName} en Settings > API Keys.` });
       setLoading(false);
       return;
     }
@@ -121,37 +121,12 @@ const Hero = () => {
       ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
       : prompt;
 
-    // Create project and save the user's initial message
+    // Crear proyecto y guardar primer mensaje; la IA correrá en el editor
     const proj = createProjectFromPrompt(prompt);
     addMessage(proj.id, { role: "user", content: fullPrompt });
 
-    // Add a working message so users see progress in the editor immediately
-    addMessage(proj.id, {
-      role: "assistant",
-      content: "Got it — I'm starting to generate your page. This may take a few moments.",
-      createdAt: Date.now(),
-    });
-
-    // Navigate to editor immediately so the user can view progress
+    // Navegar de inmediato al editor; allí se generará y renderizará el preview automáticamente
     navigate(`/editor?id=${encodeURIComponent(proj.id)}`, { replace: false });
-
-    // Call the real AI generator to produce HTML for the prompt and save it to the project.
-    // Note: Errors from generateAnswer are allowed to bubble up (per project error rules).
-    const generated = await generateAnswer({
-      prompt: fullPrompt,
-      selectedModelLabel: selectedModel,
-      apiKeys,
-    });
-
-    // Save generated HTML into project storage so Preview renders it
-    setCode(proj.id, generated);
-
-    // Add a completion assistant message
-    addMessage(proj.id, {
-      role: "assistant",
-      content: "Generation complete — preview is ready in the editor.",
-      createdAt: Date.now(),
-    });
 
     setLoading(false);
   };
@@ -319,14 +294,5 @@ const Hero = () => {
     </section>
   );
 };
-
-function escapeHtml(unsafe: string) {
-  return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
 
 export default Hero;

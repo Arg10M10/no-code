@@ -51,18 +51,22 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
 
   switch (provider) {
     case "google": {
+      // UI: "Gemini 2.5 flash" / "Gemini 2.5 Pro" -> API: gemini-2.5-flash / gemini-2.5-pro
       if (normalized.includes("2.5") && normalized.includes("flash")) {
         return { provider, model: "gemini-2.5-flash" };
       }
       if (normalized.includes("2.5") && normalized.includes("pro")) {
         return { provider, model: "gemini-2.5-pro" };
       }
+      // Fallback seguro a 2.5
       return { provider, model: "gemini-2.5-flash" };
     }
     case "openai": {
+      // UI: "o4mini" -> API: o4-mini
       if (normalized.includes("o4mini") || normalized.includes("o4-mini")) {
         return { provider, model: "o4-mini" };
       }
+      // UI: "GPT-5" variantes -> mapear a modelos disponibles
       if (normalized.includes("gpt-5") && normalized.includes("mini")) {
         return { provider, model: "gpt-4o-mini" };
       }
@@ -75,9 +79,11 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
       if (normalized.includes("gpt-5")) {
         return { provider, model: "gpt-4o" };
       }
+      // Fallback seguro
       return { provider, model: "gpt-4o-mini" };
     }
     case "anthropic": {
+      // Varias etiquetas de "Claude X Sonet" -> API estable
       return { provider, model: "claude-3-5-sonnet-latest" };
     }
     case "openrouter": {
@@ -87,61 +93,11 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
       if (normalized.includes("deepseek")) {
         return { provider, model: "deepseek/deepseek-chat" };
       }
+      // Fallback
       return { provider, model: "deepseek/deepseek-chat" };
     }
     default:
       return { provider: "openai", model: "gpt-4o-mini" };
-  }
-}
-
-/**
- * Small helper to ensure callers always pass an array of messages.
- * Throws a clear error if messages is missing or not an array.
- */
-function ensureMessages(messages: unknown): asserts messages is ChatMessage[] {
-  if (!Array.isArray(messages)) {
-    throw new Error("AI call requires a messages array but none was provided.");
-  }
-}
-
-/**
- * Validate API key format before using it in requests.
- * This prevents accidentally passing long strings (like prompts) as the key
- * which would generate invalid URLs and lead to confusing "Failed to fetch".
- */
-function validateApiKey(provider: ProviderId, key?: string) {
-  if (!key || typeof key !== "string") {
-    throw new Error(`Missing API key for ${provider}. Set it in Settings > API Keys.`);
-  }
-
-  // Reject obviously-bad values: contains whitespace or excessively long (likely a pasted prompt)
-  if (/\s/.test(key) || key.length > 200) {
-    throw new Error(
-      `Invalid API key provided for ${provider}. The value appears to be wrong (contains spaces or is too long). ` +
-        `Please double-check the API key in Settings > API Keys.`,
-    );
-  }
-}
-
-/**
- * Helper wrapper for fetch that augments network-level failures (e.g. CORS / failed to fetch)
- * with a clearer, actionable error message. Errors are re-thrown so they bubble up for
- * global handling (we don't swallow them).
- */
-async function safeFetch(input: RequestInfo, init?: RequestInit, contextHint?: string): Promise<Response> {
-  try {
-    const res = await fetch(input, init);
-    return res;
-  } catch (err) {
-    // Network-level error (TypeError: Failed to fetch)
-    const hint = contextHint ? ` (${contextHint})` : "";
-    throw new Error(
-      `Network request failed for ${typeof input === "string" ? input : "resource"}${hint}. ` +
-        `This commonly happens when calling third-party APIs directly from the browser due to CORS or connectivity issues. ` +
-        `To fix this, either use a server-side proxy (recommended) or an API provider that supports browser requests (e.g. OpenRouter with proper CORS). Original error: ${String(
-          err,
-        )}`,
-    );
   }
 }
 
@@ -151,11 +107,7 @@ async function callOpenAI(params: {
   apiKey: string;
   temperature?: number;
 }): Promise<string> {
-  // Validate input to avoid runtime map/filter errors
-  ensureMessages(params.messages);
-  validateApiKey("openai", params.apiKey);
-
-  const r = await safeFetch("https://api.openai.com/v1/chat/completions", {
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -166,8 +118,7 @@ async function callOpenAI(params: {
       messages: params.messages,
       temperature: params.temperature ?? 0.7,
     }),
-  }, "OpenAI Chat API");
-
+  });
   if (!r.ok) {
     const text = await r.text();
     throw new Error(`OpenAI error: ${r.status} ${text}`);
@@ -185,17 +136,13 @@ async function callAnthropic(params: {
   system?: string;
   temperature?: number;
 }): Promise<string> {
-  ensureMessages(params.messages);
-  validateApiKey("anthropic", params.apiKey);
-
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
   const mapped = chatMessages.map((m) => ({
     role: m.role,
     content: [{ type: "text", text: m.content }],
   }));
-
-  const r = await safeFetch("https://api.anthropic.com/v1/messages", {
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -209,8 +156,7 @@ async function callAnthropic(params: {
       messages: mapped,
       temperature: params.temperature ?? 0.7,
     }),
-  }, "Anthropic API");
-
+  });
   if (!r.ok) {
     const text = await r.text();
     throw new Error(`Anthropic error: ${r.status} ${text}`);
@@ -228,9 +174,6 @@ async function callGoogle(params: {
   system?: string;
   temperature?: number;
 }): Promise<string> {
-  ensureMessages(params.messages);
-  validateApiKey("google", params.apiKey);
-
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
 
@@ -253,12 +196,11 @@ async function callGoogle(params: {
     params.model,
   )}:generateContent?key=${encodeURIComponent(params.apiKey)}`;
 
-  const r = await safeFetch(url, {
+  const r = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  }, "Google Generative Language API");
-
+  });
   if (!r.ok) {
     const text = await r.text();
     throw new Error(`Google error: ${r.status} ${text}`);
@@ -276,10 +218,7 @@ async function callOpenRouter(params: {
   apiKey: string;
   temperature?: number;
 }): Promise<string> {
-  ensureMessages(params.messages);
-  validateApiKey("openrouter", params.apiKey);
-
-  const r = await safeFetch("https://openrouter.ai/api/v1/chat/completions", {
+  const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -293,8 +232,7 @@ async function callOpenRouter(params: {
       stream: false,
       temperature: params.temperature ?? 0.7,
     }),
-  }, "OpenRouter API");
-
+  });
   if (!r.ok) {
     const text = await r.text();
     throw new Error(`OpenRouter error: ${r.status} ${text}`);
@@ -324,7 +262,7 @@ export async function generateAnswer(req: {
 }): Promise<string> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
-  validateApiKey(provider, apiKey);
+  if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
 
   const messages = buildMessagesForPrompt(req.system, req.prompt);
 
@@ -347,12 +285,9 @@ export async function generateChat(req: {
   system?: string;
   temperature?: number;
 }): Promise<string> {
-  // Validate that messages is an array before using .filter / .map
-  ensureMessages(req.messages);
-
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
-  validateApiKey(provider, apiKey);
+  if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
 
   const messages = req.system
     ? [{ role: "system", content: req.system } as ChatMessage, ...req.messages.filter((m) => m.role !== "system")]
