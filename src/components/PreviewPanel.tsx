@@ -1,21 +1,11 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Upload, MousePointerClick } from "lucide-react";
 import Loader from "./Loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 
 interface PreviewPanelProps {
   previewUrl: string;
@@ -41,14 +31,11 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const [showConnectDialog, setShowConnectDialog] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-
   const handleRefresh = () => {
     onRefresh();
   };
 
-  // Effect to notify iframe about selection mode changes
+  // Notificar al iframe sobre cambios del modo de selección
   useEffect(() => {
     const iframe = iframeRef.current;
     if (iframe && iframe.contentWindow) {
@@ -58,12 +45,12 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
       };
       const post = () => iframe.contentWindow?.postMessage(message, '*');
       iframe.addEventListener('load', post);
-      post(); // Also try immediately
+      post(); // También intentar inmediatamente
       return () => iframe.removeEventListener('load', post);
     }
   }, [isSelectionModeActive, code]);
 
-  // Effect to listen for messages from the iframe
+  // Escuchar mensajes del iframe (elemento seleccionado)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'elementSelected') {
@@ -78,12 +65,10 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   }, [onElementSelected]);
 
   const openSupabaseAuthorization = () => {
-    // Llevamos al usuario a la página de API/Autorización del proyecto con un auth_id identificable para la app
     const url = `https://supabase.com/dashboard/project/${encodeURIComponent(
       SUPABASE_PROJECT_ID
     )}/settings/api?auth_id=${encodeURIComponent(SUPABASE_AUTH_ID)}`;
     window.open(url, "_blank", "noopener");
-    setShowConnectDialog(false);
   };
 
   return (
@@ -164,48 +149,12 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
                     Project: {SUPABASE_PROJECT_ID}
                   </div>
                 </div>
-                <Button onClick={() => { setTermsAccepted(false); setShowConnectDialog(true); }}>
+                <Button onClick={openSupabaseAuthorization}>
                   Connect Supabase
                 </Button>
               </div>
             </div>
           </div>
-
-          <Dialog open={showConnectDialog} onOpenChange={setShowConnectDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Authorize Supabase access</DialogTitle>
-                <DialogDescription>
-                  To continue, please review and accept the terms to connect your organization to this app.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id="terms"
-                    checked={termsAccepted}
-                    onCheckedChange={(v) => setTermsAccepted(Boolean(v))}
-                  />
-                  <Label htmlFor="terms" className="text-sm leading-6">
-                    I accept the terms to allow this app to access my Supabase project APIs.
-                  </Label>
-                </div>
-                <div className="rounded-md border border-border p-3 text-xs text-muted-foreground">
-                  You will be redirected to Supabase to complete the authorization. 
-                  On that page, review the permissions and confirm to connect. 
-                  We use the auth_id parameter to link your organization with this app.
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowConnectDialog(false)}>
-                  Cancel
-                </Button>
-                <Button disabled={!termsAccepted} onClick={openSupabaseAuthorization}>
-                  Accept and connect
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </TabsContent>
       </Tabs>
     </div>
