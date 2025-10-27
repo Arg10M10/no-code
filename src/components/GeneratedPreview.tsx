@@ -9,14 +9,11 @@ const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({ projectId }) => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [html, setHtml] = useState<string>("");
+  const [html, setHtml] = useState<string | null>(null);
 
   // Listen for messages from the parent window (Editor) to toggle selection mode
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Optional: Add origin check for security
-      // if (event.origin !== 'http://your-editor-domain.com') return;
-
       if (event.data?.type === 'toggleSelectionMode') {
         setIsSelectionMode(Boolean(event.data.payload?.isActive));
       }
@@ -28,11 +25,11 @@ const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({ projectId }) => {
   // Load generated HTML from project storage
   useEffect(() => {
     if (!projectId) {
-      setHtml(`<div style="padding:40px; max-width:900px; margin:0 auto; background:#fff; border-radius:8px; box-shadow:0 6px 20px rgba(2,6,23,0.06);"><h2 class="text-lg font-semibold">Preview Area</h2><p class="text-muted-foreground">The preview will appear here after generation.</p></div>`);
+      setHtml(null);
       return;
     }
     const code = getCode(projectId);
-    setHtml(code ?? `<div style="padding:40px; max-width:900px; margin:0 auto; background:#fff; border-radius:8px; box-shadow:0 6px 20px rgba(2,6,23,0.06);"><h2 class="text-lg font-semibold">Preview Area</h2><p class="text-muted-foreground">The preview will appear here after generation.</p></div>`);
+    setHtml(code ?? null);
   }, [projectId]);
 
   // Add/remove event listeners for element selection when selection mode is active
@@ -57,6 +54,7 @@ const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({ projectId }) => {
     const isValidTarget = (el: EventTarget | null) => {
       if (!(el instanceof HTMLElement)) return false;
       if (el === overlay || el === container || el === document.body || el === document.documentElement) return false;
+      // When there's generated HTML we want to ensure target is inside the content container.
       return container.contains(el);
     };
 
@@ -120,17 +118,63 @@ const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({ projectId }) => {
         ref={overlayRef}
         style={{
           position: 'absolute',
-          border: '2px solid #3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.12)',
-          borderRadius: '4px',
+          border: '2px solid rgba(56, 189, 248, 0.95)', // sky-400-ish
+          backgroundColor: 'rgba(2, 6, 23, 0.55)', // dark translucent fill
+          borderRadius: '6px',
           pointerEvents: 'none',
           zIndex: 9999,
           display: 'none',
-          transition: 'all 50ms ease-out',
+          transition: 'all 60ms ease-out',
+          boxShadow: '0 8px 30px rgba(2,6,23,0.6)',
         }}
       />
-      <div ref={containerRef} className="min-h-screen bg-background text-foreground" style={{ padding: 24 }}>
-        <div dangerouslySetInnerHTML={{ __html: html }} />
+
+      <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-black text-white" style={{ padding: 24 }}>
+        {html ? (
+          // Render generated HTML when available
+          <div dangerouslySetInnerHTML={{ __html: html }} />
+        ) : (
+          // Modern placeholder when no generated HTML exists yet
+          <div className="max-w-4xl mx-auto rounded-2xl p-10 shadow-2xl" style={{ background: 'linear-gradient(180deg, rgba(6,8,23,0.9), rgba(14,21,43,0.95))' }}>
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+              <div className="flex-shrink-0">
+                <div className="w-20 h-20 rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M3 12h18" stroke="rgba(255,255,255,0.95)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M3 6h18" stroke="rgba(255,255,255,0.7)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M3 18h18" stroke="rgba(255,255,255,0.7)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </div>
+
+              <div className="flex-1">
+                <h2 className="text-2xl font-semibold text-white">Preview will appear here</h2>
+                <p className="mt-2 text-sky-200 max-w-2xl">
+                  Ask the AI to generate a page from the homepage and the live preview will render here. You can enter selection mode (click the pointer icon) to pick parts of the page — texts, buttons, or sections — and the selection will be attached to the chat so the AI knows exactly what to edit.
+                </p>
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <div className="px-4 py-2 rounded-md bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-sm font-medium shadow hover:brightness-105 cursor-default">
+                    Modern preview
+                  </div>
+                  <div className="px-4 py-2 rounded-md bg-black/30 border border-white/6 text-sm text-sky-100">
+                    Real-time selection support
+                  </div>
+                  <div className="px-4 py-2 rounded-md bg-white/5 border border-white/6 text-sm text-sky-100">
+                    Blue / Black theme
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full md:w-auto mt-4 md:mt-0">
+                <div className="rounded-lg p-4 bg-gradient-to-b from-black/30 to-black/10 border border-white/6">
+                  <p className="text-xs text-sky-200">Tip</p>
+                  <p className="mt-1 text-sm text-sky-50">Activate selection mode, hover elements to highlight, and click to bind the element to your next instruction.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
