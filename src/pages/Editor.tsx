@@ -52,26 +52,27 @@ const EditorPage: React.FC = () => {
     return 5000;
   };
 
+  // NOTE: signature expected by ChatPanel is (text: string, image?: File | null)
   const handleNewMessage = useCallback((text: string, image?: File | null) => {
     if (!projectId) return;
 
-    let messageContent = text;
-    if (selectedElement) {
-      messageContent = `Regarding the element "${selectedElement}", please do the following: ${text}`;
-      setSelectedElement(null);
-    }
-
-    const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
+    const userMessage: StoredMessage = { role: "user", content: text, createdAt: Date.now() };
     const newMessages = [...messages, userMessage];
     setMessagesState(newMessages);
     setMessages(projectId, newMessages);
+
+    // Show both chat and preview loaders immediately
     setLoading(true);
-    setGeneratedCode(null); // Clear previous code to show loader
+    setPreviewLoading(true);
+
+    // Start streaming the generated code: initialize to empty string
+    setGeneratedCode("");
+    setCode(projectId, "");
 
     const cost = computeCost(text);
     setCredits((prev) => Math.max(0, prev - cost));
 
-    // 1. Simulate AI thinking
+    // Simulate AI assistant immediate acknowledgement
     setTimeout(() => {
       const aiResponse: StoredMessage = {
         role: "assistant",
@@ -81,36 +82,48 @@ const EditorPage: React.FC = () => {
       const updatedMessages = [...newMessages, aiResponse];
       setMessagesState(updatedMessages);
       setMessages(projectId, updatedMessages);
+    }, 800);
 
-      // 2. Simulate code generation
-      setTimeout(() => {
-        const fakeGeneratedCode = `import React from 'react';
+    // Prepare fake generated code, include info about the single image if present
+    const imagesCount = image ? 1 : 0;
+    const fakeGeneratedCode = `import React from 'react';
 
 const GeneratedComponent = () => {
   return (
     <div className="p-6 bg-gray-800 border border-dashed border-gray-600 rounded-lg text-white">
       <h2 className="text-xl font-bold text-cyan-400 mb-2">Generated Component</h2>
-      <p className="text-gray-300">This component was generated based on your prompt:</p>
-      <p className="mt-2 p-3 bg-gray-700 rounded text-sm font-mono">"${text.substring(0, 100)}..."</p>
+      <p className="text-gray-300">This component was generated based on your prompt.</p>
+      ${imagesCount > 0 ? `<p className="text-gray-400 text-sm mt-2">Received ${imagesCount} image(s) for context.</p>` : ''}
     </div>
   );
 };
 
 export default GeneratedComponent;
 `;
-        setGeneratedCode(fakeGeneratedCode);
-        setCode(projectId, fakeGeneratedCode);
-        
-        setLoading(false); // Stop chat loading
-        setPreviewLoading(true); // Start preview loading
-        
-        // 3. Simulate preview update
-        setTimeout(() => {
-          setPreviewLoading(false);
-        }, 1500);
-      }, 1200);
-    }, 1000);
-  }, [messages, projectId, selectedElement]);
+
+    // Break the fake code into chunks (by lines) to simulate streaming
+    const lines = fakeGeneratedCode.split("\n");
+    let idx = 0;
+    const chunkInterval = 180; // ms between chunks
+    const intervalId = setInterval(() => {
+      if (idx >= lines.length) {
+        clearInterval(intervalId);
+        // finished generation
+        setLoading(false);
+        // leave a small delay for preview rendering, then hide preview loader
+        setTimeout(() => setPreviewLoading(false), 600);
+        return;
+      }
+      // append next line plus newline
+      setGeneratedCode((prev) => {
+        const next = (prev ?? "") + lines[idx] + "\n";
+        // persist as we stream so preview/code tab can read it live
+        setCode(projectId, next);
+        return next;
+      });
+      idx += 1;
+    }, chunkInterval);
+  }, [messages, projectId]);
 
   const handleRefreshPreview = () => {
     setPreviewLoading(true);
