@@ -15,46 +15,6 @@ import { storage } from "@/lib/storage";
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer } from "@/services/ai";
 
-// Helper function to escape HTML for safe embedding
-function escapeHtml(unsafe: string) {
-  return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-// Simple fallback generator (returns a complete HTML string).
-function generateHtmlFromPrompt(promptText: string, modelLabel?: string) {
-  const safePrompt = escapeHtml(promptText).replace(/\n/g, "<br/>");
-  const modelBadge = modelLabel ? `<div class="text-xs text-muted-foreground">Generated with: ${escapeHtml(modelLabel)}</div>` : "";
-
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Generated Page</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>body { background: linear-gradient(180deg,#0f172a,#020617); color: #fff; }</style>
-</head>
-<body class="min-h-screen flex items-center justify-center p-8">
-  <main class="max-w-4xl w-full bg-white/5 rounded-lg border border-white/10 p-8 shadow-lg">
-    <header class="mb-6">
-      <h1 class="text-4xl font-bold mb-2">Generated Page</h1>
-      ${modelBadge}
-      <p class="text-sm text-muted-foreground mt-1">Prompt used to generate this page:</p>
-      <div class="mt-2 p-3 bg-white/3 rounded text-sm break-words">${safePrompt}</div>
-    </header>
-    <section class="space-y-6">
-      <p class="text-center">This is a locally generated fallback page.</p>
-    </section>
-  </main>
-</body>
-</html>`.trim();
-}
-
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -74,6 +34,7 @@ const EditorPage: React.FC = () => {
   const triggerInitialGeneration = useCallback(async (projId: string, prompt: string) => {
     setLoading(true);
     setPreviewLoading(true);
+    setCodeState(null); // Clear previous code to show "Generating..."
 
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const selectedModel = getSelectedModelLabel();
@@ -85,11 +46,8 @@ const EditorPage: React.FC = () => {
       });
       addMessage(projId, {
         role: "assistant",
-        content: `¡Atención! Para generar la página web con la IA, necesitas configurar tu clave de API para el proveedor '${provider}'.\n\nPuedes hacerlo en 'Settings' > 'API Keys'.\n\nMientras tanto, he creado una página de ejemplo para que veas cómo funciona.`
+        content: `¡Atención! Para generar la página web con la IA, necesitas configurar tu clave de API para el proveedor '${provider}'.\n\nPuedes hacerlo en 'Settings' > 'API Keys'.`
       });
-      const fallbackCode = generateHtmlFromPrompt(prompt, selectedModel);
-      setCode(projId, fallbackCode);
-      setCodeState(fallbackCode);
       setMessagesState(getMessages(projId));
       setLoading(false);
       setPreviewLoading(false);
@@ -104,32 +62,21 @@ const EditorPage: React.FC = () => {
 
     try {
       const generatedCode = await generateAnswer({ prompt, selectedModelLabel: selectedModel, apiKeys });
-      if (!generatedCode || generatedCode.trim().length === 0) {
-        toast.message("Generado localmente (respuesta de la IA vacía).");
-        const fallbackCode = generateHtmlFromPrompt(prompt, selectedModel);
-        setCode(projId, fallbackCode);
-        setCodeState(fallbackCode);
-      } else {
-        toast.success("Generación completada");
-        setCode(projId, generatedCode);
-        setCodeState(generatedCode);
-      }
+      toast.success("Generación completada");
+      setCode(projId, generatedCode);
+      setCodeState(generatedCode);
       addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización está lista." });
     } catch (err: any) {
       const errorMessage = err.message || "Ocurrió un error desconocido.";
-      console.error("La generación con IA ha fallado, usando fallback local:", err);
+      console.error("La generación con IA ha fallado:", err);
       
       toast.error("La petición a la IA ha fallado", {
         description: errorMessage,
       });
-
-      const fallbackCode = generateHtmlFromPrompt(prompt, selectedModel);
-      setCode(projId, fallbackCode);
-      setCodeState(fallbackCode);
       
       addMessage(projId, {
         role: "assistant",
-        content: `La generación con IA ha fallado con el siguiente error:\n\n> ${errorMessage}\n\nSe ha creado una página de ejemplo en su lugar. Por favor, revisa tu clave de API y la configuración del modelo.`,
+        content: `La generación con IA ha fallado con el siguiente error:\n\n> ${errorMessage}\n\nPor favor, revisa tu clave de API y la configuración del modelo.`,
       });
     } finally {
       setLoading(false);

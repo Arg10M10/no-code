@@ -151,7 +151,7 @@ async function callAnthropic(params: {
     },
     body: JSON.stringify({
       model: params.model,
-      max_tokens: 1024,
+      max_tokens: 4096,
       system,
       messages: mapped,
       temperature: params.temperature ?? 0.7,
@@ -246,7 +246,13 @@ async function callOpenRouter(params: {
 function buildMessagesForPrompt(system: string | undefined, prompt: string): ChatMessage[] {
   const baseSystem =
     system ??
-    "You are an expert assistant that helps build and improve websites, apps and businesses. Answer with clear steps, actionable guidance, and concise best-practice code snippets when helpful.";
+    `You are an expert web developer. Your task is to generate a complete, standalone HTML file based on the user's prompt.
+RULES:
+1.  ALWAYS respond with a single, complete HTML file.
+2.  The response MUST start with \`<!DOCTYPE html>\` and end with \`</html>\`.
+3.  Do NOT include any explanations, comments, or markdown code blocks like \`\`\`html ... \`\`\` around the code. The response must be ONLY the HTML code itself.
+4.  Use Tailwind CSS for styling. Include the Tailwind CDN script in the \`<head>\`: \`<script src="https://cdn.tailwindcss.com"></script>\`.
+5.  Create a visually appealing, modern, and dark-themed design unless specified otherwise.`;
   return [
     { role: "system", content: baseSystem },
     { role: "user", content: prompt },

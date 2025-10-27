@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Loader from './Loader'; // Assuming you have a Loader component
 
 const GeneratedPreview = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -7,9 +8,6 @@ const GeneratedPreview = () => {
   // Listen for messages from the parent window (Editor)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Optional: Add origin check for security
-      // if (event.origin !== 'http://your-editor-domain.com') return;
-
       if (event.data.type === 'toggleSelectionMode') {
         setIsSelectionMode(event.data.payload.isActive);
       }
@@ -75,7 +73,6 @@ const GeneratedPreview = () => {
 
     document.addEventListener('mouseover', handleMouseOver);
     document.addEventListener('mouseout', handleMouseOut);
-    // Use capture phase to intercept clicks before they trigger actions like navigation
     document.addEventListener('click', handleClick, true);
 
     return () => {
@@ -88,7 +85,6 @@ const GeneratedPreview = () => {
 
   return (
     <>
-      {/* This overlay will highlight elements on hover during selection mode */}
       <div
         ref={overlayRef}
         style={{
@@ -102,10 +98,11 @@ const GeneratedPreview = () => {
           transition: 'all 50ms ease-out',
         }}
       />
-      <div className="flex items-center justify-center h-screen bg-background text-foreground">
-        <div className="text-center p-8 border border-dashed border-border rounded-lg">
-          <h1 className="text-2xl font-bold mb-2">Preview Area</h1>
-          <p className="text-muted-foreground">Ask me to generate a component and you'll see it here.</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground">
+        <Loader />
+        <div className="text-center p-8">
+          <h1 className="text-xl font-bold mb-2">Generando tu página web...</h1>
+          <p className="text-muted-foreground">Por favor, espera un momento.</p>
         </div>
       </div>
     </>
