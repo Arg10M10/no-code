@@ -70,42 +70,46 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
     setPublishState('publishing');
     toast.message('Creating repository and publishing your project...');
 
-    try {
-      const { data, error } = await supabase.functions.invoke('publish-to-github', {
-        body: { repoName: repoName.trim(), fileContent: projectCode },
-      });
+    const { data, error } = await supabase.functions.invoke('publish-to-github', {
+      body: { repoName: repoName.trim(), fileContent: projectCode },
+    });
 
-      if (error) {
-        // This is the key change: we now inspect the error context for the detailed message.
-        const functionError = (error as FunctionsError).context;
-        let errorMessage = error.message; // Fallback to the generic message
+    if (error) {
+      console.error("Full publishing error object:", error);
+      let errorMessage = "An unknown error occurred during function invocation.";
 
-        if (functionError && typeof functionError === 'object' && 'details' in functionError) {
-          // We found our detailed error message from the function!
-          errorMessage = functionError.details as string;
+      if (error instanceof FunctionsError) {
+        const context = error.context;
+        console.log("FunctionError context:", context);
+        if (context && typeof context === 'object' && 'details' in context && typeof context.details === 'string') {
+          errorMessage = context.details;
+        } else {
+          errorMessage = error.message;
         }
-        
-        // Throw with the more specific message
-        throw new Error(errorMessage);
-      }
-      
-      if (data && data.error) {
-        throw new Error(data.details || data.error);
+      } else {
+        errorMessage = error.message;
       }
 
-      setPublishedUrl(data.html_url);
-      setPublishState('published');
-      toast.success('Project published successfully!');
-    } catch (err: any) {
-      console.error("Full publishing error:", err);
-      const errorMessage = err.message || "An unknown error occurred.";
-      
       toast.error('Failed to publish project', { 
         description: errorMessage,
         duration: 15000,
       });
       setPublishState('idle');
+      return;
     }
+    
+    if (data && data.error) {
+      toast.error('Failed to publish project', { 
+        description: data.details || data.error,
+        duration: 15000,
+      });
+      setPublishState('idle');
+      return;
+    }
+
+    setPublishedUrl(data.html_url);
+    setPublishState('published');
+    toast.success('Project published successfully!');
   };
 
   const authState = loading ? 'authenticating' : user ? 'authenticated' : 'idle';
