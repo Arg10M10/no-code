@@ -260,7 +260,7 @@ const EditorPage: React.FC = () => {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-background text-foreground">
+    <div className="h-screen w-screen flex flex-col bg-background text-foreground animate-fade-in">
       <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold truncate" title={projectName}>

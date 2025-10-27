@@ -148,7 +148,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             const isError = isAssistant && isErrorMessage(msg.content);
 
             return (
-              <div key={key} className="min-w-0">
+              <div key={key} className="min-w-0 animate-fade-in-up">
                 <div
                   className={[
                     "p-3 rounded-lg border shadow-sm",
@@ -180,7 +180,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             );
           })}
           {loading && (
-            <div className="min-w-0">
+            <div className="min-w-0 animate-fade-in-up">
               <div
                 className="p-3 rounded-lg bg-green-500/10 border border-green-500/60 flex items-center"
               >
@@ -194,7 +194,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
       {selectedElement && (
         <div className="px-4 pt-2">
-          <div className="bg-secondary border border-border rounded-md p-2 flex items-center justify-between gap-2 text-sm">
+          <div className="bg-secondary border border-border rounded-md p-2 flex items-center justify-between gap-2 text-sm animate-fade-in-up">
             <span className="text-muted-foreground truncate">
               Editing: <code className="text-foreground font-medium bg-background/50 px-1.5 py-0.5 rounded">{selectedElement}</code>
             </span>

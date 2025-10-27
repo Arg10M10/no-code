@@ -32,7 +32,7 @@ const CodePanel: React.FC<CodePanelProps> = ({ code, projectName }) => {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col animate-fade-in">
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b bg-background/70">
         <div className="text-sm font-medium">Files</div>
         <div className="flex items-center gap-2">

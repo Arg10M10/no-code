@@ -105,7 +105,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   return (
     <div className="h-full flex flex-col bg-muted/40">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
-        <div className="flex items-center justify-between p-2 border-b bg-background flex-shrink-0">
+        <div className="flex items-center justify-between p-2 border-b bg-background flex-shrink-0 animate-fade-in">
           <TabsList>
             <TabsTrigger value="preview">Preview</TabsTrigger>
             <TabsTrigger value="issues">Issues</TabsTrigger>
@@ -118,14 +118,14 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
               size="icon"
               onClick={onToggleSelectionMode}
               title="Select element"
-              className={cn(isSelectionModeActive && "bg-accent text-accent-foreground")}
+              className={cn("transition-all", isSelectionModeActive && "bg-accent text-accent-foreground scale-110")}
             >
               <MousePointerClick className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh preview">
+            <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh preview" className="transition-transform hover:rotate-90">
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button onClick={handlePublish}>
+            <Button onClick={handlePublish} className="transition-transform hover:scale-105">
               <Upload className="h-4 w-4 mr-2" />
               Publish
             </Button>
@@ -142,9 +142,10 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
             ref={iframeRef}
             srcDoc={code ?? undefined}
             src={!code ? previewUrl : undefined}
-            className="w-full h-full border-0"
+            className="w-full h-full border-0 transition-opacity duration-300"
             title="Preview"
             sandbox="allow-scripts"
+            style={{ opacity: loading ? 0.5 : 1 }}
           />
         </TabsContent>
 
