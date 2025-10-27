@@ -138,8 +138,6 @@ export default GeneratedComponent;
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel
-            defaultSize={30}
-            minSize={20}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
@@ -160,7 +158,7 @@ export default GeneratedComponent;
             className="h-full w-px bg-border/40"
             role="separator"
           />
-          <ResizablePanel defaultSize={70}>
+          <ResizablePanel>
             <PreviewPanel
               previewUrl={previewUrl}
               loading={previewLoading}
