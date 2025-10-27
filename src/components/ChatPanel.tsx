@@ -21,6 +21,7 @@ const MODEL_TOKEN_LIMIT = 1_000_000;
 const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSend }) => {
   const navigate = useNavigate(); // Inicializar useNavigate
   const [text, setText] = React.useState("");
+  const [chatMode, setChatMode] = React.useState<'build' | 'ask'>('build');
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -89,12 +90,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!text.trim() && !selectedImage) return;
-    // call onSend with text and optional image
-    onSend(text.trim(), selectedImage ?? undefined);
-    // clear input
+    
+    const messageToSend = chatMode === 'ask' ? `[ASK] ${text.trim()}` : text.trim();
+    
+    onSend(messageToSend, selectedImage ?? undefined);
+    
     setText("");
     removeImage();
-    // focus back to textarea
     textareaRef.current?.focus();
   };
 
@@ -107,7 +109,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
 
   // Chips/models — todos con 1,000,000 tokens por petición
   const chips = [
-    { id: "build", label: "Build", filled: false, tokens: MODEL_TOKEN_LIMIT },
     { id: "pro", label: "Pro", filled: true, tokens: MODEL_TOKEN_LIMIT },
   ];
 
@@ -176,7 +177,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Ask Dyad to build..."
+              placeholder={chatMode === 'build' ? "Ask Dyad to build..." : "Ask Dyad a question..."}
               className="resize-none flex-1 min-h-[44px] max-h-36 bg-transparent text-foreground placeholder:text-muted-foreground outline-none px-3 py-2 rounded-md"
               rows={1}
               aria-label="Message"
@@ -282,6 +283,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
           {/* Chips row moved to the bottom, more squared buttons */}
           <div className="mt-3 border-t border-border pt-3">
             <div className="flex items-center gap-2 justify-start flex-wrap">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none bg-transparent border border-border text-primary hover:bg-primary/5"
+                onClick={() => {
+                  setChatMode(prev => (prev === 'build' ? 'ask' : 'build'));
+                }}
+              >
+                {chatMode === 'build' ? 'Build' : 'Ask'}
+              </button>
               {chips.map((c) => (
                 <button
                   key={c.id}
@@ -295,8 +305,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                   onClick={() => {
                     if (c.id === 'pro') {
                       navigate('/pricing');
-                    } else {
-                      toast(`${c.label}: ${c.tokens.toLocaleString()} tokens disponibles`);
                     }
                   }}
                   aria-pressed={c.filled}
