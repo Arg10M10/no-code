@@ -266,9 +266,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, loading, credits, onSen
                     />
                   </div>
 
-                  <div className="text-[12px] text-white/70 mb-2">
-                    You have <span className="font-medium">{credits.toLocaleString()}</span> tokens remaining.
-                  </div>
+                  {/* Texto eliminado aquí */}
 
                   <div className="pt-2 border-t border-white/6">
                     <button
