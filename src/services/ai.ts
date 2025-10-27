@@ -114,6 +114,16 @@ const selectionScript = `
         window.parent.postMessage({ type: 'elementSelected', payload: { description } }, '*');
         isSelectionModeActive = false;
         hideOverlay();
+      } else {
+        // When not in selection mode, prevent navigation from links or form submissions from buttons
+        const link = e.target.closest('a[href]');
+        const button = e.target.closest('button, input[type="submit"], input[type="button"]');
+        
+        if (link || button) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.warn('Preview Mode: Navigation and button actions are disabled.');
+        }
       }
     };
     
