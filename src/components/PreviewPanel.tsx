@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 interface PreviewPanelProps {
   previewUrl: string;
+  code?: string | null;
   loading: boolean;
   onRefresh: () => void;
   isSelectionModeActive: boolean;
@@ -18,6 +19,7 @@ interface PreviewPanelProps {
 
 const PreviewPanel: React.FC<PreviewPanelProps> = ({
   previewUrl,
+  code,
   loading,
   onRefresh,
   isSelectionModeActive,
@@ -27,9 +29,8 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleRefresh = () => {
-    if (iframeRef.current) {
-      iframeRef.current.src = iframeRef.current.src;
-    }
+    // The parent component is responsible for the refresh logic.
+    // This button just triggers the parent's onRefresh callback.
     onRefresh();
   };
 
@@ -47,14 +48,11 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
       post(); // Also try immediately
       return () => iframe.removeEventListener('load', post);
     }
-  }, [isSelectionModeActive]);
+  }, [isSelectionModeActive, code]); // Rerun when code changes to ensure listener is attached
 
   // Effect to listen for messages from the iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Basic security: check origin if the iframe could be from a different source
-      // if (event.origin !== window.location.origin) return;
-
       if (event.data && event.data.type === 'elementSelected') {
         onElementSelected(event.data.payload.description);
       }
@@ -103,9 +101,11 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
           )}
           <iframe
             ref={iframeRef}
-            src={previewUrl}
+            srcDoc={code ?? undefined}
+            src={!code ? previewUrl : undefined}
             className="w-full h-full border-0"
             title="Preview"
+            sandbox="allow-scripts allow-same-origin"
           />
         </TabsContent>
 

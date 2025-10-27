@@ -1,29 +1,28 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Github, Figma, Camera, Upload, Cpu, ArrowUp, File, X, ClipboardPaste, Clipboard, Check } from "lucide-react";
-import { useRef, useState, ClipboardEvent, KeyboardEvent } from "react";
+import React, { useRef, useState, ClipboardEvent, KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Cpu, ArrowUp, File, X, Clipboard as ClipboardIcon, Clipboard as ClipboardPasteIcon, Figma, Camera, Upload, Check } from "lucide-react";
 import ModelsPopover from "./ModelsPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createProjectFromPrompt, addMessage } from "@/lib/projects";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
-import { storage } from "@/lib/storage";
-import { getProviderFromLabel } from "@/services/ai";
 
-const Hero = () => {
-  const projectFileInputRef = useRef<HTMLInputElement>(null);
-  const imageFileInputRef = useRef<HTMLInputElement>(null);
-  const screenshotFileInputRef = useRef<HTMLInputElement>(null);
+const Hero: React.FC = () => {
+  const projectFileInputRef = useRef<HTMLInputElement | null>(null);
+  const imageFileInputRef = useRef<HTMLInputElement | null>(null);
+  const screenshotFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [selectedModel, setSelectedModel] = useState(getSelectedModelLabel());
+  const [selectedModel, setSelectedModel] = useState<string>(getSelectedModelLabel());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pastedTextInfo, setPastedTextInfo] = useState<{ wordCount: number; content: string } | null>(null);
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState<string>("");
   const [answer, setAnswer] = useState<string>("");
   const [copyOk, setCopyOk] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+
   const navigate = useNavigate();
 
   const examplePrompts = [
@@ -49,33 +48,18 @@ const Hero = () => {
     },
   ];
 
-  const handleUploadProjectClick = () => {
-    projectFileInputRef.current?.click();
-  };
-
-  const handleAttachImageClick = () => {
-    imageFileInputRef.current?.click();
-  };
-
-  const handleCloneScreenshotClick = () => {
-    screenshotFileInputRef.current?.click();
-  };
+  const handleUploadProjectClick = () => projectFileInputRef.current?.click();
+  const handleAttachImageClick = () => imageFileInputRef.current?.click();
+  const handleCloneScreenshotClick = () => screenshotFileInputRef.current?.click();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-    event.target.value = "";
+    const file = event.target.files?.[0] ?? null;
+    if (file) setSelectedFile(file);
+    event.currentTarget.value = "";
   };
 
-  const handleClearFile = () => {
-    setSelectedFile(null);
-  };
-
-  const handleClearPastedText = () => {
-    setPastedTextInfo(null);
-  };
+  const handleClearFile = () => setSelectedFile(null);
+  const handleClearPastedText = () => setPastedTextInfo(null);
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const pastedText = event.clipboardData.getData("text");
@@ -104,31 +88,18 @@ const Hero = () => {
       toast.message("Write a prompt", { description: "Tell me what you want to build or improve." });
       return;
     }
-
     setLoading(true);
-
-    // Validar API key antes de crear el proyecto y navegar
-    const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
-    const provider = getProviderFromLabel(selectedModel);
-    if (!apiKeys[provider]) {
-      const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-      toast.error("Falta API Key", { description: `Configura tu clave de ${providerName} en Settings > API Keys.` });
-      setLoading(false);
-      return;
-    }
 
     const fullPrompt = pastedTextInfo?.content
       ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
       : prompt;
 
-    // Crear proyecto y guardar primer mensaje; la IA correrá en el editor
+    // 1. Create project
     const proj = createProjectFromPrompt(prompt);
+    // 2. Add the first user message
     addMessage(proj.id, { role: "user", content: fullPrompt });
-
-    // Navegar de inmediato al editor; allí se generará y renderizará el preview automáticamente
-    navigate(`/editor?id=${encodeURIComponent(proj.id)}`, { replace: false });
-
-    setLoading(false);
+    // 3. Navigate to the editor, where generation will be triggered
+    navigate(`/editor?id=${encodeURIComponent(proj.id)}`);
   };
 
   const handleCopy = async () => {
@@ -141,23 +112,18 @@ const Hero = () => {
   const attachmentCount = [selectedFile, pastedTextInfo].filter(Boolean).length;
   const paddingTopClass = attachmentCount === 2 ? "pt-24" : attachmentCount === 1 ? "pt-14" : "pt-4";
 
-  // New handler: Enter sends (without Shift), Shift+Enter inserts newline
   const handleTextareaKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-    // Shift+Enter -> default behavior (insert newline)
   };
 
   return (
     <section className="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-20">
       <div className="max-w-4xl mx-auto text-center space-y-8">
         <div className="space-y-4">
-          <h1
-            className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight opacity-0 animate-fade-in-up"
-            style={{ animationDelay: "0.2s" }}
-          >
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight opacity-0 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
             What should we build?
           </h1>
           <p className="text-lg text-muted-foreground opacity-0 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
@@ -182,7 +148,7 @@ const Hero = () => {
               {pastedTextInfo && (
                 <div className="flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down">
                   <div className="flex items-center gap-2 min-w-0">
-                    <ClipboardPaste className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <ClipboardPasteIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <span className="text-xs font-medium truncate">Pasted text ({pastedTextInfo.wordCount} words)</span>
                   </div>
                   <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full flex-shrink-0" onClick={handleClearPastedText}>
@@ -191,6 +157,7 @@ const Hero = () => {
                 </div>
               )}
             </div>
+
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -199,10 +166,12 @@ const Hero = () => {
               placeholder="Describe what you want to build or improve (website, app, business, code...)"
               className={`w-full h-64 pl-6 pr-16 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 ease-in-out hover:shadow-lg ${paddingTopClass}`}
             />
+
             <div className="absolute left-4 bottom-4 flex items-center gap-2">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={handleAttachImageClick}>
                 Attach
               </Button>
+
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
@@ -221,6 +190,7 @@ const Hero = () => {
                 </PopoverContent>
               </Popover>
             </div>
+
             <div className="absolute right-4 bottom-4">
               <Button
                 size="icon"
@@ -245,13 +215,13 @@ const Hero = () => {
                     </>
                   ) : (
                     <>
-                      <Clipboard className="h-4 w-4 mr-1.5" />
+                      <ClipboardIcon className="h-4 w-4 mr-1.5" />
                       Copy
                     </>
                   )}
                 </Button>
               </div>
-              <div className="whitespace-pre-wrap leading-relaxed text-sm md:text[15px]">{answer}</div>
+              <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-[15px]">{answer}</div>
             </div>
           )}
 
@@ -259,20 +229,17 @@ const Hero = () => {
             <input type="file" ref={projectFileInputRef} onChange={handleFileChange} className="hidden" />
             <input type="file" ref={imageFileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
             <input type="file" ref={screenshotFileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+
             <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleUploadProjectClick}>
               <Upload className="h-4 w-4 mr-2" />
               Upload a Project
             </Button>
+
             <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => navigate("/pricing")}>
-              <Github className="h-4 w-4 mr-2" />
+              <Figma className="h-4 w-4 mr-2" />
               Connect a repo
             </Button>
-            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" asChild>
-              <a href="https://www.figma.com/community/plugin/747985167520967365/builder-io-figma-to-code-ai-apps-react-vue-tailwind-etc" target="_blank" rel="noopener noreferrer">
-                <Figma className="h-4 w-4 mr-2" />
-                Figma Import
-              </a>
-            </Button>
+
             <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleCloneScreenshotClick}>
               <Camera className="h-4 w-4 mr-2" />
               Clone a Screenshot
