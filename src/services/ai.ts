@@ -174,11 +174,12 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
   }
 }
 
-async function callOpenAI(params: { messages: ChatMessage[]; model: string; apiKey: string; temperature?: number; }): Promise<string> {
+async function callOpenAI(params: { messages: ChatMessage[]; model: string; apiKey: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${params.apiKey}` },
     body: JSON.stringify({ model: params.model, messages: params.messages, temperature: params.temperature ?? 0.7 }),
+    signal: params.signal,
   });
   if (!r.ok) { const text = await r.text(); throw new Error(`OpenAI error: ${r.status} ${text}`); }
   const data = (await r.json()) as OpenAIChatResponse;
@@ -187,7 +188,7 @@ async function callOpenAI(params: { messages: ChatMessage[]; model: string; apiK
   return content;
 }
 
-async function callAnthropic(params: { messages: ChatMessage[]; model: string; apiKey: string; system?: string; temperature?: number; }): Promise<string> {
+async function callAnthropic(params: { messages: ChatMessage[]; model: string; apiKey: string; system?: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
   const mapped = chatMessages.map((m) => ({ role: m.role, content: [{ type: "text", text: m.content }] }));
@@ -195,6 +196,7 @@ async function callAnthropic(params: { messages: ChatMessage[]; model: string; a
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": params.apiKey, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({ model: params.model, max_tokens: 4096, system, messages: mapped, temperature: params.temperature ?? 0.7 }),
+    signal: params.signal,
   });
   if (!r.ok) { const text = await r.text(); throw new Error(`Anthropic error: ${r.status} ${text}`); }
   const data = (await r.json()) as AnthropicResponse;
@@ -203,14 +205,14 @@ async function callAnthropic(params: { messages: ChatMessage[]; model: string; a
   return content;
 }
 
-async function callGoogle(params: { messages: ChatMessage[]; model: string; apiKey: string; system?: string; temperature?: number; }): Promise<string> {
+async function callGoogle(params: { messages: ChatMessage[]; model: string; apiKey: string; system?: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
   const contents: GoogleContent[] = chatMessages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
   const body: Record<string, unknown> = { contents, generationConfig: { temperature: params.temperature ?? 0.7 } };
   if (system) { body.system_instruction = { parts: [{ text: system }] }; }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(params.model)}:generateContent?key=${encodeURIComponent(params.apiKey)}`;
-  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: params.signal });
   if (!r.ok) { const text = await r.text(); throw new Error(`Google error: ${r.status} ${text}`); }
   const data = (await r.json()) as GoogleResponse;
   const textParts = data.candidates?.[0]?.content?.parts || [];
@@ -219,11 +221,12 @@ async function callGoogle(params: { messages: ChatMessage[]; model: string; apiK
   return content;
 }
 
-async function callOpenRouter(params: { messages: ChatMessage[]; model: string; apiKey: string; temperature?: number; }): Promise<string> {
+async function callOpenRouter(params: { messages: ChatMessage[]; model: string; apiKey: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
   const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${params.apiKey}`, "HTTP-Referer": window.location.origin, "X-Title": document.title || "ByDamian App" },
     body: JSON.stringify({ model: params.model, messages: params.messages, stream: false, temperature: params.temperature ?? 0.7 }),
+    signal: params.signal,
   });
   if (!r.ok) { const text = await r.text(); throw new Error(`OpenRouter error: ${r.status} ${text}`); }
   const data = (await r.json()) as OpenRouterChatResponse;
@@ -272,28 +275,28 @@ RULES:
   }
 }
 
-export async function generateAnswer(req: { prompt: string; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; codeContext?: string | null; }): Promise<string> {
+export async function generateAnswer(req: { prompt: string; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; codeContext?: string | null; signal?: AbortSignal; }): Promise<string> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
   if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
   const messages = buildGenerationMessages(req.prompt, req.system, req.codeContext);
   switch (provider) {
-    case "openai": return callOpenAI({ messages, model, apiKey, temperature: req.temperature });
-    case "google": return callGoogle({ messages, model, apiKey, system: req.system, temperature: req.temperature });
-    case "anthropic": return callAnthropic({ messages, model, apiKey, system: req.system, temperature: req.temperature });
-    case "openrouter": return callOpenRouter({ messages, model, apiKey, temperature: req.temperature });
+    case "openai": return callOpenAI({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
+    case "google": return callGoogle({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
+    case "anthropic": return callAnthropic({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
+    case "openrouter": return callOpenRouter({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
   }
 }
 
-export async function generateChat(req: { messages: ChatMessage[]; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; }): Promise<string> {
+export async function generateChat(req: { messages: ChatMessage[]; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; signal?: AbortSignal; }): Promise<string> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
   if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
   const messages = req.system ? [{ role: "system", content: req.system } as ChatMessage, ...req.messages.filter((m) => m.role !== "system")] : req.messages;
   switch (provider) {
-    case "openai": return callOpenAI({ messages, model, apiKey, temperature: req.temperature });
-    case "google": return callGoogle({ messages, model, apiKey, system: req.system, temperature: req.temperature });
-    case "anthropic": return callAnthropic({ messages, model, apiKey, system: req.system, temperature: req.temperature });
-    case "openrouter": return callOpenRouter({ messages, model, apiKey, temperature: req.temperature });
+    case "openai": return callOpenAI({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
+    case "google": return callGoogle({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
+    case "anthropic": return callAnthropic({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
+    case "openrouter": return callOpenRouter({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
   }
 }

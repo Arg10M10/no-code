@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -39,13 +39,14 @@ const EditorPage: React.FC = () => {
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
 
-  // Señal para abrir Integrations/Supabase cuando la IA o el usuario lo sugiera
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const triggerInitialGeneration = useCallback(async (projId: string, prompt: string) => {
     setLoading(true);
     setPreviewLoading(true);
-    setCodeState(null); // Clear previous code to show "Generating..."
+    setCodeState(null);
+    abortControllerRef.current = new AbortController();
 
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const selectedModel = getSelectedModelLabel();
@@ -72,18 +73,22 @@ const EditorPage: React.FC = () => {
     setMessagesState(getMessages(projId));
 
     try {
-      const generatedCode = await generateAnswer({ prompt, selectedModelLabel: selectedModel, apiKeys });
+      const generatedCode = await generateAnswer({ prompt, selectedModelLabel: selectedModel, apiKeys, signal: abortControllerRef.current.signal });
       toast.success("Generación completada");
       setCode(projId, generatedCode);
       setCodeState(generatedCode);
       addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización está lista." });
 
-      const cost = Math.floor(Math.random() * 4001) + 1000; // 1k to 5k
+      const cost = Math.floor(Math.random() * 4001) + 1000;
       const newCredits = decrementCredits(projId, cost);
       setCredits(newCredits);
       toast.info(`${cost.toLocaleString()} tokens used.`);
 
     } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('Initial generation aborted.');
+        return;
+      }
       const errorMessage = err.message || "Ocurrió un error desconocido.";
       console.error("La generación con IA ha fallado:", err);
       
@@ -99,6 +104,7 @@ const EditorPage: React.FC = () => {
       setLoading(false);
       setPreviewLoading(false);
       setMessagesState(getMessages(projId));
+      abortControllerRef.current = null;
     }
   }, []);
 
@@ -124,8 +130,22 @@ const EditorPage: React.FC = () => {
     }
   }, [projectId, navigate, triggerInitialGeneration]);
 
+  const handleCancelGeneration = () => {
+    abortControllerRef.current?.abort();
+    setLoading(false);
+    setPreviewLoading(false);
+    if (projectId) {
+      addMessage(projectId, {
+        role: 'assistant',
+        content: 'Generación cancelada por el usuario.',
+      });
+      setMessagesState(getMessages(projectId));
+    }
+  };
+
   const handleNewMessage = useCallback(async (text: string, images?: File[]) => {
     if (!projectId) return;
+    abortControllerRef.current = new AbortController();
 
     const isAsk = text.trim().startsWith("[ASK]");
     const cleanedText = isAsk ? text.replace(/^\[ASK\]\s*/i, "") : text;
@@ -136,7 +156,6 @@ const EditorPage: React.FC = () => {
       setSelectedElement(null);
     }
 
-    // Si el usuario pide conectar Supabase, abrir Integrations de inmediato
     if (includesSupabaseIntent(messageContent)) {
       setSupabaseIntentCounter((c) => c + 1);
     }
@@ -157,6 +176,7 @@ const EditorPage: React.FC = () => {
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           selectedModelLabel: selectedModel,
           apiKeys,
+          signal: abortControllerRef.current.signal,
         });
       } else {
         setPreviewLoading(true);
@@ -164,19 +184,19 @@ const EditorPage: React.FC = () => {
           prompt: messageContent,
           selectedModelLabel: selectedModel,
           apiKeys,
-          codeContext: code, // Pass current code as context
+          codeContext: code,
+          signal: abortControllerRef.current.signal,
         });
         setCode(projectId, generatedCode);
         setCodeState(generatedCode);
         aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización.";
       }
 
-      // Si la IA sugiere conectar Supabase -> abrir Integrations automáticamente
       if (includesSupabaseIntent(aiResponseContent)) {
         setSupabaseIntentCounter((c) => c + 1);
       }
 
-      const cost = Math.floor(Math.random() * 4001) + 1000; // 1k to 5k
+      const cost = Math.floor(Math.random() * 4001) + 1000;
       const newCredits = decrementCredits(projectId, cost);
       setCredits(newCredits);
 
@@ -190,6 +210,10 @@ const EditorPage: React.FC = () => {
       setMessages(projectId, finalMessages);
 
     } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('Generation aborted by user.');
+        return;
+      }
       const errorMessage = err?.message || "Ocurrió un error desconocido.";
       console.error("Error en la operación de IA:", err);
       const nowAsk = text.trim().startsWith("[ASK]");
@@ -207,6 +231,7 @@ const EditorPage: React.FC = () => {
     } finally {
       setLoading(false);
       if (!isAsk) setPreviewLoading(false);
+      abortControllerRef.current = null;
     }
   }, [messages, projectId, selectedElement, code]);
 
@@ -255,6 +280,7 @@ const EditorPage: React.FC = () => {
               loading={loading}
               credits={credits}
               onSend={handleNewMessage}
+              onCancel={handleCancelGeneration}
               selectedElement={selectedElement}
               onClearSelection={() => setSelectedElement(null)}
             />

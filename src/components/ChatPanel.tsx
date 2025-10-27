@@ -4,7 +4,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Paperclip, Settings, Info, Cpu } from "lucide-react";
+import { ArrowUp, X, Paperclip, Settings, Info, Cpu, Square } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
@@ -17,6 +17,7 @@ type ChatPanelProps = {
   loading: boolean;
   credits: number;
   onSend: (text: string, images?: File[]) => void;
+  onCancel: () => void;
   selectedElement: string | null;
   onClearSelection: () => void;
 };
@@ -27,7 +28,8 @@ const isErrorMessage = (content: string) => {
   const lowerContent = content.toLowerCase();
   return lowerContent.includes('ha fallado') || 
          lowerContent.includes('atención!') || 
-         lowerContent.includes('missing api key');
+         lowerContent.includes('missing api key') ||
+         lowerContent.includes('cancelled');
 };
 
 const FREE_MAX_IMAGES = 3;
@@ -38,6 +40,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   loading,
   credits,
   onSend,
+  onCancel,
   selectedElement,
   onClearSelection,
 }) => {
@@ -45,14 +48,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const [text, setText] = React.useState("");
   const [chatMode, setChatMode] = React.useState<'build' | 'ask'>('build');
 
-  // Múltiples imágenes
   const [selectedImages, setSelectedImages] = React.useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = React.useState<string[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
 
-  // Model state
   const [selectedModel, setSelectedModel] = React.useState<string>(getSelectedModelLabel());
   const userPlan = getUserPlan();
   const maxImages = userPlan === "pro" ? PRO_MAX_IMAGES : FREE_MAX_IMAGES;
@@ -65,7 +66,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     scrollToBottom();
   }, [messages, loading]);
 
-  // Crear y limpiar object URLs de previews
   React.useEffect(() => {
     const urls = selectedImages.map((f) => URL.createObjectURL(f));
     setPreviewUrls(urls);
@@ -116,7 +116,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!text.trim() && selectedImages.length === 0) return;
+    if (loading || (!text.trim() && selectedImages.length === 0)) return;
     
     const messageToSend = chatMode === 'ask' ? `[ASK] ${text.trim()}` : text.trim();
     
@@ -133,10 +133,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       handleSubmit();
     }
   };
-
-  const chips = [
-    { id: "pro", label: "Pro", filled: true, tokens: MODEL_TOKEN_LIMIT },
-  ];
 
   const percentOfLimit = Math.round((credits / MODEL_TOKEN_LIMIT) * 100);
   const progressWidth = `${Math.max(0, Math.min(100, percentOfLimit))}%`;
@@ -253,6 +249,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               className="resize-none flex-1 min-h-[44px] max-h-36 bg-transparent text-foreground placeholder:text-muted-foreground outline-none px-3 py-2 rounded-md"
               rows={1}
               aria-label="Message"
+              disabled={loading}
             />
 
             <input
@@ -265,14 +262,25 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               aria-hidden
             />
 
-            <Button
-              type="submit"
-              disabled={loading || (!text.trim() && selectedImages.length === 0)}
-              className="h-9 w-9 rounded-md p-0 bg-primary text-primary-foreground hover:bg-primary/90"
-              aria-label="Send"
-            >
-              <ArrowUp className="h-4 w-4" />
-            </Button>
+            {loading ? (
+              <Button
+                type="button"
+                onClick={onCancel}
+                className="h-9 w-9 rounded-md p-0 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                aria-label="Cancel Generation"
+              >
+                <Square className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={!text.trim() && selectedImages.length === 0}
+                className="h-9 w-9 rounded-md p-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                aria-label="Send"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           <div className="mt-3 border-t border-border pt-3">
