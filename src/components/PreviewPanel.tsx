@@ -105,7 +105,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
             src={!code ? previewUrl : undefined}
             className="w-full h-full border-0"
             title="Preview"
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts allow-forms"
           />
         </TabsContent>
 
