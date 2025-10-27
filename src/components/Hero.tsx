@@ -9,6 +9,7 @@ import ModelsPopover from "./ModelsPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createProjectFromPrompt, addMessage } from "@/lib/projects";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
+import ProjectsGallery from "@/components/ProjectsGallery";
 
 const Hero: React.FC = () => {
   const projectFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -94,11 +95,8 @@ const Hero: React.FC = () => {
       ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
       : prompt;
 
-    // 1. Create project
     const proj = createProjectFromPrompt(prompt);
-    // 2. Add the first user message
     addMessage(proj.id, { role: "user", content: fullPrompt });
-    // 3. Navigate to the editor, where generation will be triggered
     navigate(`/editor?id=${encodeURIComponent(proj.id)}`);
   };
 
@@ -120,7 +118,7 @@ const Hero: React.FC = () => {
   };
 
   return (
-    <section className="min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-20">
+    <section className="min-h-screen flex flex-col items-center px-6 pt-24 pb-20">
       <div className="max-w-4xl mx-auto text-center space-y-8">
         <div className="space-y-4">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight opacity-0 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
@@ -257,6 +255,11 @@ const Hero: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Projects section below the examples, full-width like the reference */}
+      <div className="w-full max-w-6xl mx-auto mt-12 opacity-0 animate-fade-in-up" style={{ animationDelay: "0.6s" }}>
+        <ProjectsGallery />
       </div>
     </section>
   );
