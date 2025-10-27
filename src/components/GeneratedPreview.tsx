@@ -1,27 +1,45 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getCode } from '@/lib/projects';
 
-const GeneratedPreview = () => {
+type GeneratedPreviewProps = {
+  projectId: string | null;
+};
+
+const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({ projectId }) => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [html, setHtml] = useState<string>("");
 
-  // Listen for messages from the parent window (Editor)
+  // Listen for messages from the parent window (Editor) to toggle selection mode
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Optional: Add origin check for security
       // if (event.origin !== 'http://your-editor-domain.com') return;
 
-      if (event.data.type === 'toggleSelectionMode') {
-        setIsSelectionMode(event.data.payload.isActive);
+      if (event.data?.type === 'toggleSelectionMode') {
+        setIsSelectionMode(Boolean(event.data.payload?.isActive));
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Add/remove event listeners for element selection
+  // Load generated HTML from project storage
+  useEffect(() => {
+    if (!projectId) {
+      setHtml(`<div style="padding:40px; max-width:900px; margin:0 auto; background:#fff; border-radius:8px; box-shadow:0 6px 20px rgba(2,6,23,0.06);"><h2 class="text-lg font-semibold">Preview Area</h2><p class="text-muted-foreground">The preview will appear here after generation.</p></div>`);
+      return;
+    }
+    const code = getCode(projectId);
+    setHtml(code ?? `<div style="padding:40px; max-width:900px; margin:0 auto; background:#fff; border-radius:8px; box-shadow:0 6px 20px rgba(2,6,23,0.06);"><h2 class="text-lg font-semibold">Preview Area</h2><p class="text-muted-foreground">The preview will appear here after generation.</p></div>`);
+  }, [projectId]);
+
+  // Add/remove event listeners for element selection when selection mode is active
   useEffect(() => {
     const overlay = overlayRef.current;
-    if (!isSelectionMode || !overlay) return;
+    const container = containerRef.current;
+    if (!isSelectionMode || !overlay || !container) return;
 
     const showOverlay = (target: HTMLElement) => {
       const rect = target.getBoundingClientRect();
@@ -36,10 +54,18 @@ const GeneratedPreview = () => {
       overlay.style.display = 'none';
     };
 
+    const isValidTarget = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      if (el === overlay || el === container || el === document.body || el === document.documentElement) return false;
+      return container.contains(el);
+    };
+
     const handleMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target && target !== document.body && target !== document.documentElement && target !== overlay) {
+      if (isValidTarget(target)) {
         showOverlay(target);
+      } else {
+        hideOverlay();
       }
     };
 
@@ -66,8 +92,9 @@ const GeneratedPreview = () => {
       e.preventDefault();
       e.stopPropagation();
       const target = e.target as HTMLElement;
-      if (target && target !== overlay) {
+      if (isValidTarget(target)) {
         const description = getElementDescription(target);
+        // Post to parent (Editor) that an element was selected
         window.parent.postMessage({ type: 'elementSelected', payload: { description } }, '*');
         hideOverlay();
       }
@@ -94,19 +121,16 @@ const GeneratedPreview = () => {
         style={{
           position: 'absolute',
           border: '2px solid #3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.2)',
-          borderRadius: '3px',
+          backgroundColor: 'rgba(59, 130, 246, 0.12)',
+          borderRadius: '4px',
           pointerEvents: 'none',
           zIndex: 9999,
           display: 'none',
           transition: 'all 50ms ease-out',
         }}
       />
-      <div className="flex items-center justify-center h-screen bg-background text-foreground">
-        <div className="text-center p-8 border border-dashed border-border rounded-lg">
-          <h1 className="text-2xl font-bold mb-2">Preview Area</h1>
-          <p className="text-muted-foreground">Ask me to generate a component and you'll see it here.</p>
-        </div>
+      <div ref={containerRef} className="min-h-screen bg-background text-foreground" style={{ padding: 24 }}>
+        <div dangerouslySetInnerHTML={{ __html: html }} />
       </div>
     </>
   );

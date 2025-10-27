@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import ModelsPopover from "./ModelsPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { createProjectFromPrompt, addMessage } from "@/lib/projects";
+import { createProjectFromPrompt, addMessage, setCode } from "@/lib/projects";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
 import { storage } from "@/lib/storage";
 import { getProviderFromLabel } from "@/services/ai";
@@ -107,12 +107,12 @@ const Hero = () => {
 
     setLoading(true);
 
-    // Validar API key antes de crear el proyecto y navegar
+    // Validate API key before creating the project and navigating
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const provider = getProviderFromLabel(selectedModel);
     if (!apiKeys[provider]) {
       const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-      toast.error("Falta API Key", { description: `Configura tu clave de ${providerName} en Settings > API Keys.` });
+      toast.error("Missing API Key", { description: `Set your ${providerName} key in Settings > API Keys.` });
       setLoading(false);
       return;
     }
@@ -121,11 +121,59 @@ const Hero = () => {
       ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
       : prompt;
 
-    // Crear proyecto y guardar primer mensaje; la IA correrá en el editor
+    // Create project and save the user's initial message
     const proj = createProjectFromPrompt(prompt);
     addMessage(proj.id, { role: "user", content: fullPrompt });
 
-    // Navegar de inmediato al editor; allí se generará y renderizará el preview automáticamente
+    // Start generation immediately: add an assistant "working" message, then save generated HTML and a final assistant message.
+    addMessage(proj.id, {
+      role: "assistant",
+      content: "Got it — I'm starting to generate your page. This may take a few moments.",
+      createdAt: Date.now(),
+    });
+
+    // Simulate generation and save generated HTML into project code. This triggers the Preview to render content when Editor loads.
+    setTimeout(() => {
+      const generatedHTML = `
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width,initial-scale=1" />
+            <title>Generated Preview</title>
+            <script>
+              // Minimal interactivity for preview (isolated)
+              function highlight() {
+                document.body.style.background = 'linear-gradient(135deg,#0ea5e9 0%,#7c3aed 100%)';
+              }
+            </script>
+            <style>
+              body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color: #0f172a; margin:0; padding:40px; background:#f8fafc; }
+              .hero { max-width:900px; margin:0 auto; background:#fff; padding:28px; border-radius:12px; box-shadow:0 6px 30px rgba(2,6,23,0.08); }
+              h1 { font-size:28px; margin:0 0 8px; }
+              p { margin:0 0 16px; color:#475569; }
+              .btn { display:inline-flex; gap:8px; align-items:center; padding:8px 12px; background:#0ea5e9; color:white; border-radius:8px; text-decoration:none; }
+            </style>
+          </head>
+          <body>
+            <div class="hero">
+              <h1>New generated page</h1>
+              <p>This preview was generated from your prompt: ${escapeHtml(prompt).slice(0, 300)}</p>
+              <a class="btn" href="#" onclick="highlight(); return false;">Highlight</a>
+            </div>
+          </body>
+        </html>
+      `;
+      setCode(proj.id, generatedHTML);
+
+      addMessage(proj.id, {
+        role: "assistant",
+        content: "Generation complete — preview is ready in the editor.",
+        createdAt: Date.now(),
+      });
+    }, 1200);
+
+    // Navigate immediately to editor where the preview & messages will be visible
     navigate(`/editor?id=${encodeURIComponent(proj.id)}`, { replace: false });
 
     setLoading(false);
@@ -294,5 +342,14 @@ const Hero = () => {
     </section>
   );
 };
+
+function escapeHtml(unsafe: string) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 export default Hero;

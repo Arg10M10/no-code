@@ -1,7 +1,10 @@
+import { useSearchParams } from "react-router-dom";
 import GeneratedPreview from "@/components/GeneratedPreview";
 
 const PreviewPage = () => {
-  return <GeneratedPreview />;
+  const [searchParams] = useSearchParams();
+  const projectId = searchParams.get("id");
+  return <GeneratedPreview projectId={projectId ?? null} />;
 };
 
 export default PreviewPage;
