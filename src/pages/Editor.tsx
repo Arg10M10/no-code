@@ -9,7 +9,7 @@ import {
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
-import { getProjectById, StoredMessage, setMessages, getMessages } from "@/lib/projects";
+import { getProjectById, StoredMessage, setMessages, getMessages, getCode, setCode } from "@/lib/projects";
 
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -20,10 +20,10 @@ const EditorPage: React.FC = () => {
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [messages, setMessagesState] = useState<StoredMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [credits, setCredits] = useState(0); // start with 0 tokens
+  const [credits, setCredits] = useState(0);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   
-  // New state for selection mode
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
 
@@ -33,19 +33,18 @@ const EditorPage: React.FC = () => {
       if (project) {
         setProjectName(project.name);
         setMessagesState(getMessages(projectId));
-        // We start credits at 0 (1k-5k will be spent per question)
+        setGeneratedCode(getCode(projectId));
         setCredits(0);
       } else {
         console.error("Project not found");
-        navigate("/"); // Redirect if project doesn't exist
+        navigate("/");
       }
     } else {
-      navigate("/"); // Redirect if no project ID
+      navigate("/");
     }
   }, [projectId, navigate]);
 
   const computeCost = (text: string) => {
-    // Simple heuristic: short questions = 1k, medium = 3k, long = 5k
     const len = (text || "").trim().length;
     if (len === 0) return 1000;
     if (len < 50) return 1000;
@@ -59,7 +58,7 @@ const EditorPage: React.FC = () => {
     let messageContent = text;
     if (selectedElement) {
       messageContent = `Regarding the element "${selectedElement}", please do the following: ${text}`;
-      setSelectedElement(null); // Clear selection after sending
+      setSelectedElement(null);
     }
 
     const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
@@ -67,26 +66,49 @@ const EditorPage: React.FC = () => {
     setMessagesState(newMessages);
     setMessages(projectId, newMessages);
     setLoading(true);
+    setGeneratedCode(null); // Clear previous code to show loader
 
-    // Deduct tokens based on type/question
     const cost = computeCost(text);
     setCredits((prev) => Math.max(0, prev - cost));
 
-    // Simulate AI thinking...
+    // 1. Simulate AI thinking
     setTimeout(() => {
       const aiResponse: StoredMessage = {
         role: "assistant",
-        content: "Understood. I'm working on your changes. You'll see the updated preview shortly.",
+        content: "Understood. I'm generating the code for you now.",
         createdAt: Date.now(),
       };
-      const finalMessages = [...newMessages, aiResponse];
-      setMessagesState(finalMessages);
-      setMessages(projectId, finalMessages);
-      setLoading(false);
-      
-      setPreviewLoading(true);
-      setTimeout(() => setPreviewLoading(false), 1500);
+      const updatedMessages = [...newMessages, aiResponse];
+      setMessagesState(updatedMessages);
+      setMessages(projectId, updatedMessages);
 
+      // 2. Simulate code generation
+      setTimeout(() => {
+        const fakeGeneratedCode = `import React from 'react';
+
+const GeneratedComponent = () => {
+  return (
+    <div className="p-6 bg-gray-800 border border-dashed border-gray-600 rounded-lg text-white">
+      <h2 className="text-xl font-bold text-cyan-400 mb-2">Generated Component</h2>
+      <p className="text-gray-300">This component was generated based on your prompt:</p>
+      <p className="mt-2 p-3 bg-gray-700 rounded text-sm font-mono">"${text.substring(0, 100)}..."</p>
+    </div>
+  );
+};
+
+export default GeneratedComponent;
+`;
+        setGeneratedCode(fakeGeneratedCode);
+        setCode(projectId, fakeGeneratedCode);
+        
+        setLoading(false); // Stop chat loading
+        setPreviewLoading(true); // Start preview loading
+        
+        // 3. Simulate preview update
+        setTimeout(() => {
+          setPreviewLoading(false);
+        }, 1500);
+      }, 1200);
     }, 1000);
   }, [messages, projectId, selectedElement]);
 
@@ -94,15 +116,15 @@ const EditorPage: React.FC = () => {
     setPreviewLoading(true);
     setTimeout(() => {
       setPreviewLoading(false);
-    }, 1500); // Simulate a refresh delay
+    }, 1500);
   };
 
   const handleElementSelected = (description: string) => {
     setSelectedElement(description);
-    setIsSelectionModeActive(false); // Automatically turn off selection mode
+    setIsSelectionModeActive(false);
   };
 
-  const previewUrl = `/preview`;
+  const previewUrl = `/preview?id=${projectId}`;
 
   if (!projectId) {
     return <div>Loading project...</div>;
@@ -124,10 +146,9 @@ const EditorPage: React.FC = () => {
       </header>
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
-          {/* Left chat panel: a bit larger (420px) for better readability */}
           <ResizablePanel
-            defaultWidth={420}
-            minWidth={300}
+            defaultSize={30}
+            minSize={20}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
@@ -143,22 +164,21 @@ const EditorPage: React.FC = () => {
               onClearSelection={() => setSelectedElement(null)}
             />
           </ResizablePanel>
-
-          {/* Vertical separator between chat and preview */}
           <div
             aria-hidden="true"
             className="h-full w-px bg-border/40"
             role="separator"
           />
-
-          <ResizablePanel>
+          <ResizablePanel defaultSize={70}>
             <PreviewPanel
               previewUrl={previewUrl}
-              loading={previewLoading}
+              previewLoading={previewLoading}
               onRefresh={handleRefreshPreview}
               isSelectionModeActive={isSelectionModeActive}
               onToggleSelectionMode={() => setIsSelectionModeActive(prev => !prev)}
               onElementSelected={handleElementSelected}
+              generatedCode={generatedCode}
+              codeLoading={loading && !generatedCode}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
