@@ -75,43 +75,55 @@ const EditorPage: React.FC = () => {
     setLoading(true);
     setPreviewLoading(true);
 
-    addMessage(projId, {
-      role: "assistant",
-      content: "Got it — I'm starting to generate your page. This may take a few moments.",
-    });
-    setMessagesState(getMessages(projId));
-
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const selectedModel = getSelectedModelLabel();
     const provider = getProviderFromLabel(selectedModel);
 
+    if (!apiKeys[provider]) {
+      toast.warning("Falta la clave de API", {
+        description: "Por favor, configúrala en los ajustes para usar la IA.",
+      });
+      addMessage(projId, {
+        role: "assistant",
+        content: `¡Atención! Para generar la página web con la IA, necesitas configurar tu clave de API para el proveedor '${provider}'.\n\nPuedes hacerlo en 'Settings' > 'API Keys'.\n\nMientras tanto, he creado una página de ejemplo para que veas cómo funciona.`
+      });
+      const fallbackCode = generateHtmlFromPrompt(prompt, selectedModel);
+      setCode(projId, fallbackCode);
+      setCodeState(fallbackCode);
+      setMessagesState(getMessages(projId));
+      setLoading(false);
+      setPreviewLoading(false);
+      return;
+    }
+
+    addMessage(projId, {
+      role: "assistant",
+      content: "Clave de API encontrada. Empezando a generar tu página con la IA...",
+    });
+    setMessagesState(getMessages(projId));
+
     try {
-      let generatedCode: string;
-      if (apiKeys[provider]) {
-        generatedCode = await generateAnswer({ prompt, selectedModelLabel: selectedModel, apiKeys });
-        if (!generatedCode || generatedCode.trim().length === 0) {
-          toast.message("Generated locally (empty AI response).");
-          generatedCode = generateHtmlFromPrompt(prompt, selectedModel);
-        } else {
-          toast.success("Generation complete");
-        }
+      const generatedCode = await generateAnswer({ prompt, selectedModelLabel: selectedModel, apiKeys });
+      if (!generatedCode || generatedCode.trim().length === 0) {
+        toast.message("Generado localmente (respuesta de la IA vacía).");
+        const fallbackCode = generateHtmlFromPrompt(prompt, selectedModel);
+        setCode(projId, fallbackCode);
+        setCodeState(fallbackCode);
       } else {
-        toast.message("No API key configured — generated page locally.");
-        generatedCode = generateHtmlFromPrompt(prompt, selectedModel);
+        toast.success("Generación completada");
+        setCode(projId, generatedCode);
+        setCodeState(generatedCode);
       }
-      
-      setCode(projId, generatedCode);
-      setCodeState(generatedCode);
-      addMessage(projId, { role: "assistant", content: "Generation complete — preview is ready." });
+      addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización está lista." });
     } catch (err: any) {
-      console.error("AI generation failed, using local fallback:", err);
-      toast.error("AI request failed — used local fallback.");
+      console.error("La generación con IA ha fallado, usando fallback local:", err);
+      toast.error("La petición a la IA ha fallado — se ha usado un fallback local.");
       const fallbackCode = generateHtmlFromPrompt(prompt, selectedModel);
       setCode(projId, fallbackCode);
       setCodeState(fallbackCode);
       addMessage(projId, {
         role: "assistant",
-        content: "Generation failed against the remote AI service — created a local fallback page.",
+        content: "La generación contra el servicio de IA remoto ha fallado — se ha creado una página de fallback local.",
       });
     } finally {
       setLoading(false);
@@ -134,7 +146,7 @@ const EditorPage: React.FC = () => {
           triggerInitialGeneration(projectId, loadedMessages[0].content);
         }
       } else {
-        console.error("Project not found");
+        console.error("Proyecto no encontrado");
         navigate("/");
       }
     } else {
@@ -147,7 +159,7 @@ const EditorPage: React.FC = () => {
 
     let messageContent = text;
     if (selectedElement) {
-      messageContent = `Regarding the element "${selectedElement}", please do the following: ${text}`;
+      messageContent = `Respecto al elemento "${selectedElement}", por favor haz lo siguiente: ${text}`;
       setSelectedElement(null);
     }
 
@@ -160,7 +172,7 @@ const EditorPage: React.FC = () => {
     setTimeout(() => {
       const aiResponse: StoredMessage = {
         role: "assistant",
-        content: "Understood. I'm working on your changes. You'll see the updated preview shortly.",
+        content: "Entendido. Estoy trabajando en tus cambios. Verás la previsualización actualizada en breve.",
         createdAt: Date.now(),
       };
       const finalMessages = [...newMessages, aiResponse];
@@ -184,7 +196,7 @@ const EditorPage: React.FC = () => {
   };
 
   if (!projectId) {
-    return <div>Loading project...</div>;
+    return <div>Cargando proyecto...</div>;
   }
 
   return (
@@ -192,12 +204,12 @@ const EditorPage: React.FC = () => {
       <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold truncate" title={projectName}>
-            {projectName || "Loading..."}
+            {projectName || "Cargando..."}
           </h1>
         </div>
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-            Exit
+            Salir
           </Button>
         </div>
       </header>
