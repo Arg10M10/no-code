@@ -14,6 +14,7 @@ import { getProjectById, StoredMessage, setMessages, getMessages, addMessage, ge
 import { storage } from "@/lib/storage";
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer } from "@/services/ai";
+import { cn } from "@/lib/utils";
 
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -169,13 +170,14 @@ const EditorPage: React.FC = () => {
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel
-            defaultSize={15}
+            defaultSize={25}
             minSize={15}
+            maxSize={30}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
             onExpand={() => setIsLeftPanelCollapsed(false)}
-            className={isLeftPanelCollapsed ? "hidden" : ""}
+            className={cn("max-w-[400px]", isLeftPanelCollapsed ? "hidden" : "")}
           >
             <ChatPanel
               messages={messages}
@@ -191,7 +193,7 @@ const EditorPage: React.FC = () => {
             className="h-full w-px bg-border/40"
             role="separator"
           />
-          <ResizablePanel defaultSize={85}>
+          <ResizablePanel defaultSize={75}>
             <PreviewPanel
               previewUrl="/preview"
               code={code}
