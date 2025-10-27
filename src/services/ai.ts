@@ -105,6 +105,25 @@ function ensureMessages(messages: unknown): asserts messages is ChatMessage[] {
 }
 
 /**
+ * Validate API key format before using it in requests.
+ * This prevents accidentally passing long strings (like prompts) as the key
+ * which would generate invalid URLs and lead to confusing "Failed to fetch".
+ */
+function validateApiKey(provider: ProviderId, key?: string) {
+  if (!key || typeof key !== "string") {
+    throw new Error(`Missing API key for ${provider}. Set it in Settings > API Keys.`);
+  }
+
+  // Reject obviously-bad values: contains whitespace or excessively long (likely a pasted prompt)
+  if (/\s/.test(key) || key.length > 200) {
+    throw new Error(
+      `Invalid API key provided for ${provider}. The value appears to be wrong (contains spaces or is too long). ` +
+        `Please double-check the API key in Settings > API Keys.`,
+    );
+  }
+}
+
+/**
  * Helper wrapper for fetch that augments network-level failures (e.g. CORS / failed to fetch)
  * with a clearer, actionable error message. Errors are re-thrown so they bubble up for
  * global handling (we don't swallow them).
@@ -134,6 +153,7 @@ async function callOpenAI(params: {
 }): Promise<string> {
   // Validate input to avoid runtime map/filter errors
   ensureMessages(params.messages);
+  validateApiKey("openai", params.apiKey);
 
   const r = await safeFetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -166,6 +186,7 @@ async function callAnthropic(params: {
   temperature?: number;
 }): Promise<string> {
   ensureMessages(params.messages);
+  validateApiKey("anthropic", params.apiKey);
 
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
@@ -208,6 +229,7 @@ async function callGoogle(params: {
   temperature?: number;
 }): Promise<string> {
   ensureMessages(params.messages);
+  validateApiKey("google", params.apiKey);
 
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
@@ -255,6 +277,7 @@ async function callOpenRouter(params: {
   temperature?: number;
 }): Promise<string> {
   ensureMessages(params.messages);
+  validateApiKey("openrouter", params.apiKey);
 
   const r = await safeFetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -301,7 +324,7 @@ export async function generateAnswer(req: {
 }): Promise<string> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
-  if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
+  validateApiKey(provider, apiKey);
 
   const messages = buildMessagesForPrompt(req.system, req.prompt);
 
@@ -329,7 +352,7 @@ export async function generateChat(req: {
 
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
-  if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
+  validateApiKey(provider, apiKey);
 
   const messages = req.system
     ? [{ role: "system", content: req.system } as ChatMessage, ...req.messages.filter((m) => m.role !== "system")]
