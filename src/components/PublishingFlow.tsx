@@ -94,12 +94,11 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       console.error("Full publishing error:", err);
       let finalMessage = err.message || "An unknown error occurred.";
       
-      if (finalMessage.includes("Not authenticated")) {
-        toast.error('Authentication Expired', { 
-          description: "Your GitHub connection has expired. You have been logged out. Please log in again.",
+      if (finalMessage.includes("Not authenticated") || finalMessage.includes("provider_token not found")) {
+        toast.error('GitHub Authentication Failed', { 
+          description: "Your connection with GitHub may have expired. Please try logging out and logging back in, ensuring you grant repository access.",
           duration: 10000,
         });
-        await handleLogout();
       } else {
         toast.error('Failed to publish project', { 
           description: finalMessage,
