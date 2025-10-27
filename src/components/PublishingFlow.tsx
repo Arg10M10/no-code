@@ -76,15 +76,12 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       });
 
       if (error) {
-        if (error.context && error.context instanceof Response) {
-          const errorMessage = await error.context.text();
-          throw new Error(errorMessage);
-        }
-        throw error;
+        throw new Error(error.message); // Network or function invocation error
       }
       
-      if (data && data.error) {
-        throw new Error(data.error);
+      if (data.error) {
+        // Application-level error from our function's JSON response
+        throw new Error(data.details || data.error);
       }
 
       setPublishedUrl(data.html_url);
@@ -92,19 +89,12 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       toast.success('Project published successfully!');
     } catch (err: any) {
       console.error("Full publishing error:", err);
-      let finalMessage = err.message || "An unknown error occurred.";
+      const errorMessage = err.message || "An unknown error occurred.";
       
-      if (finalMessage.includes("Not authenticated") || finalMessage.includes("provider_token not found")) {
-        toast.error('GitHub Authentication Failed', { 
-          description: "Your connection with GitHub may have expired. Please try logging out and logging back in, ensuring you grant repository access.",
-          duration: 10000,
-        });
-      } else {
-        toast.error('Failed to publish project', { 
-          description: finalMessage,
-          duration: 10000,
-        });
-      }
+      toast.error('Failed to publish project', { 
+        description: errorMessage,
+        duration: 15000, // Give more time to read the detailed error
+      });
       setPublishState('idle');
     }
   };

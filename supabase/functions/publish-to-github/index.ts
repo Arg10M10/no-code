@@ -18,9 +18,9 @@ serve(async (req) => {
     const { repoName, fileContent } = await req.json();
 
     if (!repoName || !fileContent) {
-      return new Response("repoName and fileContent are required", {
+      return new Response(JSON.stringify({ error: "Bad Request", details: "repoName and fileContent are required." }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -32,19 +32,37 @@ serve(async (req) => {
 
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    if (sessionError || !session) {
-      return new Response("Not authenticated. Your session may have expired.", {
+    // Enhanced logging for debugging
+    console.log("Session retrieved in edge function:", {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userId: session?.user?.id,
+      hasProviderToken: !!session?.provider_token,
+      hasAccessToken: !!session?.access_token,
+    });
+
+    if (sessionError) {
+      console.error("Supabase session error:", sessionError);
+      return new Response(JSON.stringify({ error: "Authentication Error", details: `Failed to retrieve session: ${sessionError.message}` }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!session) {
+      return new Response(JSON.stringify({ error: "Not Authenticated", details: "No active session found. Please log in again." }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const githubToken = session.provider_token;
     if (!githubToken) {
-      const detailedError = "GitHub provider token not found. This can happen if repository access was not granted during login. Please try this: 1) Go to your GitHub settings -> Applications -> Authorized OAuth Apps. 2) Revoke access for this application. 3) Log out and log back in here, ensuring you grant repository access.";
-      return new Response(detailedError, {
+      const detailedError = "GitHub provider token not found. This indicates that the necessary 'repo' permissions were not granted. Please try the following: 1) Go to your GitHub settings -> Applications -> Authorized OAuth Apps. 2) Revoke access for this application. 3) Log out and log back in here, ensuring you grant repository access when prompted by GitHub.";
+      console.error("Provider token missing for user:", session.user.id);
+      return new Response(JSON.stringify({ error: "Permission Denied", details: detailedError }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -67,9 +85,9 @@ serve(async (req) => {
       const errorData = await repoResponse.json();
       console.error("GitHub repo creation error:", errorData);
       const errorMessage = errorData.errors?.[0]?.message || errorData.message || "Failed to create repository.";
-      return new Response(`GitHub Error: ${errorMessage}`, {
+      return new Response(JSON.stringify({ error: "GitHub API Error", details: errorMessage }), {
         status: repoResponse.status,
-        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     const repoData = await repoResponse.json();
@@ -96,9 +114,9 @@ serve(async (req) => {
       
       const errorData = await fileResponse.json();
       const errorMessage = errorData.message || "Failed to create file in repository.";
-      return new Response(`GitHub Error: ${errorMessage}`, {
+      return new Response(JSON.stringify({ error: "GitHub API Error", details: errorMessage }), {
         status: fileResponse.status,
-        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -110,9 +128,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Internal server error:", error);
-    return new Response(error.message, {
+    return new Response(JSON.stringify({ error: "Internal Server Error", details: error.message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
