@@ -76,7 +76,6 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       });
 
       if (error) {
-        // This is the key change: correctly read the text from the Response object
         if (error.context && error.context instanceof Response) {
           const errorMessage = await error.context.text();
           throw new Error(errorMessage);
@@ -95,10 +94,18 @@ const PublishingFlow: React.FC<PublishingFlowProps> = ({ projectName, projectCod
       console.error("Full publishing error:", err);
       let finalMessage = err.message || "An unknown error occurred.";
       
-      toast.error('Failed to publish project', { 
-        description: finalMessage,
-        duration: 10000,
-      });
+      if (finalMessage.includes("Not authenticated")) {
+        toast.error('Authentication Expired', { 
+          description: "Your GitHub connection has expired. You have been logged out. Please log in again.",
+          duration: 10000,
+        });
+        await handleLogout();
+      } else {
+        toast.error('Failed to publish project', { 
+          description: finalMessage,
+          duration: 10000,
+        });
+      }
       setPublishState('idle');
     }
   };
