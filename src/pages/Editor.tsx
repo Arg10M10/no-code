@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 function includesSupabaseIntent(text: string): boolean {
   const t = (text || "").toLowerCase();
   if (!t.includes("supabase")) return false;
-  const keys = ["conectar", "connect", "integrar", "integration", "auth", "database"];
+  const keys = ["conectar", "conéct", "connect", "integrar", "integration", "auth", "database"];
   return keys.some((k) => t.includes(k));
 }
 
@@ -39,7 +39,7 @@ const EditorPage: React.FC = () => {
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
 
-  // Señal para abrir Integrations/Supabase cuando la IA lo sugiera
+  // Señal para abrir Integrations/Supabase cuando la IA o el usuario lo sugiera
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
 
   const triggerInitialGeneration = useCallback(async (projId: string, prompt: string) => {
@@ -136,6 +136,11 @@ const EditorPage: React.FC = () => {
       setSelectedElement(null);
     }
 
+    // Si el usuario pide conectar Supabase, abrir Integrations de inmediato
+    if (includesSupabaseIntent(messageContent)) {
+      setSupabaseIntentCounter((c) => c + 1);
+    }
+
     const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
     const newMessages = [...messages, userMessage];
     setMessagesState(newMessages);
@@ -174,8 +179,6 @@ const EditorPage: React.FC = () => {
       const cost = Math.floor(Math.random() * 4001) + 1000; // 1k to 5k
       const newCredits = decrementCredits(projectId, cost);
       setCredits(newCredits);
-      // No es necesario notificar siempre, se mantiene el comportamiento actual
-      // toast.info(`${cost.toLocaleString()} tokens used.`);
 
       const aiResponse: StoredMessage = {
         role: "assistant",
@@ -189,9 +192,8 @@ const EditorPage: React.FC = () => {
     } catch (err: any) {
       const errorMessage = err?.message || "Ocurrió un error desconocido.";
       console.error("Error en la operación de IA:", err);
-      // Mantener toasts existentes
-      const isAsk = text.trim().startsWith("[ASK]");
-      toast.error(isAsk ? "La pregunta a la IA ha fallado" : "La generación con IA ha fallado", {
+      const nowAsk = text.trim().startsWith("[ASK]");
+      toast.error(nowAsk ? "La pregunta a la IA ha fallado" : "La generación con IA ha fallado", {
         description: errorMessage,
       });
       const aiResponse: StoredMessage = {
