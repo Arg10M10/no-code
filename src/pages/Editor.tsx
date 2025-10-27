@@ -116,14 +116,20 @@ const EditorPage: React.FC = () => {
       }
       addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización está lista." });
     } catch (err: any) {
+      const errorMessage = err.message || "Ocurrió un error desconocido.";
       console.error("La generación con IA ha fallado, usando fallback local:", err);
-      toast.error("La petición a la IA ha fallado — se ha usado un fallback local.");
+      
+      toast.error("La petición a la IA ha fallado", {
+        description: errorMessage,
+      });
+
       const fallbackCode = generateHtmlFromPrompt(prompt, selectedModel);
       setCode(projId, fallbackCode);
       setCodeState(fallbackCode);
+      
       addMessage(projId, {
         role: "assistant",
-        content: "La generación contra el servicio de IA remoto ha fallado — se ha creado una página de fallback local.",
+        content: `La generación con IA ha fallado con el siguiente error:\n\n> ${errorMessage}\n\nSe ha creado una página de ejemplo en su lugar. Por favor, revisa tu clave de API y la configuración del modelo.`,
       });
     } finally {
       setLoading(false);
