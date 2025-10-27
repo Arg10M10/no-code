@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { createProjectFromPrompt, addMessage, setCode } from "@/lib/projects";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
 import { storage } from "@/lib/storage";
-import { getProviderFromLabel } from "@/services/ai";
+import { getProviderFromLabel, generateAnswer } from "@/services/ai";
 
 const Hero = () => {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -125,56 +125,33 @@ const Hero = () => {
     const proj = createProjectFromPrompt(prompt);
     addMessage(proj.id, { role: "user", content: fullPrompt });
 
-    // Start generation immediately: add an assistant "working" message, then save generated HTML and a final assistant message.
+    // Add a working message so users see progress in the editor immediately
     addMessage(proj.id, {
       role: "assistant",
       content: "Got it — I'm starting to generate your page. This may take a few moments.",
       createdAt: Date.now(),
     });
 
-    // Simulate generation and save generated HTML into project code. This triggers the Preview to render content when Editor loads.
-    setTimeout(() => {
-      const generatedHTML = `
-        <!doctype html>
-        <html>
-          <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width,initial-scale=1" />
-            <title>Generated Preview</title>
-            <script>
-              // Minimal interactivity for preview (isolated)
-              function highlight() {
-                document.body.style.background = 'linear-gradient(135deg,#0ea5e9 0%,#7c3aed 100%)';
-              }
-            </script>
-            <style>
-              body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color: #0f172a; margin:0; padding:40px; background:#f8fafc; }
-              .hero { max-width:900px; margin:0 auto; background:#fff; padding:28px; border-radius:12px; box-shadow:0 6px 30px rgba(2,6,23,0.08); }
-              h1 { font-size:28px; margin:0 0 8px; }
-              p { margin:0 0 16px; color:#475569; }
-              .btn { display:inline-flex; gap:8px; align-items:center; padding:8px 12px; background:#0ea5e9; color:white; border-radius:8px; text-decoration:none; }
-            </style>
-          </head>
-          <body>
-            <div class="hero">
-              <h1>New generated page</h1>
-              <p>This preview was generated from your prompt: ${escapeHtml(prompt).slice(0, 300)}</p>
-              <a class="btn" href="#" onclick="highlight(); return false;">Highlight</a>
-            </div>
-          </body>
-        </html>
-      `;
-      setCode(proj.id, generatedHTML);
-
-      addMessage(proj.id, {
-        role: "assistant",
-        content: "Generation complete — preview is ready in the editor.",
-        createdAt: Date.now(),
-      });
-    }, 1200);
-
-    // Navigate immediately to editor where the preview & messages will be visible
+    // Navigate to editor immediately so the user can view progress
     navigate(`/editor?id=${encodeURIComponent(proj.id)}`, { replace: false });
+
+    // Call the real AI generator to produce HTML for the prompt and save it to the project.
+    // Note: Errors from generateAnswer are allowed to bubble up (per project error rules).
+    const generated = await generateAnswer({
+      prompt: fullPrompt,
+      selectedModelLabel: selectedModel,
+      apiKeys,
+    });
+
+    // Save generated HTML into project storage so Preview renders it
+    setCode(proj.id, generated);
+
+    // Add a completion assistant message
+    addMessage(proj.id, {
+      role: "assistant",
+      content: "Generation complete — preview is ready in the editor.",
+      createdAt: Date.now(),
+    });
 
     setLoading(false);
   };
