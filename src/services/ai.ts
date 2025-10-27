@@ -297,6 +297,9 @@ export async function generateChat(req: {
   system?: string;
   temperature?: number;
 }): Promise<string> {
+  // Validate that messages is an array before using .filter / .map
+  ensureMessages(req.messages);
+
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
   if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
