@@ -51,22 +51,18 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
 
   switch (provider) {
     case "google": {
-      // UI: "Gemini 2.5 flash" / "Gemini 2.5 Pro" -> API: gemini-2.5-flash / gemini-2.5-pro
       if (normalized.includes("2.5") && normalized.includes("flash")) {
         return { provider, model: "gemini-2.5-flash" };
       }
       if (normalized.includes("2.5") && normalized.includes("pro")) {
         return { provider, model: "gemini-2.5-pro" };
       }
-      // Fallback seguro a 2.5
       return { provider, model: "gemini-2.5-flash" };
     }
     case "openai": {
-      // UI: "o4mini" -> API: o4-mini
       if (normalized.includes("o4mini") || normalized.includes("o4-mini")) {
         return { provider, model: "o4-mini" };
       }
-      // UI: "GPT-5" variantes -> mapear a modelos disponibles
       if (normalized.includes("gpt-5") && normalized.includes("mini")) {
         return { provider, model: "gpt-4o-mini" };
       }
@@ -79,11 +75,9 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
       if (normalized.includes("gpt-5")) {
         return { provider, model: "gpt-4o" };
       }
-      // Fallback seguro
       return { provider, model: "gpt-4o-mini" };
     }
     case "anthropic": {
-      // Varias etiquetas de "Claude X Sonet" -> API estable
       return { provider, model: "claude-3-5-sonnet-latest" };
     }
     case "openrouter": {
@@ -93,11 +87,20 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
       if (normalized.includes("deepseek")) {
         return { provider, model: "deepseek/deepseek-chat" };
       }
-      // Fallback
       return { provider, model: "deepseek/deepseek-chat" };
     }
     default:
       return { provider: "openai", model: "gpt-4o-mini" };
+  }
+}
+
+/**
+ * Small helper to ensure callers always pass an array of messages.
+ * Throws a clear error if messages is missing or not an array.
+ */
+function ensureMessages(messages: unknown): asserts messages is ChatMessage[] {
+  if (!Array.isArray(messages)) {
+    throw new Error("AI call requires a messages array but none was provided.");
   }
 }
 
@@ -107,6 +110,9 @@ async function callOpenAI(params: {
   apiKey: string;
   temperature?: number;
 }): Promise<string> {
+  // Validate input to avoid runtime map/filter errors
+  ensureMessages(params.messages);
+
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -136,6 +142,8 @@ async function callAnthropic(params: {
   system?: string;
   temperature?: number;
 }): Promise<string> {
+  ensureMessages(params.messages);
+
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
   const mapped = chatMessages.map((m) => ({
@@ -174,6 +182,8 @@ async function callGoogle(params: {
   system?: string;
   temperature?: number;
 }): Promise<string> {
+  ensureMessages(params.messages);
+
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
 
@@ -218,6 +228,8 @@ async function callOpenRouter(params: {
   apiKey: string;
   temperature?: number;
 }): Promise<string> {
+  ensureMessages(params.messages);
+
   const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
