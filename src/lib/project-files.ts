@@ -404,6 +404,3 @@ export function cn(...inputs: ClassValue[]) {
     content: `// ... (código para interactuar con las APIs de IA) ...`,
   },
 ];
-`,
-  },
-];
