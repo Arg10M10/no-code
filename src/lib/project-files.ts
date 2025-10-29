@@ -7,6 +7,7 @@ type ProjectFile = {
 };
 
 export const projectFiles: ProjectFile[] = [
+  // Archivos Raíz
   {
     path: "Raíz / package.json",
     content: `{
@@ -250,6 +251,17 @@ export default {
   </body>
 </html>`,
   },
+  // Carpeta public
+  {
+    path: "public / favicon.ico",
+    content: `(Contenido del icono)`,
+  },
+  {
+    path: "public / robots.txt",
+    content: `User-agent: *
+Allow: /`,
+  },
+  // Carpeta src
   {
     path: "src / main.tsx",
     content: `import { createRoot } from "react-dom/client";
@@ -302,148 +314,96 @@ export default App;`,
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
-@layer base {
-  :root {
-    --background: 220 40% 5%;
-    --foreground: 0 0% 100%;
-
-    --card: 220 30% 8%;
-    --card-foreground: 0 0% 100%;
-
-    --popover: 220 30% 8%;
-    --popover-foreground: 0 0% 100%;
-
-    --primary: 210 100% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 220 25% 12%;
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 220 20% 15%;
-    --muted-foreground: 220 10% 60%;
-
-    --accent: 200 100% 50%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 20% 20%;
-    --input: 220 20% 15%;
-    --ring: 210 100% 60%;
-
-    --radius: 0.5rem;
-
-    --gradient-hero: linear-gradient(135deg, hsl(210 100% 60% / 0.1), hsl(200 100% 50% / 0.1));
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-`,
+/* ... (contenido de estilos) ... */`,
   },
-  {
-    path: "src/pages / Editor.tsx",
-    content: `"use client";
-
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import {
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import ChatPanel from "@/components/ChatPanel";
-import PreviewPanel from "@/components/PreviewPanel";
-import { Button } from "@/components/ui/button";
-import { getProjectById, StoredMessage, setMessages, getMessages, addMessage, getCode, setCode, getCredits, decrementCredits } from "@/lib/projects";
-import { storage } from "@/lib/storage";
-import { getSelectedModelLabel } from "@/lib/settings";
-import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
-import { cn } from "@/lib/utils";
-import { Github } from "lucide-react";
-
-const EditorPage: React.FC = () => {
-  // ... (contenido del archivo)
-  return (
-    <div className="h-screen w-screen flex flex-col bg-background text-foreground animate-fade-in">
-      {/* ... */}
-    </div>
-  );
-};
-
-export default EditorPage;`,
-  },
+  // src/components
   {
     path: "src/components / ChatPanel.tsx",
-    content: `"use client";
-
-import React from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import type { StoredMessage } from "@/lib/projects";
-// ... (más imports)
-
-const ChatPanel: React.FC<ChatPanelProps> = ({
-  // ... props
-}) => {
-  // ... (lógica del componente)
-  return (
-    <div className="flex flex-col h-full">
-      {/* ... */}
-    </div>
-  );
-};
-
-export default ChatPanel;`,
+    content: `// ... (código del componente ChatPanel) ...`,
   },
   {
     path: "src/components / PreviewPanel.tsx",
-    content: `"use client";
-
-import React, { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-// ... (más imports)
-
-const PreviewPanel: React.FC<PreviewPanelProps> = ({
-  // ... props
-}) => {
-  // ... (lógica del componente)
-  return (
-    <div className="h-full flex flex-col bg-muted/40">
-      {/* ... */}
-    </div>
-  );
-};
-
-export default PreviewPanel;`,
+    content: `// ... (código del componente PreviewPanel) ...`,
   },
   {
-    path: "src/services / ai.ts",
-    content: `export type ChatMessage = {
-  role: "system" | "user" | "assistant";
-  content: string;
-};
+    path: "src/components / Hero.tsx",
+    content: `// ... (código del componente Hero) ...`,
+  },
+  {
+    path: "src/components / Navigation.tsx",
+    content: `// ... (código del componente Navigation) ...`,
+  },
+  // src/components/supabase
+  {
+    path: "src/components/supabase / SupabaseConnectModal.tsx",
+    content: `// ... (código del modal de conexión de Supabase) ...`,
+  },
+  // src/components/ui
+  {
+    path: "src/components/ui / button.tsx",
+    content: `// ... (código del componente Button de shadcn/ui) ...`,
+  },
+  {
+    path: "src/components/ui / card.tsx",
+    content: `// ... (código del componente Card de shadcn/ui) ...`,
+  },
+  // src/hooks
+  {
+    path: "src/hooks / use-toast.ts",
+    content: `// ... (código del hook useToast) ...`,
+  },
+  // src/integrations/supabase
+  {
+    path: "src/integrations/supabase / client.ts",
+    content: `// This file is automatically generated. Do not edit it directly.
+import { createClient } from '@supabase/supabase-js';
 
-// ... (más tipos y funciones)
+const SUPABASE_URL = "https://xkcnbvcjzezhjaoxojsv.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrY25idmNqemV6aGphb3hvanN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NzA2NzQsImV4cCI6MjA3NzE0NjY3NH0.I6xsD0LHiOsuas5VaxU3killUr_aRDx3Xi57WvXeGlc";
 
-export async function generateAnswer(req: { /* ... */ }): Promise<string> {
-  // ... (lógica para generar código)
-}
+export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);`,
+  },
+  {
+    path: "src/integrations/supabase / config.ts",
+    content: `// ... (código de configuración de Supabase) ...`,
+  },
+  // src/lib
+  {
+    path: "src/lib / projects.ts",
+    content: `// ... (código para manejar la lógica de proyectos) ...`,
+  },
+  {
+    path: "src/lib / github.ts",
+    content: `// ... (código para la integración con GitHub) ...`,
+  },
+  {
+    path: "src/lib / utils.ts",
+    content: `import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-export async function generateChat(req: { /* ... */ }): Promise<string> {
-  // ... (lógica para chatear)
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }`,
+  },
+  // src/pages
+  {
+    path: "src/pages / Editor.tsx",
+    content: `// ... (código de la página del Editor) ...`,
+  },
+  {
+    path: "src/pages / Index.tsx",
+    content: `// ... (código de la página de Inicio) ...`,
+  },
+  {
+    path: "src/pages / Pricing.tsx",
+    content: `// ... (código de la página de Precios) ...`,
+  },
+  // src/services
+  {
+    path: "src/services / ai.ts",
+    content: `// ... (código para interactuar con las APIs de IA) ...`,
+  },
+];
+`,
   },
 ];
