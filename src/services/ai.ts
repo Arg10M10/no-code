@@ -229,7 +229,7 @@ async function streamWithAnthropic(
   await readStream(response, parser, onChunk, onComplete, onError);
 }
 
-async function streamChat(req: {
+export async function streamChat(req: {
   messages: ChatMessage[];
   selectedModelLabel: string;
   apiKeys: Record<string, string>;
