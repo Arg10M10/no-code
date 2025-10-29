@@ -73,30 +73,47 @@ const EditorPage: React.FC = () => {
     });
     setMessagesState(getMessages(projId));
 
+    let accumulatedReasoning = "";
     let accumulatedCode = "";
+    let separatorFound = false;
+    const separator = "\n---CODE---\n";
+
     streamAnswer({
       prompt,
       selectedModelLabel: selectedModel,
       apiKeys,
       signal: abortControllerRef.current.signal,
       onChunk: (chunk) => {
-        accumulatedCode += chunk;
+        if (separatorFound) {
+          accumulatedCode += chunk;
+        } else {
+          accumulatedReasoning += chunk;
+          if (accumulatedReasoning.includes(separator)) {
+            const parts = accumulatedReasoning.split(separator);
+            accumulatedReasoning = parts[0];
+            accumulatedCode = parts.slice(1).join(separator);
+            separatorFound = true;
+          }
+        }
         setMessagesState(prev => {
           const newMessages = [...prev];
-          newMessages[newMessages.length - 1].content += chunk;
+          newMessages[newMessages.length - 1].content = accumulatedReasoning;
           return newMessages;
         });
       },
       onComplete: () => {
-        if (includesSupabaseIntent(accumulatedCode)) {
+        if (includesSupabaseIntent(accumulatedReasoning)) {
           setSupabaseIntentCounter((c) => c + 1);
         }
         toast.success("Generación completada");
-        setCode(projId, accumulatedCode);
-        setCodeState(accumulatedCode);
         
+        if (accumulatedCode.trim()) {
+          setCode(projId, accumulatedCode);
+          setCodeState(accumulatedCode);
+        }
+
         const finalMessages = getMessages(projId);
-        finalMessages[finalMessages.length - 1].content = "Generación completada — la previsualización está lista.";
+        finalMessages[finalMessages.length - 1].content = accumulatedReasoning;
         setMessages(projId, finalMessages);
         setMessagesState(finalMessages);
 
@@ -189,21 +206,14 @@ const EditorPage: React.FC = () => {
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const selectedModel = getSelectedModelLabel();
 
-    const onChunk = (chunk: string) => {
-      setMessagesState(prev => {
-        const newMessages = [...prev];
-        newMessages[newMessages.length - 1].content += chunk;
-        return newMessages;
-      });
-    };
-
-    const onComplete = (finalContent: string) => {
+    const onOuterComplete = (finalContent: string) => {
       if (includesSupabaseIntent(finalContent)) {
         setSupabaseIntentCounter((c) => c + 1);
       }
       const finalMessages = getMessages(projectId);
       finalMessages[finalMessages.length - 1].content = finalContent;
       setMessages(projectId, finalMessages);
+      setMessagesState(finalMessages);
 
       const cost = Math.floor(Math.random() * 4001) + 1000;
       const newCredits = decrementCredits(projectId, cost);
@@ -238,14 +248,22 @@ const EditorPage: React.FC = () => {
         signal: abortControllerRef.current.signal,
         onChunk: (chunk) => {
           accumulatedResponse += chunk;
-          onChunk(chunk);
+          setMessagesState(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1].content = accumulatedResponse;
+            return newMessages;
+          });
         },
-        onComplete: () => onComplete(accumulatedResponse),
+        onComplete: () => onOuterComplete(accumulatedResponse),
         onError,
       });
     } else {
       setPreviewLoading(true);
+      let accumulatedReasoning = "";
       let accumulatedCode = "";
+      let separatorFound = false;
+      const separator = "\n---CODE---\n";
+
       streamAnswer({
         prompt: messageContent,
         selectedModelLabel: selectedModel,
@@ -253,13 +271,31 @@ const EditorPage: React.FC = () => {
         codeContext: code,
         signal: abortControllerRef.current.signal,
         onChunk: (chunk) => {
-          accumulatedCode += chunk;
-          onChunk(chunk);
+          if (separatorFound) {
+            accumulatedCode += chunk;
+          } else {
+            accumulatedReasoning += chunk;
+            if (accumulatedReasoning.includes(separator)) {
+              const parts = accumulatedReasoning.split(separator);
+              accumulatedReasoning = parts[0];
+              accumulatedCode = parts.slice(1).join(separator);
+              separatorFound = true;
+            }
+          }
+          setMessagesState(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1].content = accumulatedReasoning;
+            return newMessages;
+          });
         },
         onComplete: () => {
-          setCode(projectId, accumulatedCode);
-          setCodeState(accumulatedCode);
-          onComplete("Listo. He aplicado tus cambios y actualizado la previsualización.");
+          if (accumulatedCode.trim()) {
+            setCode(projectId, accumulatedCode);
+            setCodeState(accumulatedCode);
+          } else {
+            toast.warning("La IA no ha devuelto código", { description: "La respuesta no contenía una sección de código para la previsualización." });
+          }
+          onOuterComplete(accumulatedReasoning);
         },
         onError,
       });
