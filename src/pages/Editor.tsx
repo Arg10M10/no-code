@@ -35,7 +35,9 @@ const EditorPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [credits, setCredits] = useState(0);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [code, setCodeState] = useState<string | null>(null);
+  
+  const [codeForPreview, setCodeForPreview] = useState<string | null>(null);
+  const [codeForDisplay, setCodeForDisplay] = useState<string | null>(null);
   
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
@@ -43,10 +45,26 @@ const EditorPage: React.FC = () => {
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const streamCode = useCallback((fullCode: string, onFinish: () => void) => {
+    const lines = fullCode.split('\n');
+    let currentDisplay = "";
+    const intervalId = setInterval(() => {
+        if (lines.length > 0) {
+            const chunk = lines.splice(0, 5).join('\n');
+            currentDisplay += (currentDisplay ? '\n' : '') + chunk;
+            setCodeForDisplay(currentDisplay);
+        } else {
+            clearInterval(intervalId);
+            setCodeForDisplay(fullCode); // Ensure final state is perfect
+            onFinish();
+        }
+    }, 40);
+  }, []);
+
   const triggerInitialGeneration = useCallback(async (projId: string, prompt: string) => {
     setLoading(true);
     setPreviewLoading(true);
-    setCodeState(null);
+    setCodeForDisplay("");
     abortControllerRef.current = new AbortController();
 
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
@@ -54,23 +72,15 @@ const EditorPage: React.FC = () => {
     const provider = getProviderFromLabel(selectedModel);
 
     if (!apiKeys[provider]) {
-      toast.warning("Falta la clave de API", {
-        description: "Por favor, configúrala en los ajustes para usar la IA.",
-      });
-      addMessage(projId, {
-        role: "assistant",
-        content: `¡Atención! Para generar la página web con la IA, necesitas configurar tu clave de API para el proveedor '${provider}'.\n\nPuedes hacerlo en 'Settings' > 'API Keys'.`
-      });
+      toast.warning("Falta la clave de API", { description: "Por favor, configúrala en los ajustes para usar la IA." });
+      addMessage(projId, { role: "assistant", content: `¡Atención! Para generar la página web con la IA, necesitas configurar tu clave de API para el proveedor '${provider}'.\n\nPuedes hacerlo en 'Settings' > 'API Keys'.` });
       setMessagesState(getMessages(projId));
       setLoading(false);
       setPreviewLoading(false);
       return;
     }
 
-    addMessage(projId, {
-      role: "assistant",
-      content: "Clave de API encontrada. Empezando a generar tu página con la IA...",
-    });
+    addMessage(projId, { role: "assistant", content: "Clave de API encontrada. Empezando a generar tu página con la IA..." });
     setMessagesState(getMessages(projId));
 
     try {
@@ -80,39 +90,42 @@ const EditorPage: React.FC = () => {
         setSupabaseIntentCounter((c) => c + 1);
       }
 
-      toast.success("Generación completada");
-      setCode(projId, generatedCode);
-      setCodeState(generatedCode);
-      addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización está lista." });
+      streamCode(generatedCode, () => {
+        setCode(projId, generatedCode);
+        setCodeForPreview(generatedCode);
+        setPreviewLoading(false);
+        toast.success("Generación completada");
+        addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización está lista." });
 
-      const cost = Math.floor(Math.random() * 4001) + 1000;
-      const newCredits = decrementCredits(projId, cost);
-      setCredits(newCredits);
-      toast.info(`${cost.toLocaleString()} tokens used.`);
+        const cost = Math.floor(Math.random() * 4001) + 1000;
+        const newCredits = decrementCredits(projId, cost);
+        setCredits(newCredits);
+        toast.info(`${cost.toLocaleString()} tokens used.`);
+        
+        setLoading(false);
+        setMessagesState(getMessages(projId));
+        abortControllerRef.current = null;
+      });
 
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.log('Initial generation aborted.');
+        setLoading(false);
+        setPreviewLoading(false);
         return;
       }
       const errorMessage = err.message || "Ocurrió un error desconocido.";
       console.error("La generación con IA ha fallado:", err);
       
-      toast.error("La petición a la IA ha fallado", {
-        description: errorMessage,
-      });
+      toast.error("La petición a la IA ha fallado", { description: errorMessage });
       
-      addMessage(projId, {
-        role: "assistant",
-        content: `La generación con IA ha fallado con el siguiente error:\n\n> ${errorMessage}\n\nPor favor, revisa tu clave de API y la configuración del modelo.`,
-      });
-    } finally {
+      addMessage(projId, { role: "assistant", content: `La generación con IA ha fallado con el siguiente error:\n\n> ${errorMessage}\n\nPor favor, revisa tu clave de API y la configuración del modelo.` });
       setLoading(false);
       setPreviewLoading(false);
       setMessagesState(getMessages(projId));
       abortControllerRef.current = null;
     }
-  }, []);
+  }, [streamCode]);
 
   useEffect(() => {
     if (projectId) {
@@ -121,7 +134,9 @@ const EditorPage: React.FC = () => {
         setProjectName(project.name);
         const loadedMessages = getMessages(projectId);
         setMessagesState(loadedMessages);
-        setCodeState(getCode(projectId));
+        const initialCode = getCode(projectId);
+        setCodeForPreview(initialCode);
+        setCodeForDisplay(initialCode);
         setCredits(getCredits(projectId));
 
         if (loadedMessages.length === 1 && loadedMessages[0].role === 'user') {
@@ -141,10 +156,7 @@ const EditorPage: React.FC = () => {
     setLoading(false);
     setPreviewLoading(false);
     if (projectId) {
-      addMessage(projectId, {
-        role: 'assistant',
-        content: 'Generación cancelada por el usuario.',
-      });
+      addMessage(projectId, { role: 'assistant', content: 'Generación cancelada por el usuario.' });
       setMessagesState(getMessages(projectId));
     }
   };
@@ -176,21 +188,26 @@ const EditorPage: React.FC = () => {
     const selectedModel = getSelectedModelLabel();
 
     try {
-      let aiResponseContent: string;
       if (isAsk) {
-        aiResponseContent = await generateChat({
+        const aiResponseContent = await generateChat({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           selectedModelLabel: selectedModel,
           apiKeys,
           signal: abortControllerRef.current.signal,
         });
+        const aiResponse: StoredMessage = { role: "assistant", content: aiResponseContent, createdAt: Date.now() };
+        const finalMessages = [...newMessages, aiResponse];
+        setMessagesState(finalMessages);
+        setMessages(projectId, finalMessages);
+        setLoading(false);
       } else {
         setPreviewLoading(true);
+        setCodeForDisplay("");
         const generatedCode = await generateAnswer({
           prompt: messageContent,
           selectedModelLabel: selectedModel,
           apiKeys,
-          codeContext: code,
+          codeContext: codeForPreview,
           signal: abortControllerRef.current.signal,
         });
         
@@ -198,53 +215,42 @@ const EditorPage: React.FC = () => {
           setSupabaseIntentCounter((c) => c + 1);
         }
 
-        setCode(projectId, generatedCode);
-        setCodeState(generatedCode);
-        aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización.";
+        streamCode(generatedCode, () => {
+          setCode(projectId, generatedCode);
+          setCodeForPreview(generatedCode);
+          setPreviewLoading(false);
+
+          const aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización.";
+          const cost = Math.floor(Math.random() * 4001) + 1000;
+          const newCredits = decrementCredits(projectId, cost);
+          setCredits(newCredits);
+
+          const aiResponse: StoredMessage = { role: "assistant", content: aiResponseContent, createdAt: Date.now() };
+          const finalMessages = [...newMessages, aiResponse];
+          setMessagesState(finalMessages);
+          setMessages(projectId, finalMessages);
+          setLoading(false);
+          abortControllerRef.current = null;
+        });
       }
-
-      if (includesSupabaseIntent(aiResponseContent)) {
-        setSupabaseIntentCounter((c) => c + 1);
-      }
-
-      const cost = Math.floor(Math.random() * 4001) + 1000;
-      const newCredits = decrementCredits(projectId, cost);
-      setCredits(newCredits);
-
-      const aiResponse: StoredMessage = {
-        role: "assistant",
-        content: aiResponseContent,
-        createdAt: Date.now(),
-      };
-      const finalMessages = [...newMessages, aiResponse];
-      setMessagesState(finalMessages);
-      setMessages(projectId, finalMessages);
-
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.log('Generation aborted by user.');
+        setLoading(false);
+        if (!isAsk) setPreviewLoading(false);
         return;
       }
       const errorMessage = err?.message || "Ocurrió un error desconocido.";
       console.error("Error en la operación de IA:", err);
-      const nowAsk = text.trim().startsWith("[ASK]");
-      toast.error(nowAsk ? "La pregunta a la IA ha fallado" : "La generación con IA ha fallado", {
-        description: errorMessage,
-      });
-      const aiResponse: StoredMessage = {
-        role: "assistant",
-        content: `La operación de IA ha fallado:\n\n> ${errorMessage}`,
-        createdAt: Date.now(),
-      };
+      toast.error(isAsk ? "La pregunta a la IA ha fallado" : "La generación con IA ha fallado", { description: errorMessage });
+      const aiResponse: StoredMessage = { role: "assistant", content: `La operación de IA ha fallado:\n\n> ${errorMessage}`, createdAt: Date.now() };
       const finalMessages = [...newMessages, aiResponse];
       setMessagesState(finalMessages);
       setMessages(projectId, finalMessages);
-    } finally {
       setLoading(false);
       if (!isAsk) setPreviewLoading(false);
-      abortControllerRef.current = null;
     }
-  }, [messages, projectId, selectedElement, code]);
+  }, [messages, projectId, selectedElement, codeForPreview, streamCode]);
 
   const handleRefreshPreview = () => {
     setPreviewLoading(true);
@@ -308,7 +314,8 @@ const EditorPage: React.FC = () => {
           <ResizablePanel defaultSize={75}>
             <PreviewPanel
               previewUrl="/preview"
-              code={code}
+              code={codeForPreview}
+              displayCode={codeForDisplay}
               loading={previewLoading}
               onRefresh={handleRefreshPreview}
               isSelectionModeActive={isSelectionModeActive}
