@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Github, ArrowLeft, CheckCircle, ExternalLink } from "lucide-react";
+import { Github, ArrowLeft, CheckCircle, ExternalLink, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -63,10 +63,21 @@ const PublishPage: React.FC = () => {
       provider: 'github',
       options: {
         redirectTo: window.location.href,
+        scopes: 'public_repo',
       },
     });
     if (error) {
       toast.error("Login failed", { description: error.message });
+    }
+  };
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Logout failed", { description: error.message });
+    } else {
+      toast.success("Logged out successfully.");
+      setUser(null);
     }
   };
 
@@ -129,15 +140,20 @@ const PublishPage: React.FC = () => {
                 </div>
               ) : user ? (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-4 p-4 rounded-md border bg-secondary">
-                    <Avatar>
-                      <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name} />
-                      <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold">{user.user_metadata?.full_name}</p>
-                      <p className="text-sm text-muted-foreground">{user.user_metadata?.user_name || user.email}</p>
+                  <div className="flex items-center justify-between p-4 rounded-md border bg-secondary">
+                    <div className="flex items-center gap-4">
+                      <Avatar>
+                        <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name} />
+                        <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold">{user.user_metadata?.full_name}</p>
+                        <p className="text-sm text-muted-foreground">{user.user_metadata?.user_name || user.email}</p>
+                      </div>
                     </div>
+                    <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+                      <LogOut className="h-4 w-4" />
+                    </Button>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="repo-name">Repository Name</Label>
