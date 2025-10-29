@@ -15,6 +15,9 @@ import { storage } from "@/lib/storage";
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
 import { cn } from "@/lib/utils";
+import { Github } from "lucide-react";
+import { publishToGitHub } from "@/lib/github";
+import { supabase } from "@/integrations/supabase/client";
 
 function includesSupabaseIntent(text: string): boolean {
   const t = (text || "").toLowerCase();
@@ -41,6 +44,7 @@ const EditorPage: React.FC = () => {
 
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const triggerInitialGeneration = useCallback(async (projId: string, prompt: string) => {
     setLoading(true);
@@ -255,6 +259,49 @@ const EditorPage: React.FC = () => {
     setIsSelectionModeActive(false);
   };
 
+  const handlePublish = async () => {
+    if (!code) {
+      toast.error("Nothing to publish", { description: "There is no code generated yet." });
+      return;
+    }
+  
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.provider_token) {
+      toast.error("Authentication required", {
+        description: "Please connect your Supabase account and sign in with GitHub to publish.",
+        action: {
+          label: "Connect",
+          onClick: () => setSupabaseIntentCounter(c => c + 1),
+        },
+      });
+      return;
+    }
+  
+    setIsPublishing(true);
+    const sanitizedProjectName = projectName.trim().replace(/[^a-zA-Z0-9-._]/g, '-').toLowerCase() || 'brimy-project';
+    const toastId = toast.loading("Publishing to GitHub...", { description: `Preparing repository '${sanitizedProjectName}'...` });
+  
+    try {
+      const repoUrl = await publishToGitHub(projectName, code);
+      toast.success("Published successfully!", {
+        id: toastId,
+        description: `Project available at ${sanitizedProjectName}`,
+        action: {
+          label: "Open Repository",
+          onClick: () => window.open(repoUrl, "_blank"),
+        },
+      });
+    } catch (error: any) {
+      console.error("Failed to publish to GitHub:", error);
+      toast.error("Publishing failed", {
+        id: toastId,
+        description: error.message || "An unknown error occurred.",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   if (!projectId) {
     return <div>Cargando proyecto...</div>;
   }
@@ -267,7 +314,11 @@ const EditorPage: React.FC = () => {
             {projectName || "Cargando..."}
           </h1>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={handlePublish} disabled={isPublishing}>
+            <Github className="h-4 w-4 mr-2" />
+            {isPublishing ? "Publishing..." : "Publish"}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => navigate('/')}>
             Salir
           </Button>
