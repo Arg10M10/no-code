@@ -256,36 +256,43 @@ const Hero: React.FC = () => {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <input type="file" ref={projectFileInputRef} onChange={(e) => handleFileChange(e, 'project')} className="hidden" />
-            <input type="file" ref={imageFileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" accept="image/*" />
-            <input type="file" ref={screenshotFileInputRef} onChange={(e) => handleFileChange(e, 'screenshot')} className="hidden" accept="image/*" />
+          <div className="space-y-4 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <input type="file" ref={projectFileInputRef} onChange={(e) => handleFileChange(e, 'project')} className="hidden" />
+              <input type="file" ref={imageFileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" accept="image/*" />
+              <input type="file" ref={screenshotFileInputRef} onChange={(e) => handleFileChange(e, 'screenshot')} className="hidden" accept="image/*" />
 
-            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleUploadProjectClick}>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Project
-            </Button>
-
-            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => navigate("/pricing")}>
-              <GitBranch className="h-4 w-4 mr-2" />
-              Connect a Repo
-            </Button>
-
-            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => toast.message("Coming soon!", { description: "Figma integration is under development." })}>
-              <Figma className="h-4 w-4 mr-2" />
-              Import from Figma
-            </Button>
-
-            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleCloneScreenshotClick}>
-              <Camera className="h-4 w-4 mr-2" />
-              Clone a Screenshot
-            </Button>
-            
-            {examplePrompts.map((example) => (
-              <Button key={example.title} variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => setPrompt(example.prompt)}>
-                {example.title}
+              <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleUploadProjectClick}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Project
               </Button>
-            ))}
+
+              <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => navigate("/pricing")}>
+                <GitBranch className="h-4 w-4 mr-2" />
+                Connect a Repo
+              </Button>
+
+              <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => toast.message("Coming soon!", { description: "Figma integration is under development." })}>
+                <Figma className="h-4 w-4 mr-2" />
+                Import from Figma
+              </Button>
+
+              <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleCloneScreenshotClick}>
+                <Camera className="h-4 w-4 mr-2" />
+                Clone a Screenshot
+              </Button>
+            </div>
+
+            <div className="pt-4">
+              <p className="text-sm text-muted-foreground mb-4">Or try one of these examples:</p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {examplePrompts.map((example) => (
+                  <Button key={example.title} variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => setPrompt(example.prompt)}>
+                    {example.title}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
