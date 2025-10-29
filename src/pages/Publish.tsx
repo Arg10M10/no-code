@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Github, ArrowLeft, CheckCircle, ExternalLink, LogOut } from "lucide-react";
+import { Github, ArrowLeft, CheckCircle, ExternalLink, LogOut, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Navigation from "@/components/Navigation";
-import { getProjectById, getCode, Project } from "@/lib/projects";
+import { getProjectById, getCode, Project, setProjectRepoUrl } from "@/lib/projects";
 import { publishToGitHub } from "@/lib/github";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -25,6 +25,7 @@ const PublishPage: React.FC = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [repoUrl, setRepoUrl] = useState<string | null>(null);
   const [repoName, setRepoName] = useState("");
+  const [publishSuccess, setPublishSuccess] = useState(false);
 
   useEffect(() => {
     if (!projectId) {
@@ -42,6 +43,7 @@ const PublishPage: React.FC = () => {
     }
     setProject(proj);
     setCodeContent(projCode);
+    setRepoUrl(proj.repoUrl || null);
     const sanitized = proj.name.trim().replace(/[^a-zA-Z0-9-._]/g, '-').toLowerCase() || 'brimy-project';
     setRepoName(sanitized);
   }, [projectId, navigate]);
@@ -81,21 +83,25 @@ const PublishPage: React.FC = () => {
     }
   };
 
-  const handlePublish = async () => {
+  const handlePublishOrSync = async () => {
     if (!project || !code || !repoName.trim()) {
         toast.error("Repository name cannot be empty.");
         return;
     }
   
     setIsPublishing(true);
-    const toastId = toast.loading("Publishing to GitHub...");
+    const toastId = toast.loading(repoUrl ? "Syncing with GitHub..." : "Publishing to GitHub...");
   
     try {
       const url = await publishToGitHub(repoName, code);
       setRepoUrl(url);
-      toast.success("Published successfully!", { id: toastId });
+      setPublishSuccess(true);
+      if (projectId) {
+        setProjectRepoUrl(projectId, url);
+      }
+      toast.success(repoUrl ? "Synced successfully!" : "Published successfully!", { id: toastId });
     } catch (error: any) {
-      toast.error("Publishing failed", {
+      toast.error(repoUrl ? "Sync failed" : "Publishing failed", {
         id: toastId,
         description: error.message || "An unknown error occurred.",
       });
@@ -107,6 +113,99 @@ const PublishPage: React.FC = () => {
   if (!project) {
     return <div>Loading project...</div>;
   }
+
+  const renderContent = () => {
+    if (publishSuccess) {
+      return (
+        <div className="p-4 rounded-md border border-green-500/30 bg-green-500/10 text-center space-y-4">
+          <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+          <h3 className="text-lg font-semibold">Project Published!</h3>
+          <p className="text-sm text-muted-foreground">Your private repository has been created/updated successfully.</p>
+          <Button asChild>
+            <a href={repoUrl!} target="_blank" rel="noopener noreferrer">
+              View on GitHub
+              <ExternalLink className="h-4 w-4 ml-2" />
+            </a>
+          </Button>
+        </div>
+      );
+    }
+
+    if (user) {
+      if (repoUrl) {
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <GitBranch className="h-5 w-5 text-green-500" />
+                  Repository Connected
+                </CardTitle>
+                <CardDescription>This project is linked to a GitHub repository.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" asChild className="w-full">
+                  <a href={repoUrl} target="_blank" rel="noopener noreferrer">
+                    View Repository
+                    <ExternalLink className="h-4 w-4 ml-2" />
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+            <Button onClick={handlePublishOrSync} disabled={isPublishing} className="w-full">
+              {isPublishing ? "Syncing..." : "Sync with GitHub"}
+            </Button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between p-4 rounded-md border bg-secondary">
+            <div className="flex items-center gap-4">
+              <Avatar>
+                <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name} />
+                <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-semibold">{user.user_metadata?.full_name}</p>
+                <p className="text-sm text-muted-foreground">{user.user_metadata?.user_name || user.email}</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="repo-name">Repository Name</Label>
+            <Input
+                id="repo-name"
+                value={repoName}
+                onChange={(e) => setRepoName(e.target.value.replace(/[^a-zA-Z0-9-._]/g, '-'))}
+                placeholder="my-awesome-project"
+                disabled={isPublishing}
+            />
+            <p className="text-xs text-muted-foreground">
+                Your new private repository will be created at: <code className="font-mono text-foreground">{user.user_metadata?.user_name}/{repoName}</code>
+            </p>
+          </div>
+          <Button onClick={handlePublishOrSync} disabled={isPublishing || !repoName.trim()} className="w-full">
+            {isPublishing ? "Publishing..." : "Create Repository & Publish"}
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-center space-y-4">
+        <p className="text-muted-foreground">Connect your GitHub account to continue.</p>
+        <Button onClick={handleLogin} size="lg">
+          <Github className="h-5 w-5 mr-2" />
+          Connect with GitHub
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -122,65 +221,11 @@ const PublishPage: React.FC = () => {
             <CardHeader>
               <CardTitle className="text-2xl">Publish to GitHub</CardTitle>
               <CardDescription>
-                Create a new private repository for your project: <span className="font-semibold text-foreground">{project.name}</span>
+                Create or sync a private repository for your project: <span className="font-semibold text-foreground">{project.name}</span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {repoUrl ? (
-                <div className="p-4 rounded-md border border-green-500/30 bg-green-500/10 text-center space-y-4">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-                  <h3 className="text-lg font-semibold">Project Published!</h3>
-                  <p className="text-sm text-muted-foreground">Your private repository has been created successfully.</p>
-                  <Button asChild>
-                    <a href={repoUrl} target="_blank" rel="noopener noreferrer">
-                      View on GitHub
-                      <ExternalLink className="h-4 w-4 ml-2" />
-                    </a>
-                  </Button>
-                </div>
-              ) : user ? (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between p-4 rounded-md border bg-secondary">
-                    <div className="flex items-center gap-4">
-                      <Avatar>
-                        <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name} />
-                        <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold">{user.user_metadata?.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{user.user_metadata?.user_name || user.email}</p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
-                      <LogOut className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="repo-name">Repository Name</Label>
-                    <Input
-                        id="repo-name"
-                        value={repoName}
-                        onChange={(e) => setRepoName(e.target.value.replace(/[^a-zA-Z0-9-._]/g, '-'))}
-                        placeholder="my-awesome-project"
-                        disabled={isPublishing}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        Your new private repository will be created at: <code className="font-mono text-foreground">{user.user_metadata?.user_name}/{repoName}</code>
-                    </p>
-                  </div>
-                  <Button onClick={handlePublish} disabled={isPublishing || !repoName.trim()} className="w-full">
-                    {isPublishing ? "Publishing..." : "Create Repository & Publish"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center space-y-4">
-                  <p className="text-muted-foreground">Connect your GitHub account to continue.</p>
-                  <Button onClick={handleLogin} size="lg">
-                    <Github className="h-5 w-5 mr-2" />
-                    Connect with GitHub
-                  </Button>
-                </div>
-              )}
+              {renderContent()}
             </CardContent>
             <CardFooter>
               <p className="text-xs text-muted-foreground">

@@ -4,6 +4,7 @@ export type Project = {
   id: string;
   name: string;
   updatedAt: number;
+  repoUrl?: string;
 };
 
 export type StoredMessage = {
@@ -55,6 +56,13 @@ export function touchProject(id: string) {
 
 export function renameProject(id: string, name: string) {
   const projects = listProjects().map((p) => (p.id === id ? { ...p, name: name.trim() || p.name } : p));
+  upsertProjects(projects);
+}
+
+export function setProjectRepoUrl(projectId: string, repoUrl: string) {
+  const projects = listProjects().map((p) =>
+    p.id === projectId ? { ...p, repoUrl, updatedAt: Date.now() } : p
+  );
   upsertProjects(projects);
 }
 
