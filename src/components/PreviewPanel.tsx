@@ -144,7 +144,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </TabsContent>
 
         <TabsContent value="code" className="flex-1 overflow-hidden bg-background/50">
-          <CodePanel code={displayCode} />
+          <CodePanel files={displayCode ? { 'index.html': displayCode } : null} />
         </TabsContent>
 
         <TabsContent value="integrations" className="flex-1 overflow-auto">
