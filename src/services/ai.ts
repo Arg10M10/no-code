@@ -260,7 +260,10 @@ function buildGenerationMessages(prompt: string, system?: string, codeContext?: 
   const separator = "\n---CODE---\n";
 
   if (codeContext) {
-    const systemPrompt = system ?? `You are an expert web developer. First, provide a brief step-by-step reasoning of the changes you will make. Then, on a new line, add a separator: '${separator}'. Finally, after the separator, provide the complete, modified HTML file.
+    const systemPrompt = system ?? `You are an expert web developer. Your response MUST be in two parts, separated by '${separator}'.
+Part 1: A brief, step-by-step reasoning of the changes you will make. IMPORTANT: Stream this part token-by-token first.
+Part 2: The complete, modified HTML file.
+
 RULES for the code part:
 1.  You will be given the user's modification request and the full current HTML.
 2.  You MUST respond with ONLY the complete, modified HTML file.
@@ -270,7 +273,10 @@ RULES for the code part:
     const userPrompt = `Based on the current HTML code, apply the following change: "${prompt}"\n\nHere is the current HTML code:\n\`\`\`html\n${codeContext}\n\`\`\``;
     return [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }];
   } else {
-    const systemPrompt = system ?? `You are an expert web developer. First, provide a brief step-by-step reasoning of how you will build the page. Then, on a new line, add a separator: '${separator}'. Finally, after the separator, provide the complete, standalone HTML file.
+    const systemPrompt = system ?? `You are an expert web developer. Your response MUST be in two parts, separated by '${separator}'.
+Part 1: A brief, step-by-step reasoning of how you will build the page. IMPORTANT: Stream this part token-by-token first.
+Part 2: The complete, standalone HTML file.
+
 RULES for the code part:
 1.  ALWAYS respond with a single, complete HTML file.
 2.  The response MUST start with \`<!DOCTYPE html>\` and end with \`</html>\`.
