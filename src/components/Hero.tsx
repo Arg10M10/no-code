@@ -280,17 +280,12 @@ const Hero: React.FC = () => {
               <Camera className="h-4 w-4 mr-2" />
               Clone a Screenshot
             </Button>
-          </div>
-
-          <div className="pt-8 text-center opacity-0 animate-fade-in-up" style={{ animationDelay: "0.5s" }}>
-            <p className="text-sm text-muted-foreground mb-4">Or try one of these examples:</p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {examplePrompts.map((example) => (
-                <Button key={example.title} variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => setPrompt(example.prompt)}>
-                  {example.title}
-                </Button>
-              ))}
-            </div>
+            
+            {examplePrompts.map((example) => (
+              <Button key={example.title} variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => setPrompt(example.prompt)}>
+                {example.title}
+              </Button>
+            ))}
           </div>
         </div>
       </div>
