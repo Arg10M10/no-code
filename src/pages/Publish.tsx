@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Github, ArrowLeft, CheckCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { getProjectById, getCode, Project } from "@/lib/projects";
 import { publishToGitHub } from "@/lib/github";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const PublishPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -22,6 +24,7 @@ const PublishPage: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [repoUrl, setRepoUrl] = useState<string | null>(null);
+  const [repoName, setRepoName] = useState("");
 
   useEffect(() => {
     if (!projectId) {
@@ -39,6 +42,8 @@ const PublishPage: React.FC = () => {
     }
     setProject(proj);
     setCodeContent(projCode);
+    const sanitized = proj.name.trim().replace(/[^a-zA-Z0-9-._]/g, '-').toLowerCase() || 'brimy-project';
+    setRepoName(sanitized);
   }, [projectId, navigate]);
 
   useEffect(() => {
@@ -66,13 +71,16 @@ const PublishPage: React.FC = () => {
   };
 
   const handlePublish = async () => {
-    if (!project || !code) return;
+    if (!project || !code || !repoName.trim()) {
+        toast.error("Repository name cannot be empty.");
+        return;
+    }
   
     setIsPublishing(true);
     const toastId = toast.loading("Publishing to GitHub...");
   
     try {
-      const url = await publishToGitHub(project.name, code);
+      const url = await publishToGitHub(repoName, code);
       setRepoUrl(url);
       toast.success("Published successfully!", { id: toastId });
     } catch (error: any) {
@@ -120,8 +128,8 @@ const PublishPage: React.FC = () => {
                   </Button>
                 </div>
               ) : user ? (
-                <div className="flex items-center justify-between p-4 rounded-md border bg-secondary">
-                  <div className="flex items-center gap-4">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4 p-4 rounded-md border bg-secondary">
                     <Avatar>
                       <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name} />
                       <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
@@ -131,8 +139,21 @@ const PublishPage: React.FC = () => {
                       <p className="text-sm text-muted-foreground">{user.user_metadata?.user_name || user.email}</p>
                     </div>
                   </div>
-                  <Button onClick={handlePublish} disabled={isPublishing}>
-                    {isPublishing ? "Publishing..." : "Publish Project"}
+                  <div className="space-y-2">
+                    <Label htmlFor="repo-name">Repository Name</Label>
+                    <Input
+                        id="repo-name"
+                        value={repoName}
+                        onChange={(e) => setRepoName(e.target.value.replace(/[^a-zA-Z0-9-._]/g, '-'))}
+                        placeholder="my-awesome-project"
+                        disabled={isPublishing}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        Your new public repository will be created at: <code className="font-mono text-foreground">{user.user_metadata?.user_name}/{repoName}</code>
+                    </p>
+                  </div>
+                  <Button onClick={handlePublish} disabled={isPublishing || !repoName.trim()} className="w-full">
+                    {isPublishing ? "Publishing..." : "Create Repository & Publish"}
                   </Button>
                 </div>
               ) : (
