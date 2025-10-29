@@ -19,24 +19,7 @@ async function getGitHubUser(token: string): Promise<{ login: string }> {
 }
 
 async function createOrGetRepo(token: string, name: string, owner: string): Promise<any> {
-  try {
-    const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
-      headers: {
-        Authorization: `token ${token}`,
-        Accept: 'application/vnd.github.v3+json',
-      }
-    });
-    if (repoResponse.ok) {
-      return await repoResponse.json();
-    }
-    if (repoResponse.status !== 404) {
-      const errorData = await repoResponse.json();
-      throw new Error(`Could not check for repository: ${errorData.message}`);
-    }
-  } catch (e: any) {
-    throw new Error(`Error checking for repository: ${e.message}`);
-  }
-
+  // First, attempt to create the repository.
   const createResponse = await fetch('https://api.github.com/user/repos', {
     method: 'POST',
     headers: {
@@ -51,11 +34,34 @@ async function createOrGetRepo(token: string, name: string, owner: string): Prom
     }),
   });
 
-  if (!createResponse.ok) {
-    const errorData = await createResponse.json();
-    throw new Error(`Failed to create repository: ${errorData.message}`);
+  // If creation is successful (201 Created), return the new repo data.
+  if (createResponse.status === 201) {
+    return createResponse.json();
   }
-  return createResponse.json();
+
+  // If the repo already exists, GitHub returns a 422 Unprocessable Entity error.
+  if (createResponse.status === 422) {
+    const errorData = await createResponse.json();
+    const message = errorData.errors?.[0]?.message || "";
+    if (message.includes("name already exists")) {
+      // The repo exists, so we fetch its data and return it.
+      const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        }
+      });
+      if (repoResponse.ok) {
+        return repoResponse.json();
+      }
+      const existingRepoError = await repoResponse.json();
+      throw new Error(`Repo already exists but could not be fetched: ${existingRepoError.message}`);
+    }
+  }
+
+  // For any other errors during creation.
+  const errorData = await createResponse.json();
+  throw new Error(`Failed to create repository: ${errorData.message}`);
 }
 
 async function pushFileToRepo(
