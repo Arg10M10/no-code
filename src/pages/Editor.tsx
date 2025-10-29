@@ -259,6 +259,18 @@ const EditorPage: React.FC = () => {
     setIsSelectionModeActive(false);
   };
 
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: window.location.href,
+      },
+    });
+    if (error) {
+      toast.error("Login failed", { description: error.message });
+    }
+  };
+
   const handlePublish = async () => {
     if (!code) {
       toast.error("Nothing to publish", { description: "There is no code generated yet." });
@@ -268,10 +280,10 @@ const EditorPage: React.FC = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.provider_token) {
       toast.error("Authentication required", {
-        description: "Please connect your Supabase account and sign in with GitHub to publish.",
+        description: "You need to sign in with GitHub to publish your project.",
         action: {
-          label: "Connect",
-          onClick: () => setSupabaseIntentCounter(c => c + 1),
+          label: "Sign In with GitHub",
+          onClick: handleLogin,
         },
       });
       return;
