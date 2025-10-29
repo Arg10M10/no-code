@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 interface CodePanelProps {
   code?: string | null;
@@ -15,7 +14,9 @@ const CodePanel: React.FC<CodePanelProps> = ({ code }) => {
     }
   };
 
-  const file = code ? { path: "index.html", content: code } : null;
+  // FIX: Check for null/undefined explicitly, not just falsiness.
+  // An empty string "" is a valid state (an empty file) and should be displayed.
+  const file = code != null ? { path: "index.html", content: code } : null;
 
   return (
     <div className="h-full flex flex-col animate-fade-in">
@@ -49,7 +50,8 @@ const CodePanel: React.FC<CodePanelProps> = ({ code }) => {
         <section className="min-w-0 overflow-hidden">
           <div className="h-full w-full overflow-auto">
             <pre className="m-0 p-4 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words font-mono bg-background text-foreground">
-              {file?.content || "AI is generating code..."}
+              {/* FIX: Render file.content directly if file exists, otherwise show the loading message. */}
+              {file ? file.content : "AI is generating code..."}
             </pre>
           </div>
         </section>
