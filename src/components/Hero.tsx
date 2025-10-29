@@ -257,7 +257,7 @@ const Hero: React.FC = () => {
           )}
 
           <div className="space-y-4 pt-2">
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-3">
               <input type="file" ref={projectFileInputRef} onChange={(e) => handleFileChange(e, 'project')} className="hidden" />
               <input type="file" ref={imageFileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" accept="image/*" />
               <input type="file" ref={screenshotFileInputRef} onChange={(e) => handleFileChange(e, 'screenshot')} className="hidden" accept="image/*" />
