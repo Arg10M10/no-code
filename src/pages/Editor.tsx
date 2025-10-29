@@ -24,6 +24,15 @@ function includesSupabaseIntent(text: string): boolean {
   return keys.some((k) => t.includes(k));
 }
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+  });
+}
+
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -61,11 +70,18 @@ const EditorPage: React.FC = () => {
     }, 40);
   }, []);
 
-  const triggerInitialGeneration = useCallback(async (projId: string, prompt: string) => {
+  const triggerInitialGeneration = useCallback(async (projId: string, initialMessages: StoredMessage[]) => {
     setLoading(true);
     setPreviewLoading(true);
     setCodeForDisplay("");
     abortControllerRef.current = new AbortController();
+
+    const firstMessage = initialMessages[0];
+    if (!firstMessage) {
+        setLoading(false);
+        setPreviewLoading(false);
+        return;
+    }
 
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const selectedModel = getSelectedModelLabel();
@@ -84,7 +100,13 @@ const EditorPage: React.FC = () => {
     setMessagesState(getMessages(projId));
 
     try {
-      const generatedCode = await generateAnswer({ prompt, selectedModelLabel: selectedModel, apiKeys, signal: abortControllerRef.current.signal });
+      const generatedCode = await generateAnswer({ 
+        prompt: firstMessage.content, 
+        images: firstMessage.images,
+        selectedModelLabel: selectedModel, 
+        apiKeys, 
+        signal: abortControllerRef.current.signal 
+      });
       
       if (includesSupabaseIntent(generatedCode)) {
         setSupabaseIntentCounter((c) => c + 1);
@@ -140,7 +162,7 @@ const EditorPage: React.FC = () => {
         setCredits(getCredits(projectId));
 
         if (loadedMessages.length === 1 && loadedMessages[0].role === 'user') {
-          triggerInitialGeneration(projectId, loadedMessages[0].content);
+          triggerInitialGeneration(projectId, loadedMessages);
         }
       } else {
         console.error("Proyecto no encontrado");
@@ -179,6 +201,12 @@ const EditorPage: React.FC = () => {
     }
 
     const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
+    
+    if (images && images.length > 0) {
+        const dataUrls = await Promise.all(images.map(fileToDataUrl));
+        userMessage.images = dataUrls;
+    }
+
     const newMessages = [...messages, userMessage];
     setMessagesState(newMessages);
     setMessages(projectId, newMessages);
@@ -190,7 +218,7 @@ const EditorPage: React.FC = () => {
     try {
       if (isAsk) {
         const aiResponseContent = await generateChat({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          messages: newMessages,
           selectedModelLabel: selectedModel,
           apiKeys,
           signal: abortControllerRef.current.signal,
@@ -205,6 +233,7 @@ const EditorPage: React.FC = () => {
         setCodeForDisplay("");
         const generatedCode = await generateAnswer({
           prompt: messageContent,
+          images: userMessage.images,
           selectedModelLabel: selectedModel,
           apiKeys,
           codeContext: codeForPreview,

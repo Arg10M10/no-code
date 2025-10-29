@@ -10,6 +10,7 @@ export type Project = {
 export type StoredMessage = {
   role: "user" | "assistant";
   content: string;
+  images?: string[]; // Array of data URLs
   createdAt: number;
 };
 

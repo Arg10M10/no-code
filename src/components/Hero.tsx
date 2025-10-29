@@ -4,12 +4,21 @@ import React, { useRef, useState, ClipboardEvent, KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Cpu, ArrowUp, File, X, Clipboard as ClipboardIcon, Clipboard as ClipboardPasteIcon, Figma, Camera, Upload, Check } from "lucide-react";
+import { Cpu, ArrowUp, File, X, Clipboard as ClipboardIcon, Clipboard as ClipboardPasteIcon, Figma, Camera, Upload, Check, GitBranch } from "lucide-react";
 import ModelsPopover from "./ModelsPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createProjectFromPrompt, addMessage } from "@/lib/projects";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
 import ProjectsGallery from "@/components/ProjectsGallery";
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+  });
+}
 
 const Hero: React.FC = () => {
   const projectFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -18,6 +27,7 @@ const Hero: React.FC = () => {
 
   const [selectedModel, setSelectedModel] = useState<string>(getSelectedModelLabel());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedScreenshot, setSelectedScreenshot] = useState<File | null>(null);
   const [pastedTextInfo, setPastedTextInfo] = useState<{ wordCount: number; content: string } | null>(null);
   const [prompt, setPrompt] = useState<string>("");
   const [answer, setAnswer] = useState<string>("");
@@ -53,13 +63,23 @@ const Hero: React.FC = () => {
   const handleAttachImageClick = () => imageFileInputRef.current?.click();
   const handleCloneScreenshotClick = () => screenshotFileInputRef.current?.click();
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: 'project' | 'image' | 'screenshot') => {
     const file = event.target.files?.[0] ?? null;
-    if (file) setSelectedFile(file);
+    if (!file) return;
+
+    if (type === 'screenshot') {
+      setSelectedScreenshot(file);
+      setPrompt("Recreate the website shown in this screenshot.");
+    } else {
+      setSelectedFile(file);
+    }
     event.currentTarget.value = "";
   };
 
-  const handleClearFile = () => setSelectedFile(null);
+  const handleClearFile = () => {
+    setSelectedFile(null);
+    setSelectedScreenshot(null);
+  };
   const handleClearPastedText = () => setPastedTextInfo(null);
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
@@ -91,13 +111,25 @@ const Hero: React.FC = () => {
     }
     setLoading(true);
 
-    const fullPrompt = pastedTextInfo?.content
-      ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
-      : prompt;
-
     const proj = createProjectFromPrompt(prompt);
-    addMessage(proj.id, { role: "user", content: fullPrompt });
-    navigate(`/editor?id=${encodeURIComponent(proj.id)}`);
+
+    if (selectedScreenshot) {
+      try {
+        const dataUrl = await fileToDataUrl(selectedScreenshot);
+        addMessage(proj.id, { role: "user", content: prompt, images: [dataUrl] });
+        navigate(`/editor?id=${encodeURIComponent(proj.id)}`);
+      } catch (error) {
+        console.error("Error converting file to data URL", error);
+        toast.error("Could not process screenshot.");
+        setLoading(false);
+      }
+    } else {
+      const fullPrompt = pastedTextInfo?.content
+        ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
+        : prompt;
+      addMessage(proj.id, { role: "user", content: fullPrompt });
+      navigate(`/editor?id=${encodeURIComponent(proj.id)}`);
+    }
   };
 
   const handleCopy = async () => {
@@ -107,7 +139,8 @@ const Hero: React.FC = () => {
     setTimeout(() => setCopyOk(false), 1200);
   };
 
-  const attachmentCount = [selectedFile, pastedTextInfo].filter(Boolean).length;
+  const attachment = selectedFile || selectedScreenshot;
+  const attachmentCount = [attachment, pastedTextInfo].filter(Boolean).length;
   const paddingTopClass = attachmentCount === 2 ? "pt-24" : attachmentCount === 1 ? "pt-14" : "pt-4";
 
   const handleTextareaKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -132,11 +165,11 @@ const Hero: React.FC = () => {
         <div className="max-w-2xl mx-auto space-y-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
           <div className="relative">
             <div className="absolute top-3 left-3 right-3 z-10 flex flex-col gap-2">
-              {selectedFile && (
+              {attachment && (
                 <div className="flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down">
                   <div className="flex items-center gap-2 min-w-0">
                     <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="text-xs font-medium truncate">{selectedFile.name}</span>
+                    <span className="text-xs font-medium truncate">{attachment.name}</span>
                   </div>
                   <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full flex-shrink-0" onClick={handleClearFile}>
                     <X className="h-3 w-3" />
@@ -223,19 +256,24 @@ const Hero: React.FC = () => {
             </div>
           )}
 
-          <div className="flex items-center justify-center gap-3">
-            <input type="file" ref={projectFileInputRef} onChange={handleFileChange} className="hidden" />
-            <input type="file" ref={imageFileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-            <input type="file" ref={screenshotFileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <input type="file" ref={projectFileInputRef} onChange={(e) => handleFileChange(e, 'project')} className="hidden" />
+            <input type="file" ref={imageFileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" accept="image/*" />
+            <input type="file" ref={screenshotFileInputRef} onChange={(e) => handleFileChange(e, 'screenshot')} className="hidden" accept="image/*" />
 
             <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleUploadProjectClick}>
               <Upload className="h-4 w-4 mr-2" />
-              Upload a Project
+              Upload Project
             </Button>
 
             <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => navigate("/pricing")}>
+              <GitBranch className="h-4 w-4 mr-2" />
+              Connect a Repo
+            </Button>
+
+            <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={() => toast.message("Coming soon!", { description: "Figma integration is under development." })}>
               <Figma className="h-4 w-4 mr-2" />
-              Connect a repo
+              Import from Figma
             </Button>
 
             <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleCloneScreenshotClick}>
@@ -257,7 +295,6 @@ const Hero: React.FC = () => {
         </div>
       </div>
 
-      {/* Projects section below the examples, full-width like the reference */}
       <div className="w-full max-w-6xl mx-auto mt-[50px] opacity-0 animate-fade-in-up" style={{ animationDelay: "0.6s" }}>
         <ProjectsGallery />
       </div>

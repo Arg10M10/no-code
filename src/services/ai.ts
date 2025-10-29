@@ -1,6 +1,10 @@
+import type { StoredMessage } from "@/lib/projects";
+
+export type ChatContent = string | Array<{ type: 'text', text: string } | { type: 'image_url', image_url: { url: string; detail?: 'low' | 'high' | 'auto' } }>;
+
 export type ChatMessage = {
   role: "system" | "user" | "assistant";
-  content: string;
+  content: ChatContent;
 };
 
 export type ProviderId = "openai" | "google" | "anthropic" | "openrouter";
@@ -178,7 +182,7 @@ async function callOpenAI(params: { messages: ChatMessage[]; model: string; apiK
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${params.apiKey}` },
-    body: JSON.stringify({ model: params.model, messages: params.messages, temperature: params.temperature ?? 0.7 }),
+    body: JSON.stringify({ model: params.model, messages: params.messages, temperature: params.temperature ?? 0.7, max_tokens: 4096 }),
     signal: params.signal,
   });
   if (!r.ok) { const text = await r.text(); throw new Error(`OpenAI error: ${r.status} ${text}`); }
@@ -191,7 +195,7 @@ async function callOpenAI(params: { messages: ChatMessage[]; model: string; apiK
 async function callAnthropic(params: { messages: ChatMessage[]; model: string; apiKey: string; system?: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
-  const mapped = chatMessages.map((m) => ({ role: m.role, content: [{ type: "text", text: m.content }] }));
+  const mapped = chatMessages.map((m) => ({ role: m.role, content: [{ type: "text", text: m.content as string }] }));
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": params.apiKey, "anthropic-version": "2023-06-01" },
@@ -208,7 +212,7 @@ async function callAnthropic(params: { messages: ChatMessage[]; model: string; a
 async function callGoogle(params: { messages: ChatMessage[]; model: string; apiKey: string; system?: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
   const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
   const chatMessages = params.messages.filter((m) => m.role !== "system");
-  const contents: GoogleContent[] = chatMessages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+  const contents: GoogleContent[] = chatMessages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content as string }] }));
   const body: Record<string, unknown> = { contents, generationConfig: { temperature: params.temperature ?? 0.7 } };
   if (system) { body.system_instruction = { parts: [{ text: system }] }; }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(params.model)}:generateContent?key=${encodeURIComponent(params.apiKey)}`;
@@ -225,7 +229,7 @@ async function callOpenRouter(params: { messages: ChatMessage[]; model: string; 
   const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${params.apiKey}`, "HTTP-Referer": window.location.origin, "X-Title": document.title || "Brimy" },
-    body: JSON.stringify({ model: params.model, messages: params.messages, stream: false, temperature: params.temperature ?? 0.7 }),
+    body: JSON.stringify({ model: params.model, messages: params.messages, stream: false, temperature: params.temperature ?? 0.7, max_tokens: 4096 }),
     signal: params.signal,
   });
   if (!r.ok) { const text = await r.text(); throw new Error(`OpenRouter error: ${r.status} ${text}`); }
@@ -235,9 +239,30 @@ async function callOpenRouter(params: { messages: ChatMessage[]; model: string; 
   return content;
 }
 
-function buildGenerationMessages(prompt: string, system?: string, codeContext?: string | null): ChatMessage[] {
+function buildGenerationMessages(prompt: string, system?: string, codeContext?: string | null, images?: string[]): ChatMessage[] {
+  if (images && images.length > 0) {
+    const systemPrompt = system ?? `You are an expert web developer. Your task is to generate a complete, standalone HTML file that looks exactly like the provided screenshot(s).
+RULES:
+1.  Analyze the screenshot(s) carefully. Pay attention to layout, colors, fonts, and spacing.
+2.  ALWAYS respond with a single, complete HTML file.
+3.  The response MUST start with \`<!DOCTYPE html>\` and end with \`</html>\`.
+4.  Do NOT include any explanations, comments, or markdown code blocks like \`\`\`html ... \`\`\` around the code.
+5.  Use Tailwind CSS for styling. Include the Tailwind CDN script in the \`<head>\`: \`<script src="https://cdn.tailwindcss.com"></script>\`.
+6.  Create a visually appealing, modern, and dark-themed design that matches the screenshot.
+7.  ALWAYS include the following script tag just before the closing \`</body>\` tag: ${selectionScript}`;
+
+    const userContent: ChatContent = [{ type: 'text', text: prompt }];
+    images.forEach(url => {
+        userContent.push({ type: 'image_url', image_url: { url } });
+    });
+
+    return [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent }
+    ];
+  }
+
   if (codeContext) {
-    // Editing existing code
     const systemPrompt = system ?? `You are an expert web developer. Your task is to modify the provided HTML code based on the user's request.
 RULES:
 1.  You will be given the user's modification request and the full current HTML.
@@ -258,7 +283,6 @@ ${codeContext}
       { role: "user", content: userPrompt },
     ];
   } else {
-    // Generating new code from scratch
     const systemPrompt = system ?? `You are an expert web developer. Your task is to generate a complete, standalone HTML file based on the user's prompt.
 RULES:
 1.  ALWAYS respond with a single, complete HTML file.
@@ -275,11 +299,11 @@ RULES:
   }
 }
 
-export async function generateAnswer(req: { prompt: string; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; codeContext?: string | null; signal?: AbortSignal; }): Promise<string> {
+export async function generateAnswer(req: { prompt: string; images?: string[]; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; codeContext?: string | null; signal?: AbortSignal; }): Promise<string> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
   if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
-  const messages = buildGenerationMessages(req.prompt, req.system, req.codeContext);
+  const messages = buildGenerationMessages(req.prompt, req.system, req.codeContext, req.images);
   switch (provider) {
     case "openai": return callOpenAI({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
     case "google": return callGoogle({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
@@ -288,15 +312,30 @@ export async function generateAnswer(req: { prompt: string; selectedModelLabel: 
   }
 }
 
-export async function generateChat(req: { messages: ChatMessage[]; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; signal?: AbortSignal; }): Promise<string> {
+export async function generateChat(req: { messages: StoredMessage[]; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; signal?: AbortSignal; }): Promise<string> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
   if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
-  const messages = req.system ? [{ role: "system", content: req.system } as ChatMessage, ...req.messages.filter((m) => m.role !== "system")] : req.messages;
+  
+  const chatMessages: ChatMessage[] = req.messages.map(msg => {
+    if (msg.role === 'user' && msg.images && msg.images.length > 0) {
+        const content: ChatContent = [{ type: 'text', text: msg.content }];
+        msg.images.forEach(imageUrl => {
+            content.push({ type: 'image_url', image_url: { url: imageUrl } });
+        });
+        return { role: 'user', content };
+    }
+    return { role: msg.role, content: msg.content };
+  });
+
+  const messagesWithSystem = req.system 
+    ? [{ role: "system", content: req.system } as ChatMessage, ...chatMessages.filter((m) => m.role !== "system")] 
+    : chatMessages;
+
   switch (provider) {
-    case "openai": return callOpenAI({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
-    case "google": return callGoogle({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
-    case "anthropic": return callAnthropic({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
-    case "openrouter": return callOpenRouter({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
+    case "openai": return callOpenAI({ messages: messagesWithSystem, model, apiKey, temperature: req.temperature, signal: req.signal });
+    case "google": return callGoogle({ messages: messagesWithSystem, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
+    case "anthropic": return callAnthropic({ messages: messagesWithSystem, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
+    case "openrouter": return callOpenRouter({ messages: messagesWithSystem, model, apiKey, temperature: req.temperature, signal: req.signal });
   }
 }

@@ -161,6 +161,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                       : "bg-muted-foreground/5 border-transparent",
                   ].join(" ")}
                 >
+                  {isUser && msg.images && msg.images.length > 0 && (
+                    <div className="mb-2 grid grid-cols-3 gap-2">
+                      {msg.images.map((url, idx) => (
+                        <div key={idx} className="relative rounded-md overflow-hidden border border-white/10">
+                          <img src={url} alt={`Attachment ${idx + 1}`} className="w-full aspect-square object-cover bg-black/5" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <p
                     className={[
                       "text-sm leading-relaxed break-words",
