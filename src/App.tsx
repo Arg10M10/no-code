@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import Editor from "./pages/Editor";
 import PreviewPage from "./pages/Preview";
 import PublishPage from "./pages/Publish";
+import SupabaseTest from "./pages/SupabaseTest";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/editor" element={<Editor />} />
           <Route path="/preview" element={<PreviewPage />} />
           <Route path="/publish/:projectId" element={<PublishPage />} />
+          <Route path="/supabase-test" element={<SupabaseTest />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
