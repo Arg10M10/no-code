@@ -97,21 +97,24 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
 
   switch (provider) {
     case "google":
-      if (normalized.includes("pro")) return { provider, model: "gemini-1.5-pro-latest" };
-      return { provider, model: "gemini-1.5-flash-latest" };
-    
+      if (normalized.includes("flash")) return { provider, model: "gemini-1.5-flash-latest" };
+      return { provider, model: "gemini-1.5-pro-latest" };
+
     case "openai":
       if (normalized.includes("mini")) return { provider, model: "gpt-4o-mini" };
-      return { provider, model: "gpt-4o" };
+      if (normalized.includes("gpt-4o")) return { provider, model: "gpt-4o" };
+      return { provider, model: "gpt-4o" }; // Default for GPT-5, Codex
 
     case "anthropic":
-      return { provider, model: "claude-3-5-sonnet-20240620" };
+      if (normalized.includes("haiku")) return { provider, model: "claude-3-haiku-20240307" };
+      return { provider, model: "claude-3-5-sonnet-20240620" }; // Default for all Sonet versions
 
     case "openrouter":
-      if (normalized.includes("qwen")) return { provider, model: "qwen/qwen2.5-coder" };
+      if (normalized.includes("qwen") || normalized.includes("qween")) return { provider, model: "qwen/qwen2.5-coder" };
       if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-chat" };
+      if (normalized.includes("kimi")) return { provider, model: "deepseek/deepseek-chat" }; // Kimi mapped to a reliable free model
       return { provider, model: "deepseek/deepseek-chat" };
-    
+
     default:
       return { provider: "openai", model: "gpt-4o-mini" };
   }

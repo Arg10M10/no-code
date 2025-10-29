@@ -5,20 +5,20 @@ import { cn } from '@/lib/utils';
 
 const modelsData = {
   OpenAI: {
-    provider: 'GPT-4 Series',
-    models: ['GPT-4o', 'GPT-4o mini'],
+    provider: 'OpenAI Models',
+    models: ['GPT-5', 'GPT Codex', 'GPT-5 Mini', 'GPT-4o'],
   },
   Google: {
-    provider: 'Gemini 1.5 Series',
-    models: ['Gemini 1.5 Pro', 'Gemini 1.5 Flash'],
+    provider: 'Google Models',
+    models: ['Gemini 2.5 Pro', 'Gemini 2.5 Flash'],
   },
   Anthropic: {
-    provider: 'Claude 3.5 Series',
-    models: ['Claude 3.5 Sonnet'],
+    provider: 'Anthropic Models',
+    models: ['Claude 4.5 Sonet', 'Claude 4 Sonet', 'Claude 3.7 Sonet', 'Claude 3.5 Sonet', 'Claude 3.5 Haiku'],
   },
   OpenRouter: {
-    provider: 'Free models',
-    models: ['Deepseek Chat (free)', 'Qwen 2.5 Coder (free)'],
+    provider: 'OpenRouter Models',
+    models: ['QweenCoder (free)', 'DeepSeek 3.1 (free)', 'Deepseek v3 (free)', 'Kimi K2'],
   },
 };
 
