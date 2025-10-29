@@ -11,8 +11,39 @@ export function getProviderFromLabel(label: string): ProviderId {
   if (p.includes("google")) return "google";
   if (p.includes("anthropic")) return "anthropic";
   if (p.includes("openrouter")) return "openrouter";
-  return "openai"; // Default fallback
+  return "openai";
 }
+
+type OpenRouterChatResponse = {
+  id: string;
+  choices: {
+    index: number;
+    message: { role: "assistant"; content: string };
+    finish_reason: string | null;
+  }[];
+};
+
+type OpenAIChatResponse = {
+  id: string;
+  choices: {
+    index: number;
+    message: { role: "assistant"; content: string };
+    finish_reason: string | null;
+  }[];
+};
+
+type AnthropicResponse = {
+  id: string;
+  type: "message";
+  content: { type: "text"; text: string }[];
+  stop_reason: string | null;
+};
+
+type GooglePart = { text?: string };
+type GoogleContent = { role?: string; parts: GooglePart[] };
+type GoogleResponse = {
+  candidates?: { content?: { parts?: GooglePart[] } }[];
+};
 
 // This is the script that will be injected into every generated page
 // to handle the element selection mode.
@@ -29,14 +60,19 @@ const selectionScript = `
     overlay.style.zIndex = '9999';
     overlay.style.display = 'none';
     overlay.style.transition = 'all 50ms ease-out';
+    // Append to body once it exists
     document.addEventListener('DOMContentLoaded', () => {
-      if (document.body) document.body.appendChild(overlay);
+      if (document.body) {
+        document.body.appendChild(overlay);
+      }
     });
 
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'toggleSelectionMode') {
         isSelectionModeActive = event.data.payload.isActive;
-        if (!isSelectionModeActive) hideOverlay();
+        if (!isSelectionModeActive) {
+          hideOverlay();
+        }
       }
     });
 
@@ -50,11 +86,15 @@ const selectionScript = `
       overlay.style.left = \`\${rect.left + window.scrollX}px\`;
     };
 
-    const hideOverlay = () => { overlay.style.display = 'none'; };
+    const hideOverlay = () => {
+      overlay.style.display = 'none';
+    };
 
     const getElementDescription = (element) => {
       let description = element.tagName.toLowerCase();
-      if (element.id) description += \`#\${element.id}\`;
+      if (element.id) {
+        description += \`#\${element.id}\`;
+      }
       if (element.className && typeof element.className === 'string') {
         description += \`.\${element.className.split(' ').filter(Boolean).join('.')}\`;
       }
@@ -67,22 +107,34 @@ const selectionScript = `
 
     const handleInteraction = (e) => {
       if (isSelectionModeActive) {
-        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        // In selection mode, every click is for selection
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
         const description = getElementDescription(e.target);
         window.parent.postMessage({ type: 'elementSelected', payload: { description } }, '*');
         isSelectionModeActive = false;
         hideOverlay();
       } else {
+        // Not in selection mode, prevent default actions for links and forms
         const link = e.target.closest('a[href]');
         const button = e.target.closest('button, input[type="submit"], input[type="button"]');
+        
         if (link || button || e.type === 'submit') {
-          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           console.warn('Preview Mode: Navigation and actions are disabled.');
         }
       }
     };
 
-    const handleMouseOver = (e) => { if (isSelectionModeActive) showOverlay(e.target); };
+    const handleMouseOver = (e) => {
+      if (isSelectionModeActive) {
+        showOverlay(e.target);
+      }
+    };
     
     document.addEventListener('click', handleInteraction, true);
     document.addEventListener('submit', handleInteraction, true);
@@ -93,213 +145,158 @@ const selectionScript = `
 
 function mapLabelToModelId(label: string): { provider: ProviderId; model: string } {
   const provider = getProviderFromLabel(label);
-  const modelName = (label.split(" - ")[1] || "").trim();
-  
-  // Using exact model names as requested by the user.
-  // This will likely fail until providers update their APIs.
-  const model = modelName.toLowerCase().replace(/\s+/g, '-');
+  const normalized = label.toLowerCase();
 
-  return { provider, model };
-}
-
-async function readStream(
-  response: Response,
-  parser: (line: string) => string | null,
-  onChunk: (chunk: string) => void,
-  onComplete: () => void,
-  onError: (error: Error) => void
-) {
-  try {
-    if (!response.ok || !response.body) {
-      const errorText = await response.text();
-      throw new Error(`API error: ${response.status} ${errorText}`);
+  switch (provider) {
+    case "google": {
+      if (normalized.includes("2.5") && normalized.includes("flash")) return { provider, model: "gemini-2.5-flash" };
+      if (normalized.includes("2.5") && normalized.includes("pro")) return { provider, model: "gemini-2.5-pro" };
+      return { provider, model: "gemini-2.5-flash" };
     }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        const content = parser(line);
-        if (content) onChunk(content);
-      }
+    case "openai": {
+      if (normalized.includes("o4mini") || normalized.includes("o4-mini")) return { provider, model: "o4-mini" };
+      if (normalized.includes("gpt-5") && normalized.includes("mini")) return { provider, model: "gpt-4o-mini" };
+      if (normalized.includes("gpt-5") && normalized.includes("nano")) return { provider, model: "gpt-4o-mini" };
+      if (normalized.includes("gpt-5") && normalized.includes("codex")) return { provider, model: "gpt-4o-mini" };
+      if (normalized.includes("gpt-5")) return { provider, model: "gpt-4o" };
+      return { provider, model: "gpt-4o-mini" };
     }
-    onComplete();
-  } catch (error: any) {
-    if (error.name !== 'AbortError') onError(error);
+    case "anthropic": {
+      return { provider, model: "claude-3-5-sonnet-latest" };
+    }
+    case "openrouter": {
+      if (normalized.includes("qwen") || normalized.includes("qween")) return { provider, model: "qwen/qwen2.5-coder" };
+      if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-chat" };
+      return { provider, model: "deepseek/deepseek-chat" };
+    }
+    default:
+      return { provider: "openai", model: "gpt-4o-mini" };
   }
 }
 
-async function streamWithOpenAICompatible(
-  url: string, apiKey: string, body: object, signal: AbortSignal | undefined,
-  onChunk: (c: string) => void, onComplete: () => void, onError: (e: Error) => void
-) {
-  const headers: Record<string, string> = { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` };
-  if (url.includes("openrouter")) {
-    headers["HTTP-Referer"] = window.location.origin;
-    headers["X-Title"] = document.title || "Brimy";
-  }
-  const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal });
-  const parser = (line: string): string | null => {
-    if (line.startsWith("data: ")) {
-      const data = line.substring(6);
-      if (data.trim() === "[DONE]") return null;
-      try {
-        return JSON.parse(data).choices?.[0]?.delta?.content || null;
-      } catch { return null; }
-    }
-    return null;
-  };
-  await readStream(response, parser, onChunk, onComplete, onError);
-}
-
-async function streamWithGoogle(
-  model: string, apiKey: string, messages: ChatMessage[], signal: AbortSignal | undefined,
-  onChunk: (c: string) => void, onComplete: () => void, onError: (e: Error) => void
-) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}`;
-  let systemInstruction = "";
-  const filteredMessages = messages.filter(m => {
-    if (m.role === 'system') { systemInstruction = m.content; return false; }
-    return true;
-  });
-  const contents = filteredMessages.map((msg, index) => ({
-    role: msg.role === "assistant" ? "model" : "user",
-    parts: [{ text: (index === 0 && systemInstruction) ? `${systemInstruction}\n\n${msg.content}` : msg.content }],
-  }));
-  const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents }), signal });
-  const parser = (line: string): string | null => {
-    if (line.startsWith("data: ")) {
-      try {
-        return JSON.parse(line.substring(6)).candidates?.[0]?.content?.parts?.[0]?.text || null;
-      } catch { return null; }
-    }
-    return null;
-  };
-  await readStream(response, parser, onChunk, onComplete, onError);
-}
-
-async function streamWithAnthropic(
-  model: string, apiKey: string, messages: ChatMessage[], signal: AbortSignal | undefined,
-  onChunk: (c: string) => void, onComplete: () => void, onError: (e: Error) => void
-) {
-  const url = "https://api.anthropic.com/v1/messages";
-  let systemPrompt = "";
-  const filteredMessages = messages.filter(m => {
-    if (m.role === 'system') { systemPrompt = m.content; return false; }
-    return true;
-  });
-  const body = { model, messages: filteredMessages, system: systemPrompt || undefined, stream: true, max_tokens: 4096 };
-  const response = await fetch(url, {
+async function callOpenAI(params: { messages: ChatMessage[]; model: string; apiKey: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify(body),
-    signal,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${params.apiKey}` },
+    body: JSON.stringify({ model: params.model, messages: params.messages, temperature: params.temperature ?? 0.7 }),
+    signal: params.signal,
   });
-  const parser = (line: string): string | null => {
-    if (line.startsWith("data: ")) {
-      try {
-        const json = JSON.parse(line.substring(6));
-        if (json.type === 'content_block_delta' && json.delta.type === 'text_delta') return json.delta.text;
-      } catch { return null; }
-    }
-    return null;
-  };
-  await readStream(response, parser, onChunk, onComplete, onError);
+  if (!r.ok) { const text = await r.text(); throw new Error(`OpenAI error: ${r.status} ${text}`); }
+  const data = (await r.json()) as OpenAIChatResponse;
+  const content = data.choices?.[0]?.message?.content?.trim();
+  if (!content) throw new Error("The AI response had no content.");
+  return content;
 }
 
-export async function streamChat(req: {
-  messages: ChatMessage[];
-  selectedModelLabel: string;
-  apiKeys: Record<string, string>;
-  system?: string;
-  temperature?: number;
-  signal?: AbortSignal;
-  onChunk: (chunk: string) => void;
-  onComplete: () => void;
-  onError: (error: Error) => void;
-}): Promise<void> {
-  const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
-  const apiKey = req.apiKeys[provider];
-  if (!apiKey) {
-    req.onError(new Error(`Missing API key for ${provider}.`));
-    return;
-  }
-  const messages = req.system ? [{ role: "system", content: req.system } as ChatMessage, ...req.messages.filter((m) => m.role !== "system")] : req.messages;
+async function callAnthropic(params: { messages: ChatMessage[]; model: string; apiKey: string; system?: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
+  const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
+  const chatMessages = params.messages.filter((m) => m.role !== "system");
+  const mapped = chatMessages.map((m) => ({ role: m.role, content: [{ type: "text", text: m.content }] }));
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": params.apiKey, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: params.model, max_tokens: 4096, system, messages: mapped, temperature: params.temperature ?? 0.7 }),
+    signal: params.signal,
+  });
+  if (!r.ok) { const text = await r.text(); throw new Error(`Anthropic error: ${r.status} ${text}`); }
+  const data = (await r.json()) as AnthropicResponse;
+  const content = data.content?.[0]?.text?.trim();
+  if (!content) throw new Error("The AI response had no content.");
+  return content;
+}
 
-  try {
-    switch (provider) {
-      case "openai":
-        await streamWithOpenAICompatible("https://api.openai.com/v1/chat/completions", apiKey, { model, messages, stream: true, temperature: req.temperature ?? 0.7 }, req.signal, req.onChunk, req.onComplete, req.onError);
-        break;
-      case "google":
-        await streamWithGoogle(model, apiKey, messages, req.signal, req.onChunk, req.onComplete, req.onError);
-        break;
-      case "anthropic":
-        await streamWithAnthropic(model, apiKey, messages, req.signal, req.onChunk, req.onComplete, req.onError);
-        break;
-      case "openrouter":
-      default:
-        await streamWithOpenAICompatible("https://openrouter.ai/api/v1/chat/completions", apiKey, { model, messages, stream: true, temperature: req.temperature ?? 0.7 }, req.signal, req.onChunk, req.onComplete, req.onError);
-        break;
-    }
-  } catch (error: any) {
-    if (error.name !== 'AbortError') req.onError(error);
-  }
+async function callGoogle(params: { messages: ChatMessage[]; model: string; apiKey: string; system?: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
+  const system = params.messages.find((m) => m.role === "system")?.content || params.system || "";
+  const chatMessages = params.messages.filter((m) => m.role !== "system");
+  const contents: GoogleContent[] = chatMessages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+  const body: Record<string, unknown> = { contents, generationConfig: { temperature: params.temperature ?? 0.7 } };
+  if (system) { body.system_instruction = { parts: [{ text: system }] }; }
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(params.model)}:generateContent?key=${encodeURIComponent(params.apiKey)}`;
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: params.signal });
+  if (!r.ok) { const text = await r.text(); throw new Error(`Google error: ${r.status} ${text}`); }
+  const data = (await r.json()) as GoogleResponse;
+  const textParts = data.candidates?.[0]?.content?.parts || [];
+  const content = textParts.map((p) => p.text || "").join("").trim();
+  if (!content) throw new Error("The AI response had no content.");
+  return content;
+}
+
+async function callOpenRouter(params: { messages: ChatMessage[]; model: string; apiKey: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
+  const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${params.apiKey}`, "HTTP-Referer": window.location.origin, "X-Title": document.title || "Brimy" },
+    body: JSON.stringify({ model: params.model, messages: params.messages, stream: false, temperature: params.temperature ?? 0.7 }),
+    signal: params.signal,
+  });
+  if (!r.ok) { const text = await r.text(); throw new Error(`OpenRouter error: ${r.status} ${text}`); }
+  const data = (await r.json()) as OpenRouterChatResponse;
+  const content = data.choices?.[0]?.message?.content?.trim();
+  if (!content) throw new Error("The AI response had no content.");
+  return content;
 }
 
 function buildGenerationMessages(prompt: string, system?: string, codeContext?: string | null): ChatMessage[] {
-  const separator = "\n---CODE---\n";
-
   if (codeContext) {
-    const systemPrompt = system ?? `You are an expert web developer. Your response MUST be in two parts, separated by '${separator}'.
-Part 1: A brief, step-by-step reasoning of the changes you will make. IMPORTANT: Stream this part token-by-token first.
-Part 2: The complete, modified HTML file.
-
-RULES for the code part:
+    // Editing existing code
+    const systemPrompt = system ?? `You are an expert web developer. Your task is to modify the provided HTML code based on the user's request.
+RULES:
 1.  You will be given the user's modification request and the full current HTML.
 2.  You MUST respond with ONLY the complete, modified HTML file.
 3.  The response MUST start with \`<!DOCTYPE html>\` and end with \`</html>\`.
 4.  Do NOT include any explanations, comments, or markdown code blocks like \`\`\`html ... \`\`\` around the code.
 5.  Ensure all necessary scripts (like Tailwind CDN and the selection script) are preserved in the final output.`;
-    const userPrompt = `Based on the current HTML code, apply the following change: "${prompt}"\n\nHere is the current HTML code:\n\`\`\`html\n${codeContext}\n\`\`\``;
-    return [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }];
-  } else {
-    const systemPrompt = system ?? `You are an expert web developer. Your response MUST be in two parts, separated by '${separator}'.
-Part 1: A brief, step-by-step reasoning of how you will build the page. IMPORTANT: Stream this part token-by-token first.
-Part 2: The complete, standalone HTML file.
+    
+    const userPrompt = `Based on the current HTML code, apply the following change: "${prompt}"
 
-RULES for the code part:
+Here is the current HTML code:
+\`\`\`html
+${codeContext}
+\`\`\``;
+
+    return [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ];
+  } else {
+    // Generating new code from scratch
+    const systemPrompt = system ?? `You are an expert web developer. Your task is to generate a complete, standalone HTML file based on the user's prompt.
+RULES:
 1.  ALWAYS respond with a single, complete HTML file.
 2.  The response MUST start with \`<!DOCTYPE html>\` and end with \`</html>\`.
 3.  Do NOT include any explanations, comments, or markdown code blocks like \`\`\`html ... \`\`\` around the code. The response must be ONLY the HTML code itself.
 4.  Use Tailwind CSS for styling. Include the Tailwind CDN script in the \`<head>\`: \`<script src="https://cdn.tailwindcss.com"></script>\`.
 5.  Create a visually appealing, modern, and dark-themed design unless specified otherwise.
 6.  ALWAYS include the following script tag just before the closing \`</body>\` tag: ${selectionScript}`;
-    return [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }];
+    
+    return [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: prompt },
+    ];
   }
 }
 
-export async function streamAnswer(req: {
-  prompt: string;
-  selectedModelLabel: string;
-  apiKeys: Record<string, string>;
-  system?: string;
-  temperature?: number;
-  codeContext?: string | null;
-  signal?: AbortSignal;
-  onChunk: (chunk: string) => void;
-  onComplete: () => void;
-  onError: (error: Error) => void;
-}): Promise<void> {
+export async function generateAnswer(req: { prompt: string; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; codeContext?: string | null; signal?: AbortSignal; }): Promise<string> {
+  const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
+  const apiKey = req.apiKeys[provider];
+  if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
   const messages = buildGenerationMessages(req.prompt, req.system, req.codeContext);
-  await streamChat({ ...req, messages });
+  switch (provider) {
+    case "openai": return callOpenAI({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
+    case "google": return callGoogle({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
+    case "anthropic": return callAnthropic({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
+    case "openrouter": return callOpenRouter({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
+  }
+}
+
+export async function generateChat(req: { messages: ChatMessage[]; selectedModelLabel: string; apiKeys: Record<string, string>; system?: string; temperature?: number; signal?: AbortSignal; }): Promise<string> {
+  const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
+  const apiKey = req.apiKeys[provider];
+  if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
+  const messages = req.system ? [{ role: "system", content: req.system } as ChatMessage, ...req.messages.filter((m) => m.role !== "system")] : req.messages;
+  switch (provider) {
+    case "openai": return callOpenAI({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
+    case "google": return callGoogle({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
+    case "anthropic": return callAnthropic({ messages, model, apiKey, system: req.system, temperature: req.temperature, signal: req.signal });
+    case "openrouter": return callOpenRouter({ messages, model, apiKey, temperature: req.temperature, signal: req.signal });
+  }
 }
