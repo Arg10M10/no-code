@@ -97,20 +97,30 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
 
   switch (provider) {
     case "google":
+      // The popover lists "Gemini 2.5", we'll map to the latest available Gemini 1.5 models.
       if (normalized.includes("pro")) return { provider, model: "gemini-1.5-pro-latest" };
-      return { provider, model: "gemini-1.5-flash-latest" };
+      return { provider, model: "gemini-1.5-flash-latest" }; // Default to flash for "Gemini 2.5 flash"
+    
     case "openai":
-      if (normalized.includes("mini") || normalized.includes("nano") || normalized.includes("codex") || normalized.includes("o4mini")) {
+      // The popover lists "GPT-5", we'll map to the latest available GPT-4 models.
+      if (normalized.includes("mini") || normalized.includes("nano") || normalized.includes("o4mini")) {
         return { provider, model: "gpt-4o-mini" };
       }
+      // For "GPT-5" and "GPT-5 Codex"
       return { provider, model: "gpt-4o" };
+
     case "anthropic":
+      // The popover lists various "Claude" versions, we'll map them all to the latest available Sonnet model.
       return { provider, model: "claude-3-5-sonnet-20240620" };
+
     case "openrouter":
       if (normalized.includes("qwen") || normalized.includes("qween")) return { provider, model: "qwen/qwen2.5-coder" };
+      // For "Deepseek v3.1" and "v3"
       if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-chat" };
-      return { provider, model: "deepseek/deepseek-chat" };
+      return { provider, model: "deepseek/deepseek-chat" }; // Default for OpenRouter
+    
     default:
+      // Fallback for any unhandled cases
       return { provider: "openai", model: "gpt-4o-mini" };
   }
 }
