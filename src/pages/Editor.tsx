@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { getProjectById, StoredMessage, setMessages, getMessages, addMessage, getCode, setCode, getCredits, decrementCredits } from "@/lib/projects";
 import { storage } from "@/lib/storage";
 import { getSelectedModelLabel } from "@/lib/settings";
-import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
+import { getProviderFromLabel, streamAnswer, streamChat } from "@/services/ai";
 import { cn } from "@/lib/utils";
 import { Github } from "lucide-react";
 
@@ -69,49 +69,61 @@ const EditorPage: React.FC = () => {
 
     addMessage(projId, {
       role: "assistant",
-      content: "Clave de API encontrada. Empezando a generar tu página con la IA...",
+      content: "", // Start with an empty message for streaming
     });
     setMessagesState(getMessages(projId));
 
-    try {
-      const generatedCode = await generateAnswer({ prompt, selectedModelLabel: selectedModel, apiKeys, signal: abortControllerRef.current.signal });
-      
-      if (includesSupabaseIntent(generatedCode)) {
-        setSupabaseIntentCounter((c) => c + 1);
+    let accumulatedCode = "";
+    streamAnswer({
+      prompt,
+      selectedModelLabel: selectedModel,
+      apiKeys,
+      signal: abortControllerRef.current.signal,
+      onChunk: (chunk) => {
+        accumulatedCode += chunk;
+        setMessagesState(prev => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1].content += chunk;
+          return newMessages;
+        });
+      },
+      onComplete: () => {
+        if (includesSupabaseIntent(accumulatedCode)) {
+          setSupabaseIntentCounter((c) => c + 1);
+        }
+        toast.success("Generación completada");
+        setCode(projId, accumulatedCode);
+        setCodeState(accumulatedCode);
+        
+        const finalMessages = getMessages(projId);
+        finalMessages[finalMessages.length - 1].content = "Generación completada — la previsualización está lista.";
+        setMessages(projId, finalMessages);
+        setMessagesState(finalMessages);
+
+        const cost = Math.floor(Math.random() * 4001) + 1000;
+        const newCredits = decrementCredits(projId, cost);
+        setCredits(newCredits);
+        toast.info(`${cost.toLocaleString()} tokens used.`);
+        
+        setLoading(false);
+        setPreviewLoading(false);
+        abortControllerRef.current = null;
+      },
+      onError: (err) => {
+        const errorMessage = err.message || "Ocurrió un error desconocido.";
+        console.error("La generación con IA ha fallado:", err);
+        toast.error("La petición a la IA ha fallado", { description: errorMessage });
+        
+        const finalMessages = getMessages(projId);
+        finalMessages[finalMessages.length - 1].content = `La generación con IA ha fallado con el siguiente error:\n\n> ${errorMessage}\n\nPor favor, revisa tu clave de API y la configuración del modelo.`;
+        setMessages(projId, finalMessages);
+        setMessagesState(finalMessages);
+
+        setLoading(false);
+        setPreviewLoading(false);
+        abortControllerRef.current = null;
       }
-
-      toast.success("Generación completada");
-      setCode(projId, generatedCode);
-      setCodeState(generatedCode);
-      addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización está lista." });
-
-      const cost = Math.floor(Math.random() * 4001) + 1000;
-      const newCredits = decrementCredits(projId, cost);
-      setCredits(newCredits);
-      toast.info(`${cost.toLocaleString()} tokens used.`);
-
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
-        console.log('Initial generation aborted.');
-        return;
-      }
-      const errorMessage = err.message || "Ocurrió un error desconocido.";
-      console.error("La generación con IA ha fallado:", err);
-      
-      toast.error("La petición a la IA ha fallado", {
-        description: errorMessage,
-      });
-      
-      addMessage(projId, {
-        role: "assistant",
-        content: `La generación con IA ha fallado con el siguiente error:\n\n> ${errorMessage}\n\nPor favor, revisa tu clave de API y la configuración del modelo.`,
-      });
-    } finally {
-      setLoading(false);
-      setPreviewLoading(false);
-      setMessagesState(getMessages(projId));
-      abortControllerRef.current = null;
-    }
+    });
   }, []);
 
   useEffect(() => {
@@ -141,11 +153,14 @@ const EditorPage: React.FC = () => {
     setLoading(false);
     setPreviewLoading(false);
     if (projectId) {
-      addMessage(projectId, {
-        role: 'assistant',
-        content: 'Generación cancelada por el usuario.',
-      });
-      setMessagesState(getMessages(projectId));
+      const finalMessages = getMessages(projectId);
+      if (finalMessages.length > 0 && finalMessages[finalMessages.length - 1].role === 'assistant') {
+        finalMessages[finalMessages.length - 1].content += '\n\nGeneración cancelada por el usuario.';
+      } else {
+        addMessage(projectId, { role: 'assistant', content: 'Generación cancelada por el usuario.' });
+      }
+      setMessages(projectId, finalMessages);
+      setMessagesState(finalMessages);
     }
   };
 
@@ -166,85 +181,90 @@ const EditorPage: React.FC = () => {
       setSupabaseIntentCounter((c) => c + 1);
     }
 
-    const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
-    const newMessages = [...messages, userMessage];
-    setMessagesState(newMessages);
-    setMessages(projectId, newMessages);
+    addMessage(projectId, { role: "user", content: messageContent });
+    addMessage(projectId, { role: "assistant", content: "" }); // Placeholder for streaming
+    setMessagesState(getMessages(projectId));
     setLoading(true);
 
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const selectedModel = getSelectedModelLabel();
 
-    try {
-      let aiResponseContent: string;
-      if (isAsk) {
-        aiResponseContent = await generateChat({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-          selectedModelLabel: selectedModel,
-          apiKeys,
-          signal: abortControllerRef.current.signal,
-        });
-      } else {
-        setPreviewLoading(true);
-        const generatedCode = await generateAnswer({
-          prompt: messageContent,
-          selectedModelLabel: selectedModel,
-          apiKeys,
-          codeContext: code,
-          signal: abortControllerRef.current.signal,
-        });
-        
-        if (includesSupabaseIntent(generatedCode)) {
-          setSupabaseIntentCounter((c) => c + 1);
-        }
+    const onChunk = (chunk: string) => {
+      setMessagesState(prev => {
+        const newMessages = [...prev];
+        newMessages[newMessages.length - 1].content += chunk;
+        return newMessages;
+      });
+    };
 
-        setCode(projectId, generatedCode);
-        setCodeState(generatedCode);
-        aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización.";
-      }
-
-      if (includesSupabaseIntent(aiResponseContent)) {
+    const onComplete = (finalContent: string) => {
+      if (includesSupabaseIntent(finalContent)) {
         setSupabaseIntentCounter((c) => c + 1);
       }
+      const finalMessages = getMessages(projectId);
+      finalMessages[finalMessages.length - 1].content = finalContent;
+      setMessages(projectId, finalMessages);
 
       const cost = Math.floor(Math.random() * 4001) + 1000;
       const newCredits = decrementCredits(projectId, cost);
       setCredits(newCredits);
 
-      const aiResponse: StoredMessage = {
-        role: "assistant",
-        content: aiResponseContent,
-        createdAt: Date.now(),
-      };
-      const finalMessages = [...newMessages, aiResponse];
-      setMessagesState(finalMessages);
-      setMessages(projectId, finalMessages);
-
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
-        console.log('Generation aborted by user.');
-        return;
-      }
-      const errorMessage = err?.message || "Ocurrió un error desconocido.";
-      console.error("Error en la operación de IA:", err);
-      const nowAsk = text.trim().startsWith("[ASK]");
-      toast.error(nowAsk ? "La pregunta a la IA ha fallado" : "La generación con IA ha fallado", {
-        description: errorMessage,
-      });
-      const aiResponse: StoredMessage = {
-        role: "assistant",
-        content: `La operación de IA ha fallado:\n\n> ${errorMessage}`,
-        createdAt: Date.now(),
-      };
-      const finalMessages = [...newMessages, aiResponse];
-      setMessagesState(finalMessages);
-      setMessages(projectId, finalMessages);
-    } finally {
       setLoading(false);
       if (!isAsk) setPreviewLoading(false);
       abortControllerRef.current = null;
+    };
+
+    const onError = (err: Error) => {
+      const errorMessage = err?.message || "Ocurrió un error desconocido.";
+      console.error("Error en la operación de IA:", err);
+      toast.error(isAsk ? "La pregunta a la IA ha fallado" : "La generación con IA ha fallado", {
+        description: errorMessage,
+      });
+      const finalMessages = getMessages(projectId);
+      finalMessages[finalMessages.length - 1].content = `La operación de IA ha fallado:\n\n> ${errorMessage}`;
+      setMessages(projectId, finalMessages);
+      setMessagesState(finalMessages);
+      setLoading(false);
+      if (!isAsk) setPreviewLoading(false);
+      abortControllerRef.current = null;
+    };
+
+    if (isAsk) {
+      let accumulatedResponse = "";
+      streamChat({
+        messages: getMessages(projectId).slice(0, -1).map(m => ({ role: m.role, content: m.content })),
+        selectedModelLabel: selectedModel,
+        apiKeys,
+        signal: abortControllerRef.current.signal,
+        onChunk: (chunk) => {
+          accumulatedResponse += chunk;
+          onChunk(chunk);
+        },
+        onComplete: () => onComplete(accumulatedResponse),
+        onError,
+      });
+    } else {
+      setPreviewLoading(true);
+      let accumulatedCode = "";
+      streamAnswer({
+        prompt: messageContent,
+        selectedModelLabel: selectedModel,
+        apiKeys,
+        codeContext: code,
+        signal: abortControllerRef.current.signal,
+        onChunk: (chunk) => {
+          accumulatedCode += chunk;
+          onChunk(chunk);
+        },
+        onComplete: () => {
+          setCode(projectId, accumulatedCode);
+          setCodeState(accumulatedCode);
+          onComplete("Listo. He aplicado tus cambios y actualizado la previsualización.");
+        },
+        onError,
+      });
     }
-  }, [messages, projectId, selectedElement, code]);
+  }, [projectId, selectedElement, code]);
 
   const handleRefreshPreview = () => {
     setPreviewLoading(true);

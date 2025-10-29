@@ -7,7 +7,6 @@ import type { StoredMessage } from "@/lib/projects";
 import { ArrowUp, X, Paperclip, Settings, Info, Cpu, Square } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import TypingIndicator from "./TypingIndicator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ModelsPopover from "./ModelsPopover";
 import { getSelectedModelLabel, setSelectedModelLabel, getUserPlan } from "@/lib/settings";
@@ -34,6 +33,10 @@ const isErrorMessage = (content: string) => {
 
 const FREE_MAX_IMAGES = 3;
 const PRO_MAX_IMAGES = 10;
+
+const BlinkingCursor = () => (
+  <span className="inline-block w-2 h-4 bg-current animate-pulse" />
+);
 
 const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
@@ -146,6 +149,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             const isUser = msg.role === "user";
             const key = msg.createdAt ? `${msg.createdAt}-${index}` : `${index}`;
             const isError = isAssistant && isErrorMessage(msg.content);
+            const isStreaming = isAssistant && loading && index === messages.length - 1;
 
             return (
               <div key={key} className="min-w-0 animate-fade-in-up">
@@ -174,20 +178,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     ].join(" ")}
                   >
                     {msg.content}
+                    {isStreaming && <BlinkingCursor />}
                   </p>
                 </div>
               </div>
             );
           })}
-          {loading && (
-            <div className="min-w-0 animate-fade-in-up">
-              <div
-                className="p-3 rounded-lg bg-green-500/10 border border-green-500/60 flex items-center"
-              >
-                <TypingIndicator />
-              </div>
-            </div>
-          )}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
