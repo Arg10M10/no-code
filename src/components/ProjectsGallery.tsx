@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Project, deleteProject, listProjects, getFiles } from "@/lib/projects";
+import { Project, deleteProject, listProjects, getCode } from "@/lib/projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -102,8 +102,7 @@ const ProjectsGallery: React.FC = () => {
     return filteredProjects.map((project, index) => {
       const gradient = gradientPalette[index % gradientPalette.length];
       const showPublished = index % 3 === 0; // simple hint badge like the screenshot
-      const files = getFiles(project.id);
-      const code = files ? files['index.html'] : null;
+      const code = getCode(project.id);
 
       return (
         <article

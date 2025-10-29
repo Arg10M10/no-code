@@ -110,15 +110,15 @@ export function decrementCredits(projectId: string, amount = 1): number {
   return next;
 }
 
-/* Files persistence per project */
-function filesKey(projectId: string) {
-  return `files:${projectId}`;
+/* Code persistence per project */
+function codeKey(projectId: string) {
+  return `code:${projectId}`;
 }
-export function getFiles(projectId: string): Record<string, string> | null {
-  return storage.getJSON<Record<string, string> | null>(filesKey(projectId), null);
+export function getCode(projectId: string): string | null {
+  return storage.getJSON<string | null>(codeKey(projectId), null);
 }
-export function setFiles(projectId: string, files: Record<string, string>) {
-  storage.setJSON(filesKey(projectId), files);
+export function setCode(projectId: string, code: string) {
+  storage.setJSON(codeKey(projectId), code);
   touchProject(projectId);
 }
 
@@ -130,6 +130,6 @@ export function deleteProject(projectId: string) {
 
   // Remove stored data related to this project
   storage.remove(chatKey(projectId));
-  storage.remove(filesKey(projectId));
+  storage.remove(codeKey(projectId));
   storage.remove(creditsKey(projectId));
 }

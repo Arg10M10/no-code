@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Navigation from "@/components/Navigation";
-import { getProjectById, getFiles, Project, setProjectRepoUrl } from "@/lib/projects";
+import { getProjectById, getCode, Project, setProjectRepoUrl } from "@/lib/projects";
 import { publishToGitHub } from "@/lib/github";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -34,8 +34,7 @@ const PublishPage: React.FC = () => {
       return;
     }
     const proj = getProjectById(projectId);
-    const projectFiles = getFiles(projectId);
-    const projCode = projectFiles ? projectFiles['index.html'] : null;
+    const projCode = getCode(projectId);
 
     if (!proj || !projCode) {
       toast.error("Project not found or has no code.");

@@ -10,7 +10,7 @@ import {
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
-import { getProjectById, StoredMessage, setMessages, getMessages, addMessage, getFiles, setFiles, getCredits, decrementCredits } from "@/lib/projects";
+import { getProjectById, StoredMessage, setMessages, getMessages, addMessage, getCode, setCode, getCredits, decrementCredits } from "@/lib/projects";
 import { storage } from "@/lib/storage";
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
@@ -36,7 +36,8 @@ const EditorPage: React.FC = () => {
   const [credits, setCredits] = useState(0);
   const [previewLoading, setPreviewLoading] = useState(false);
   
-  const [projectFiles, setProjectFiles] = useState<Record<string, string> | null>(null);
+  const [codeForPreview, setCodeForPreview] = useState<string | null>(null);
+  const [codeForDisplay, setCodeForDisplay] = useState<string | null>(null);
   
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
@@ -44,17 +45,17 @@ const EditorPage: React.FC = () => {
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const streamCode = useCallback((fileName: string, fullCode: string, onFinish: () => void) => {
+  const streamCode = useCallback((fullCode: string, onFinish: () => void) => {
     const lines = fullCode.split('\n');
     let currentDisplay = "";
     const intervalId = setInterval(() => {
         if (lines.length > 0) {
             const chunk = lines.splice(0, 5).join('\n');
             currentDisplay += (currentDisplay ? '\n' : '') + chunk;
-            setProjectFiles(prev => ({ ...prev, [fileName]: currentDisplay }));
+            setCodeForDisplay(currentDisplay);
         } else {
             clearInterval(intervalId);
-            setProjectFiles(prev => ({ ...prev, [fileName]: fullCode })); // Ensure final state is perfect
+            setCodeForDisplay(fullCode); // Ensure final state is perfect
             onFinish();
         }
     }, 40);
@@ -63,7 +64,7 @@ const EditorPage: React.FC = () => {
   const triggerInitialGeneration = useCallback(async (projId: string, prompt: string) => {
     setLoading(true);
     setPreviewLoading(true);
-    setProjectFiles({ 'index.html': "" });
+    setCodeForDisplay("");
     abortControllerRef.current = new AbortController();
 
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
@@ -89,11 +90,9 @@ const EditorPage: React.FC = () => {
         setSupabaseIntentCounter((c) => c + 1);
       }
 
-      const newFiles = { 'index.html': generatedCode };
-
-      streamCode('index.html', generatedCode, () => {
-        setFiles(projId, newFiles);
-        setProjectFiles(newFiles);
+      streamCode(generatedCode, () => {
+        setCode(projId, generatedCode);
+        setCodeForPreview(generatedCode);
         setPreviewLoading(false);
         toast.success("Generación completada");
         addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización está lista." });
@@ -135,11 +134,12 @@ const EditorPage: React.FC = () => {
         setProjectName(project.name);
         const loadedMessages = getMessages(projectId);
         setMessagesState(loadedMessages);
-        const initialFiles = getFiles(projectId);
-        setProjectFiles(initialFiles);
+        const initialCode = getCode(projectId);
+        setCodeForPreview(initialCode);
+        setCodeForDisplay(initialCode);
         setCredits(getCredits(projectId));
 
-        if (loadedMessages.length === 1 && loadedMessages[0].role === 'user' && !initialFiles) {
+        if (loadedMessages.length === 1 && loadedMessages[0].role === 'user') {
           triggerInitialGeneration(projectId, loadedMessages[0].content);
         }
       } else {
@@ -202,24 +202,22 @@ const EditorPage: React.FC = () => {
         setLoading(false);
       } else {
         setPreviewLoading(true);
-        setProjectFiles(prev => ({ ...prev, 'index.html': '' }));
+        setCodeForDisplay("");
         const generatedCode = await generateAnswer({
           prompt: messageContent,
           selectedModelLabel: selectedModel,
           apiKeys,
-          codeContext: projectFiles ? projectFiles['index.html'] : null,
+          codeContext: codeForPreview,
           signal: abortControllerRef.current.signal,
         });
         
         if (includesSupabaseIntent(generatedCode)) {
           setSupabaseIntentCounter((c) => c + 1);
         }
-        
-        const newFiles = { ...projectFiles, 'index.html': generatedCode };
 
-        streamCode('index.html', generatedCode, () => {
-          setFiles(projectId, newFiles as Record<string, string>);
-          setProjectFiles(newFiles as Record<string, string>);
+        streamCode(generatedCode, () => {
+          setCode(projectId, generatedCode);
+          setCodeForPreview(generatedCode);
           setPreviewLoading(false);
 
           const aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización.";
@@ -252,7 +250,7 @@ const EditorPage: React.FC = () => {
       setLoading(false);
       if (!isAsk) setPreviewLoading(false);
     }
-  }, [messages, projectId, selectedElement, projectFiles, streamCode]);
+  }, [messages, projectId, selectedElement, codeForPreview, streamCode]);
 
   const handleRefreshPreview = () => {
     setPreviewLoading(true);
@@ -316,8 +314,8 @@ const EditorPage: React.FC = () => {
           <ResizablePanel defaultSize={75}>
             <PreviewPanel
               previewUrl="/preview"
-              code={projectFiles ? projectFiles['index.html'] : null}
-              displayCode={projectFiles ? projectFiles['index.html'] : null}
+              code={codeForPreview}
+              displayCode={codeForDisplay}
               loading={previewLoading}
               onRefresh={handleRefreshPreview}
               isSelectionModeActive={isSelectionModeActive}
