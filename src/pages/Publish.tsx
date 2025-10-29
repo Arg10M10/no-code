@@ -63,7 +63,7 @@ const PublishPage: React.FC = () => {
       provider: 'github',
       options: {
         redirectTo: window.location.href,
-        scopes: 'public_repo',
+        scopes: 'repo',
       },
     });
     if (error) {
@@ -122,7 +122,7 @@ const PublishPage: React.FC = () => {
             <CardHeader>
               <CardTitle className="text-2xl">Publish to GitHub</CardTitle>
               <CardDescription>
-                Create a new public repository for your project: <span className="font-semibold text-foreground">{project.name}</span>
+                Create a new private repository for your project: <span className="font-semibold text-foreground">{project.name}</span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -130,7 +130,7 @@ const PublishPage: React.FC = () => {
                 <div className="p-4 rounded-md border border-green-500/30 bg-green-500/10 text-center space-y-4">
                   <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
                   <h3 className="text-lg font-semibold">Project Published!</h3>
-                  <p className="text-sm text-muted-foreground">Your repository has been created successfully.</p>
+                  <p className="text-sm text-muted-foreground">Your private repository has been created successfully.</p>
                   <Button asChild>
                     <a href={repoUrl} target="_blank" rel="noopener noreferrer">
                       View on GitHub
@@ -165,7 +165,7 @@ const PublishPage: React.FC = () => {
                         disabled={isPublishing}
                     />
                     <p className="text-xs text-muted-foreground">
-                        Your new public repository will be created at: <code className="font-mono text-foreground">{user.user_metadata?.user_name}/{repoName}</code>
+                        Your new private repository will be created at: <code className="font-mono text-foreground">{user.user_metadata?.user_name}/{repoName}</code>
                     </p>
                   </div>
                   <Button onClick={handlePublish} disabled={isPublishing || !repoName.trim()} className="w-full">
@@ -184,7 +184,7 @@ const PublishPage: React.FC = () => {
             </CardContent>
             <CardFooter>
               <p className="text-xs text-muted-foreground">
-                A new public repository will be created under your account. If it already exists, the files will be updated.
+                A new private repository will be created under your account. If it already exists, the files will be updated.
               </p>
             </CardFooter>
           </Card>
