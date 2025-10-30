@@ -13,7 +13,7 @@ const Navigation = () => {
                 <span className="h-5 w-2.5 rounded-full bg-gradient-to-b from-blue-500 to-blue-700"></span>
                 <span className="h-5 w-2.5 rounded-full bg-gradient-to-b from-blue-600 to-blue-800"></span>
               </div>
-              <span className="font-semibold text-sm sm:text-base lg:text-lg">Brimy</span>
+              <span className="font-semibold text-sm sm:text-base lg:text-lg">Framio</span>
             </Link>
             <nav className="hidden md:flex items-center gap-6 lg:gap-8 xl:gap-10 text-sm lg:text-[15px] font-medium">
               <Link

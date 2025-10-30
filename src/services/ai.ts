@@ -127,7 +127,7 @@ async function callApi(params: { messages: ChatMessage[]; model: string; apiKey:
     case "openrouter": {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}`, "HTTP-Referer": window.location.origin, "X-Title": document.title || "Brimy" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}`, "HTTP-Referer": window.location.origin, "X-Title": document.title || "Framio" },
         body: JSON.stringify({ model, messages, stream: false, temperature: temperature ?? 0.7, max_tokens: 4096 }),
         signal,
       });
