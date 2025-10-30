@@ -46,26 +46,6 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-// NOTE: This is a mock function for the new AI response format.
-// In a real scenario, the `generateAnswer` in `ai.ts` would be updated to return this structure.
-async function generateProjectAnswer(req: any): Promise<{ files: ProjectFile[], previewHtml: string }> {
-  // For now, we'll call the old function and wrap its response.
-  const singleFileContent = await generateAnswer(req);
-  
-  // This is a placeholder structure. The actual AI would generate a full project.
-  const mockFiles: ProjectFile[] = [
-    { path: 'index.html', content: singleFileContent },
-    { path: 'package.json', content: JSON.stringify({ name: 'brimy-project', version: '0.0.1', scripts: { dev: 'vite' } }, null, 2) },
-    { path: 'vite.config.ts', content: `import { defineConfig } from 'vite';\nexport default defineConfig({});` }
-  ];
-
-  return {
-    files: mockFiles,
-    previewHtml: singleFileContent, // The preview is the main HTML file.
-  };
-}
-
-
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -117,8 +97,7 @@ const EditorPage: React.FC = () => {
     setMessagesState(getMessages(projId));
 
     try {
-      // Using the new mock function
-      const { files, previewHtml } = await generateProjectAnswer({ 
+      const { files, previewHtml } = await generateAnswer({ 
         prompt: firstMessage.content, 
         images: firstMessage.images,
         selectedModelLabel: selectedModel, 
@@ -250,12 +229,15 @@ const EditorPage: React.FC = () => {
         setPreviewLoading(true);
         setProjectFiles(null);
         
-        const { files, previewHtml } = await generateProjectAnswer({
+        const currentFiles = getProjectFiles(projectId);
+        const codeContext = currentFiles ? JSON.stringify(currentFiles) : getPreviewHtml(projectId);
+
+        const { files, previewHtml } = await generateAnswer({
           prompt: messageContent,
           images: userMessage.images,
           selectedModelLabel: selectedModel,
           apiKeys,
-          codeContext: getPreviewHtml(projectId), // Pass current preview as context
+          codeContext: codeContext,
           signal: abortControllerRef.current.signal,
         });
         
