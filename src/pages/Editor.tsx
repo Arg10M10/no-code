@@ -230,7 +230,7 @@ const EditorPage: React.FC = () => {
         setProjectFiles(null);
         
         const currentFiles = getProjectFiles(projectId);
-        const codeContext = currentFiles ? JSON.stringify(currentFiles) : getPreviewHtml(projectId);
+        const codeContext = currentFiles ? JSON.stringify(currentFiles) : null;
 
         const { files, previewHtml } = await generateAnswer({
           prompt: messageContent,

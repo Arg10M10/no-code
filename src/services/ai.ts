@@ -164,8 +164,7 @@ export async function generateAnswer(req: { prompt: string; images?: string[]; s
   const apiKey = req.apiKeys[provider];
   if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
 
-  const codeContextString = req.codeContext ? JSON.stringify(JSON.parse(req.codeContext), null, 2) : null;
-  const messages = buildGenerationMessages(req.prompt, codeContextString, req.images);
+  const messages = buildGenerationMessages(req.prompt, req.codeContext, req.images);
 
   const rawResponse = await callApi({ provider, messages, model, apiKey, temperature: req.temperature, signal: req.signal });
 
