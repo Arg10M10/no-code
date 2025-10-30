@@ -7,6 +7,11 @@ export type Project = {
   repoUrl?: string;
 };
 
+export type ProjectFile = {
+  path: string;
+  content: string;
+};
+
 export type StoredMessage = {
   role: "user" | "assistant";
   content: string;
@@ -112,14 +117,25 @@ export function decrementCredits(projectId: string, amount = 1): number {
 }
 
 /* Code persistence per project */
-function codeKey(projectId: string) {
-  return `code:${projectId}`;
+function previewHtmlKey(projectId: string) {
+  return `preview-html:${projectId}`;
 }
-export function getCode(projectId: string): string | null {
-  return storage.getJSON<string | null>(codeKey(projectId), null);
+export function getPreviewHtml(projectId: string): string | null {
+  return storage.getJSON<string | null>(previewHtmlKey(projectId), null);
 }
-export function setCode(projectId: string, code: string) {
-  storage.setJSON(codeKey(projectId), code);
+export function setPreviewHtml(projectId: string, html: string) {
+  storage.setJSON(previewHtmlKey(projectId), html);
+  touchProject(projectId);
+}
+
+function filesKey(projectId: string) {
+  return `files:${projectId}`;
+}
+export function getProjectFiles(projectId: string): ProjectFile[] | null {
+  return storage.getJSON<ProjectFile[] | null>(filesKey(projectId), null);
+}
+export function setProjectFiles(projectId: string, files: ProjectFile[]) {
+  storage.setJSON(filesKey(projectId), files);
   touchProject(projectId);
 }
 
@@ -131,6 +147,7 @@ export function deleteProject(projectId: string) {
 
   // Remove stored data related to this project
   storage.remove(chatKey(projectId));
-  storage.remove(codeKey(projectId));
+  storage.remove(previewHtmlKey(projectId));
+  storage.remove(filesKey(projectId));
   storage.remove(creditsKey(projectId));
 }

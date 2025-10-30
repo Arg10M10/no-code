@@ -8,11 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import SupabaseConnectModal from "@/components/supabase/SupabaseConnectModal";
 import CodePanel from "@/components/CodePanel";
+import { ProjectFile } from "@/lib/projects";
 
 interface PreviewPanelProps {
   previewUrl: string;
   code?: string | null;
-  displayCode?: string | null;
+  files?: ProjectFile[] | null;
   loading: boolean;
   onRefresh: () => void;
   isSelectionModeActive: boolean;
@@ -29,7 +30,7 @@ const SUPABASE_AUTH_ID = "bydamian-app";
 const PreviewPanel: React.FC<PreviewPanelProps> = ({
   previewUrl,
   code,
-  displayCode,
+  files,
   loading,
   onRefresh,
   isSelectionModeActive,
@@ -144,7 +145,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </TabsContent>
 
         <TabsContent value="code" className="flex-1 overflow-hidden bg-background/50">
-          <CodePanel code={displayCode} />
+          <CodePanel files={files} />
         </TabsContent>
 
         <TabsContent value="integrations" className="flex-1 overflow-auto">

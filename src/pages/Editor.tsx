@@ -10,7 +10,20 @@ import {
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
 import { Button } from "@/components/ui/button";
-import { getProjectById, StoredMessage, setMessages, getMessages, addMessage, getCode, setCode, getCredits, decrementCredits } from "@/lib/projects";
+import { 
+  getProjectById, 
+  StoredMessage, 
+  setMessages, 
+  getMessages, 
+  addMessage, 
+  getPreviewHtml, 
+  setPreviewHtml as persistPreviewHtml, 
+  getCredits, 
+  decrementCredits, 
+  ProjectFile, 
+  getProjectFiles, 
+  setProjectFiles as persistProjectFiles 
+} from "@/lib/projects";
 import { storage } from "@/lib/storage";
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
@@ -33,6 +46,26 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+// NOTE: This is a mock function for the new AI response format.
+// In a real scenario, the `generateAnswer` in `ai.ts` would be updated to return this structure.
+async function generateProjectAnswer(req: any): Promise<{ files: ProjectFile[], previewHtml: string }> {
+  // For now, we'll call the old function and wrap its response.
+  const singleFileContent = await generateAnswer(req);
+  
+  // This is a placeholder structure. The actual AI would generate a full project.
+  const mockFiles: ProjectFile[] = [
+    { path: 'index.html', content: singleFileContent },
+    { path: 'package.json', content: JSON.stringify({ name: 'brimy-project', version: '0.0.1', scripts: { dev: 'vite' } }, null, 2) },
+    { path: 'vite.config.ts', content: `import { defineConfig } from 'vite';\nexport default defineConfig({});` }
+  ];
+
+  return {
+    files: mockFiles,
+    previewHtml: singleFileContent, // The preview is the main HTML file.
+  };
+}
+
+
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -45,8 +78,8 @@ const EditorPage: React.FC = () => {
   const [credits, setCredits] = useState(0);
   const [previewLoading, setPreviewLoading] = useState(false);
   
-  const [codeForPreview, setCodeForPreview] = useState<string | null>(null);
-  const [codeForDisplay, setCodeForDisplay] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [projectFiles, setProjectFiles] = useState<ProjectFile[] | null>(null);
   
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
@@ -54,26 +87,10 @@ const EditorPage: React.FC = () => {
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const streamCode = useCallback((fullCode: string, onFinish: () => void) => {
-    const lines = fullCode.split('\n');
-    let currentDisplay = "";
-    const intervalId = setInterval(() => {
-        if (lines.length > 0) {
-            const chunk = lines.splice(0, 5).join('\n');
-            currentDisplay += (currentDisplay ? '\n' : '') + chunk;
-            setCodeForDisplay(currentDisplay);
-        } else {
-            clearInterval(intervalId);
-            setCodeForDisplay(fullCode); // Ensure final state is perfect
-            onFinish();
-        }
-    }, 40);
-  }, []);
-
   const triggerInitialGeneration = useCallback(async (projId: string, initialMessages: StoredMessage[]) => {
     setLoading(true);
     setPreviewLoading(true);
-    setCodeForDisplay("");
+    setProjectFiles(null);
     abortControllerRef.current = new AbortController();
 
     const firstMessage = initialMessages[0];
@@ -96,11 +113,12 @@ const EditorPage: React.FC = () => {
       return;
     }
 
-    addMessage(projId, { role: "assistant", content: "Clave de API encontrada. Empezando a generar tu página con la IA..." });
+    addMessage(projId, { role: "assistant", content: "Clave de API encontrada. Empezando a generar tu proyecto con la IA..." });
     setMessagesState(getMessages(projId));
 
     try {
-      const generatedCode = await generateAnswer({ 
+      // Using the new mock function
+      const { files, previewHtml } = await generateProjectAnswer({ 
         prompt: firstMessage.content, 
         images: firstMessage.images,
         selectedModelLabel: selectedModel, 
@@ -108,26 +126,27 @@ const EditorPage: React.FC = () => {
         signal: abortControllerRef.current.signal 
       });
       
-      if (includesSupabaseIntent(generatedCode)) {
+      if (includesSupabaseIntent(previewHtml)) {
         setSupabaseIntentCounter((c) => c + 1);
       }
 
-      streamCode(generatedCode, () => {
-        setCode(projId, generatedCode);
-        setCodeForPreview(generatedCode);
-        setPreviewLoading(false);
-        toast.success("Generación completada");
-        addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización está lista." });
+      setProjectFiles(files);
+      persistProjectFiles(projId, files);
+      setPreviewHtml(previewHtml);
+      persistPreviewHtml(projId, previewHtml);
+      
+      setPreviewLoading(false);
+      toast.success("Generación completada");
+      addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización y los archivos del proyecto están listos." });
 
-        const cost = Math.floor(Math.random() * 4001) + 1000;
-        const newCredits = decrementCredits(projId, cost);
-        setCredits(newCredits);
-        toast.info(`${cost.toLocaleString()} tokens used.`);
-        
-        setLoading(false);
-        setMessagesState(getMessages(projId));
-        abortControllerRef.current = null;
-      });
+      const cost = Math.floor(Math.random() * 4001) + 1000;
+      const newCredits = decrementCredits(projId, cost);
+      setCredits(newCredits);
+      toast.info(`${cost.toLocaleString()} tokens used.`);
+      
+      setLoading(false);
+      setMessagesState(getMessages(projId));
+      abortControllerRef.current = null;
 
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -147,7 +166,7 @@ const EditorPage: React.FC = () => {
       setMessagesState(getMessages(projId));
       abortControllerRef.current = null;
     }
-  }, [streamCode]);
+  }, []);
 
   useEffect(() => {
     if (projectId) {
@@ -156,9 +175,8 @@ const EditorPage: React.FC = () => {
         setProjectName(project.name);
         const loadedMessages = getMessages(projectId);
         setMessagesState(loadedMessages);
-        const initialCode = getCode(projectId);
-        setCodeForPreview(initialCode);
-        setCodeForDisplay(initialCode);
+        setPreviewHtml(getPreviewHtml(projectId));
+        setProjectFiles(getProjectFiles(projectId));
         setCredits(getCredits(projectId));
 
         if (loadedMessages.length === 1 && loadedMessages[0].role === 'user') {
@@ -230,37 +248,38 @@ const EditorPage: React.FC = () => {
         setLoading(false);
       } else {
         setPreviewLoading(true);
-        setCodeForDisplay("");
-        const generatedCode = await generateAnswer({
+        setProjectFiles(null);
+        
+        const { files, previewHtml } = await generateProjectAnswer({
           prompt: messageContent,
           images: userMessage.images,
           selectedModelLabel: selectedModel,
           apiKeys,
-          codeContext: codeForPreview,
+          codeContext: getPreviewHtml(projectId), // Pass current preview as context
           signal: abortControllerRef.current.signal,
         });
         
-        if (includesSupabaseIntent(generatedCode)) {
+        if (includesSupabaseIntent(previewHtml)) {
           setSupabaseIntentCounter((c) => c + 1);
         }
 
-        streamCode(generatedCode, () => {
-          setCode(projectId, generatedCode);
-          setCodeForPreview(generatedCode);
-          setPreviewLoading(false);
+        setProjectFiles(files);
+        persistProjectFiles(projectId, files);
+        setPreviewHtml(previewHtml);
+        persistPreviewHtml(projectId, previewHtml);
+        setPreviewLoading(false);
 
-          const aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización.";
-          const cost = Math.floor(Math.random() * 4001) + 1000;
-          const newCredits = decrementCredits(projectId, cost);
-          setCredits(newCredits);
+        const aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización y los archivos.";
+        const cost = Math.floor(Math.random() * 4001) + 1000;
+        const newCredits = decrementCredits(projectId, cost);
+        setCredits(newCredits);
 
-          const aiResponse: StoredMessage = { role: "assistant", content: aiResponseContent, createdAt: Date.now() };
-          const finalMessages = [...newMessages, aiResponse];
-          setMessagesState(finalMessages);
-          setMessages(projectId, finalMessages);
-          setLoading(false);
-          abortControllerRef.current = null;
-        });
+        const aiResponse: StoredMessage = { role: "assistant", content: aiResponseContent, createdAt: Date.now() };
+        const finalMessages = [...newMessages, aiResponse];
+        setMessagesState(finalMessages);
+        setMessages(projectId, finalMessages);
+        setLoading(false);
+        abortControllerRef.current = null;
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -279,7 +298,7 @@ const EditorPage: React.FC = () => {
       setLoading(false);
       if (!isAsk) setPreviewLoading(false);
     }
-  }, [messages, projectId, selectedElement, codeForPreview, streamCode]);
+  }, [messages, projectId, selectedElement]);
 
   const handleRefreshPreview = () => {
     setPreviewLoading(true);
@@ -343,8 +362,8 @@ const EditorPage: React.FC = () => {
           <ResizablePanel defaultSize={75}>
             <PreviewPanel
               previewUrl="/preview"
-              code={codeForPreview}
-              displayCode={codeForDisplay}
+              code={previewHtml}
+              files={projectFiles}
               loading={previewLoading}
               onRefresh={handleRefreshPreview}
               isSelectionModeActive={isSelectionModeActive}
