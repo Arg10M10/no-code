@@ -41,11 +41,31 @@ const PublishPage: React.FC = () => {
       navigate(`/editor?id=${projectId}`);
       return;
     }
+    
     setProject(proj);
     setProjectFiles(projFiles);
     setRepoUrl(proj.repoUrl || null);
-    const sanitized = proj.name.trim().replace(/[^a-zA-Z0-9-._]/g, '-').toLowerCase() || 'brimy-project';
-    setRepoName(sanitized);
+
+    if (proj.repoUrl) {
+      // If repo exists, parse its name from the URL to ensure we sync with the correct one.
+      try {
+        const url = new URL(proj.repoUrl);
+        const pathParts = url.pathname.split('/').filter(Boolean);
+        const existingRepoName = pathParts.pop();
+        if (existingRepoName) {
+          setRepoName(existingRepoName);
+        }
+      } catch (e) {
+        console.error("Could not parse repo URL", e);
+        // Fallback to project name if parsing fails
+        const sanitized = proj.name.trim().replace(/[^a-zA-Z0-9-._]/g, '-').toLowerCase() || 'brimy-project';
+        setRepoName(sanitized);
+      }
+    } else {
+      // If no repo exists, suggest a name based on the project name.
+      const sanitized = proj.name.trim().replace(/[^a-zA-Z0-9-._]/g, '-').toLowerCase() || 'brimy-project';
+      setRepoName(sanitized);
+    }
   }, [projectId, navigate]);
 
   useEffect(() => {
@@ -146,7 +166,7 @@ const PublishPage: React.FC = () => {
               <CardContent>
                 <Button variant="outline" asChild className="w-full">
                   <a href={repoUrl} target="_blank" rel="noopener noreferrer">
-                    View Repository
+                    {repoName}
                     <ExternalLink className="h-4 w-4 ml-2" />
                   </a>
                 </Button>
