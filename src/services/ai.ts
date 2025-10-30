@@ -169,7 +169,16 @@ export async function generateAnswer(req: { prompt: string; images?: string[]; s
   const rawResponse = await callApi({ provider, messages, model, apiKey, temperature: req.temperature, signal: req.signal });
 
   try {
-    const parsed = JSON.parse(rawResponse);
+    // Clean the response string to remove markdown code fences
+    let cleanedResponse = rawResponse.trim();
+    if (cleanedResponse.startsWith("```json")) {
+      cleanedResponse = cleanedResponse.substring(7).trim();
+    }
+    if (cleanedResponse.endsWith("```")) {
+      cleanedResponse = cleanedResponse.slice(0, -3).trim();
+    }
+
+    const parsed = JSON.parse(cleanedResponse);
     if (!parsed.files || !parsed.previewHtml) {
       throw new Error("Invalid JSON structure from AI. Missing 'files' or 'previewHtml'.");
     }
