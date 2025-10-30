@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { ProjectFile } from "@/lib/projects";
 
 async function getGitHubToken(): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -112,11 +113,11 @@ async function pushFileToRepo(
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(`Failed to push file: ${errorData.message}`);
+    throw new Error(`Failed to push file '${filePath}': ${errorData.message}`);
   }
 }
 
-export async function publishToGitHub(repoName: string, fileContent: string): Promise<string> {
+export async function publishToGitHub(repoName: string, files: ProjectFile[]): Promise<string> {
   const token = await getGitHubToken();
   if (!token) {
     throw new Error('Not authenticated with GitHub. Please connect your account to publish.');
@@ -129,8 +130,11 @@ export async function publishToGitHub(repoName: string, fileContent: string): Pr
 
   const repo = await createOrGetRepo(token, sanitizedRepoName, owner);
   
-  const commitMessage = `feat: update project code via Brimy`;
-  await pushFileToRepo(token, owner, repo.name, 'index.html', fileContent, commitMessage);
+  const commitMessage = `feat: update project files via Brimy`;
+
+  for (const file of files) {
+    await pushFileToRepo(token, owner, repo.name, file.path, file.content, commitMessage);
+  }
 
   return repo.html_url;
 }

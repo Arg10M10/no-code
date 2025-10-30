@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Navigation from "@/components/Navigation";
-import { getProjectById, getPreviewHtml, Project, setProjectRepoUrl } from "@/lib/projects";
+import { getProjectById, getProjectFiles, Project, setProjectRepoUrl, ProjectFile } from "@/lib/projects";
 import { publishToGitHub } from "@/lib/github";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -20,7 +20,7 @@ const PublishPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [project, setProject] = useState<Project | null>(null);
-  const [code, setCodeContent] = useState<string | null>(null);
+  const [projectFiles, setProjectFiles] = useState<ProjectFile[] | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [repoUrl, setRepoUrl] = useState<string | null>(null);
@@ -34,15 +34,15 @@ const PublishPage: React.FC = () => {
       return;
     }
     const proj = getProjectById(projectId);
-    const projCode = getPreviewHtml(projectId);
+    const projFiles = getProjectFiles(projectId);
 
-    if (!proj || !projCode) {
-      toast.error("Project not found or has no code.");
+    if (!proj || !projFiles || projFiles.length === 0) {
+      toast.error("Project not found or has no files to publish.");
       navigate(`/editor?id=${projectId}`);
       return;
     }
     setProject(proj);
-    setCodeContent(projCode);
+    setProjectFiles(projFiles);
     setRepoUrl(proj.repoUrl || null);
     const sanitized = proj.name.trim().replace(/[^a-zA-Z0-9-._]/g, '-').toLowerCase() || 'brimy-project';
     setRepoName(sanitized);
@@ -84,8 +84,8 @@ const PublishPage: React.FC = () => {
   };
 
   const handlePublishOrSync = async () => {
-    if (!project || !code || !repoName.trim()) {
-        toast.error("Repository name cannot be empty.");
+    if (!project || !projectFiles || !repoName.trim()) {
+        toast.error("Repository name cannot be empty or project has no files.");
         return;
     }
   
@@ -93,7 +93,7 @@ const PublishPage: React.FC = () => {
     const toastId = toast.loading(repoUrl ? "Syncing with GitHub..." : "Publishing to GitHub...");
   
     try {
-      const url = await publishToGitHub(repoName, code);
+      const url = await publishToGitHub(repoName, projectFiles);
       setRepoUrl(url);
       setPublishSuccess(true);
       if (projectId) {
