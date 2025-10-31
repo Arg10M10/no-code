@@ -329,7 +329,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     />
                   </PopoverContent>
                 </Popover>
+              </div>
 
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="ghost"
@@ -341,9 +343,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 >
                   <Paperclip width={16} height={16} strokeWidth={2} />
                 </Button>
-              </div>
-
-              <div className="flex items-center gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
