@@ -333,7 +333,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-md p-0 text-primary flex items-center justify-center hover:bg-transparent"
+                  className="h-9 w-9 rounded-md p-0 text-foreground flex items-center justify-center hover:bg-transparent"
                   onClick={handleAttachClick}
                   aria-label="Adjuntar imágenes"
                   title="Adjuntar imágenes"
@@ -349,7 +349,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9 rounded-md p-0 text-primary hover:bg-transparent"
+                      className="h-9 w-9 rounded-md p-0 text-foreground hover:bg-transparent"
                     >
                       <ChartNoAxes width={20} height={20} strokeWidth={1.5} />
                     </Button>
@@ -395,7 +395,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-md p-0 text-primary hover:bg-transparent"
+                  className="h-9 w-9 rounded-md p-0 text-foreground hover:bg-transparent"
                   onClick={() => {
                     // Placeholder de settings
                   }}
