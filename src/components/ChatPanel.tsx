@@ -4,7 +4,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Paperclip, Settings, Cpu, Square } from "lucide-react";
+import { ArrowUp, X, Settings, Cpu, Square } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import ModelsPopover from "./ModelsPopover";
 import { getSelectedModelLabel, setSelectedModelLabel, getUserPlan } from "@/lib/settings";
 import { ChartNoAxes } from "./ChartNoAxes";
+import { Paperclip } from "./Paperclip";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -332,12 +333,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-md p-0 text-primary"
+                  className="h-9 w-9 rounded-md p-0 text-primary flex items-center justify-center"
                   onClick={handleAttachClick}
                   aria-label="Adjuntar imágenes"
                   title="Adjuntar imágenes"
                 >
-                  <Paperclip className="h-4 w-4" />
+                  <Paperclip width={16} height={16} strokeWidth={2} />
                 </Button>
               </div>
 
