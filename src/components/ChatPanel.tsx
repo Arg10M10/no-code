@@ -333,7 +333,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-md p-0 text-primary flex items-center justify-center"
+                  className="h-9 w-9 rounded-md p-0 text-primary flex items-center justify-center hover:bg-transparent"
                   onClick={handleAttachClick}
                   aria-label="Adjuntar imágenes"
                   title="Adjuntar imágenes"
@@ -344,8 +344,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
               <div className="flex items-center gap-2">
                 <Popover>
-                  <PopoverTrigger>
-                    <ChartNoAxes width={20} height={20} strokeWidth={1.5} />
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-md p-0 text-primary hover:bg-transparent"
+                    >
+                      <ChartNoAxes width={20} height={20} strokeWidth={1.5} />
+                    </Button>
                   </PopoverTrigger>
                   <PopoverContent
                     side="top"
@@ -388,7 +395,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-md p-0 text-primary"
+                  className="h-9 w-9 rounded-md p-0 text-primary hover:bg-transparent"
                   onClick={() => {
                     // Placeholder de settings
                   }}
