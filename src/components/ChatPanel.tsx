@@ -4,7 +4,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Settings, Cpu, Square } from "lucide-react";
+import { ArrowUp, X, Cpu, Square } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
@@ -13,6 +13,7 @@ import ModelsPopover from "./ModelsPopover";
 import { getSelectedModelLabel, setSelectedModelLabel, getUserPlan } from "@/lib/settings";
 import { ChartNoAxes } from "./ChartNoAxes";
 import { Paperclip } from "./Paperclip";
+import { Earth } from "./Earth";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -314,7 +315,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                       variant="outline"
                       className="h-auto gap-2 px-3 py-1 text-sm font-medium transition-all bg-transparent border-border text-primary select-none hover:bg-primary/5"
                     >
-                      <Cpu className="w-4 h-4" />
+                      <Cpu className="w-4 w-4" />
                       <span className="truncate max-w-[120px]">{selectedModel}</span>
                     </Button>
                   </PopoverTrigger>
@@ -397,11 +398,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   size="icon"
                   className="h-9 w-9 rounded-md p-0 text-foreground hover:bg-transparent"
                   onClick={() => {
-                    // Placeholder de settings
+                    toast.info("Web search coming soon!");
                   }}
-                  aria-label="Settings"
+                  aria-label="Web Search"
+                  title="Web Search"
                 >
-                  <Settings className="h-4 w-4" />
+                  <Earth width={16} height={16} strokeWidth={2} />
                 </Button>
               </div>
             </div>
