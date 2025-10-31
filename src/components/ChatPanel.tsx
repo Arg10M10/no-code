@@ -4,13 +4,14 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Paperclip, Settings, Info, Cpu, Square } from "lucide-react";
+import { ArrowUp, X, Paperclip, Settings, Cpu, Square } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ModelsPopover from "./ModelsPopover";
 import { getSelectedModelLabel, setSelectedModelLabel, getUserPlan } from "@/lib/settings";
+import { ChartNoAxes } from "./ChartNoAxes";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -342,17 +343,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
               <div className="flex items-center gap-2">
                 <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-md p-0 text-primary"
-                      aria-label="Show tokens"
-                      title="Show available tokens"
-                    >
-                      <Info className="h-4 w-4" />
-                    </Button>
+                  <PopoverTrigger>
+                    <ChartNoAxes width={20} height={20} strokeWidth={1.5} />
                   </PopoverTrigger>
                   <PopoverContent
                     side="top"
