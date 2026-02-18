@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Sparkles, Zap, Brain, Code, Box } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -19,7 +19,7 @@ type ProviderData = {
 const modelsData: Record<string, ProviderData> = {
   OpenAI: {
     name: "OpenAI",
-    icon: <Sparkles className="w-4 h-4" />,
+    icon: <img src="/icons/openai.png" alt="OpenAI" className="w-5 h-5 object-contain dark:invert" />,
     models: [
       { id: "GPT-5", name: "GPT-5", description: "Flagship model with high reasoning.", badge: "Best" },
       { id: "GPT-5.2", name: "GPT-5.2", description: "Advanced reasoning & coding.", badge: "New" },
@@ -30,7 +30,7 @@ const modelsData: Record<string, ProviderData> = {
   },
   Google: {
     name: "Google",
-    icon: <Brain className="w-4 h-4" />,
+    icon: <img src="/icons/google.png" alt="Google" className="w-5 h-5 object-contain" />,
     models: [
       { id: "Gemini 3 Pro (Preview)", name: "Gemini 3 Pro", description: "Next-gen multimodal reasoning.", badge: "Beta" },
       { id: "Gemini 3 Flash (Preview)", name: "Gemini 3 Flash", description: "Low latency, high throughput.", badge: "Fast" },
@@ -40,7 +40,7 @@ const modelsData: Record<string, ProviderData> = {
   },
   Anthropic: {
     name: "Anthropic",
-    icon: <Box className="w-4 h-4" />,
+    icon: <img src="/icons/anthropic.webp" alt="Anthropic" className="w-5 h-5 object-contain bg-white rounded-sm" />,
     models: [
       { id: "Claude Opus 4.5", name: "Claude Opus 4.5", description: "Most capable model for complex tasks.", badge: "Best" },
       { id: "Claude Sonnet 4.5", name: "Claude Sonnet 4.5", description: "Ideal balance of intelligence & speed.", badge: "New" },
@@ -49,7 +49,7 @@ const modelsData: Record<string, ProviderData> = {
   },
   OpenRouter: {
     name: "OpenRouter",
-    icon: <Code className="w-4 h-4" />,
+    icon: <img src="/icons/openrouter.webp" alt="OpenRouter" className="w-5 h-5 object-contain bg-white rounded-sm" />,
     models: [
       { id: "Qwen3 Coder", name: "Qwen3 Coder", description: "Top-tier open source coding model.", badge: "Best" },
       { id: "Deepseek v3.1", name: "Deepseek v3.1", description: "Great reasoning capabilities.", badge: "New" },
@@ -101,8 +101,8 @@ const ModelsPopover: React.FC<ModelsPopoverProps> = ({ selectedModel, onSelectMo
               )}
             >
               <div className={cn(
-                "flex items-center justify-center transition-colors", 
-                isActive ? "text-foreground" : "text-muted-foreground"
+                "flex items-center justify-center transition-colors shrink-0", 
+                isActive ? "opacity-100" : "opacity-70"
               )}>
                 {data.icon}
               </div>
@@ -116,7 +116,7 @@ const ModelsPopover: React.FC<ModelsPopoverProps> = ({ selectedModel, onSelectMo
       <div className="flex-1 flex flex-col min-w-0 bg-background">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground shrink-0">
               {currentProviderData.icon}
             </span>
             <span className="font-semibold text-sm">{currentProviderData.name} Models</span>

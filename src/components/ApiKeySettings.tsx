@@ -29,7 +29,7 @@ const providers: Provider[] = [
     id: 'openai', 
     name: 'OpenAI', 
     description: 'Powering models like GPT-5.', 
-    logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OA</div>, 
+    logo: <img src="/icons/openai.png" alt="OpenAI" className="w-full h-full object-contain dark:invert" />, 
     placeholder: 'sk-...', 
     getApiKeyUrl: 'https://openai.com/api/', 
     models: ['GPT-5.2', 'GPT-5.1', 'GPT-5 Codex', 'GPT-5', 'GPT-5 Mini'] 
@@ -38,7 +38,7 @@ const providers: Provider[] = [
     id: 'google', 
     name: 'Google', 
     description: 'Home of the Gemini family of models.', 
-    logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">G</div>, 
+    logo: <img src="/icons/google.png" alt="Google" className="w-full h-full object-contain" />, 
     placeholder: 'AIzaSy...', 
     getApiKeyUrl: 'https://aistudio.google.com/app/api-keys', 
     models: ['Gemini 3 Pro (Preview)', 'Gemini 3 Flash (Preview)', 'Gemini 2.5 Pro', 'Gemini 2.5 Flash'] 
@@ -47,7 +47,7 @@ const providers: Provider[] = [
     id: 'anthropic', 
     name: 'Anthropic', 
     description: 'Building reliable, interpretable, and steerable AI systems.', 
-    logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">A</div>, 
+    logo: <img src="/icons/anthropic.webp" alt="Anthropic" className="w-full h-full object-contain bg-white rounded-sm" />, 
     placeholder: 'sk-ant-...', 
     getApiKeyUrl: 'https://console.anthropic.com/login?returnTo=%2F%3F', 
     models: ['Claude Opus 4.5', 'Claude Sonnet 4.5', 'Claude Sonnet 4'] 
@@ -56,7 +56,7 @@ const providers: Provider[] = [
     id: 'openrouter', 
     name: 'OpenRouter', 
     description: 'Access a variety of models through a single API.', 
-    logo: <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-sm text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-400">OR</div>, 
+    logo: <img src="/icons/openrouter.webp" alt="OpenRouter" className="w-full h-full object-contain bg-white rounded-sm" />, 
     placeholder: 'sk-or-...', 
     getApiKeyUrl: 'https://openrouter.ai/docs/api-reference/overview', 
     models: ['Kimi K2.5', 'Qwen3 Coder', 'Devstral 2', 'GLM 4.7', 'Deepseek v3.1', 'Kimi K2'] 
@@ -119,7 +119,7 @@ const ApiKeySettings = () => {
         {providers.map((provider) => (
           <div key={provider.id} className="flex items-center justify-between p-3 border border-border rounded-lg bg-background">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 flex items-center justify-center">{provider.logo}</div>
+              <div className="h-8 w-8 flex items-center justify-center p-0.5">{provider.logo}</div>
               <span className="font-medium">{provider.name}</span>
             </div>
             <div className="flex items-center gap-3">
