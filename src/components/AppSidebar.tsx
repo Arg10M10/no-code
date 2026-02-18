@@ -6,14 +6,16 @@ import {
   Compass, 
   LayoutGrid, 
   Plus,
-  Layers,
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles,
-  Settings
+  Settings,
+  Inbox
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import SearchModal from "./SearchModal";
 import SettingsModal from "./SettingsModal";
 
@@ -162,28 +164,63 @@ const AppSidebar = () => {
          {/* Footer */}
          {!isCollapsed && (
            <div className="p-4 border-t border-white/5 space-y-4">
-              {/* Pro Plan Card */}
-              <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-white/10 p-4 relative overflow-hidden group">
-                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              {/* Pro Plan Card - BLUE THEME */}
+              <div className="rounded-xl bg-gradient-to-br from-blue-600/20 via-blue-500/10 to-indigo-600/20 border border-blue-500/20 p-4 relative overflow-hidden group">
+                 <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-blue-400/10 to-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                  <div className="relative">
                     <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="h-4 w-4 text-purple-400" />
+                        <Sparkles className="h-4 w-4 text-blue-400" />
                         <span className="text-sm font-semibold text-white">Framio Pro</span>
                     </div>
-                    <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
+                    <p className="text-xs text-blue-200/70 mb-3 leading-relaxed">
                     Unlock advanced AI models, unlimited projects and more.
                     </p>
                     <Link to="/pricing">
-                    <Button size="sm" className="w-full bg-white text-black hover:bg-white/90 h-8 text-xs font-medium border-0 shadow-none">
+                    <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-500 text-white h-8 text-xs font-medium border-0 shadow-sm transition-colors">
                         Upgrade Plan
                     </Button>
                     </Link>
                  </div>
               </div>
 
-              {/* Version Text */}
-              <div className="flex justify-center">
-                 <p className="text-[10px] text-zinc-600 font-mono">v2.4.0 (Open Source)</p>
+              {/* Version & Inbox */}
+              <div className="flex items-center justify-between px-1">
+                 <p className="text-xs font-medium text-zinc-500">v2.4.0 (Beta)</p>
+                 
+                 <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-200 hover:bg-white/5">
+                            <Inbox className="h-4 w-4" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent side="right" align="end" className="w-80 p-0 border-white/10 bg-[#09090b] text-white shadow-xl">
+                        <div className="p-3 border-b border-white/10 flex items-center justify-between bg-white/5">
+                            <span className="font-semibold text-sm">Inbox</span>
+                            <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">3 New</span>
+                        </div>
+                        <ScrollArea className="h-[300px]">
+                            <div className="divide-y divide-white/5">
+                                {[
+                                    { title: "New AI Models Available", date: "2h ago", desc: "We've added support for the latest GPT-5 and Gemini 3 models." },
+                                    { title: "Project Syncing Fixed", date: "5h ago", desc: "Resolved an issue where some files weren't syncing to GitHub correctly." },
+                                    { title: "Welcome to Framio v2.4", date: "1d ago", desc: "Experience the new sidebar, enhanced editor, and improved performance." },
+                                    { title: "Community Challenge", date: "2d ago", desc: "Join our weekend build challenge and win Pro credits!" }
+                                ].map((item, i) => (
+                                    <div key={i} className="p-3 hover:bg-white/5 transition-colors cursor-pointer group">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h4 className="text-sm font-medium text-zinc-200 group-hover:text-blue-400 transition-colors">{item.title}</h4>
+                                            <span className="text-[10px] text-zinc-500 whitespace-nowrap ml-2">{item.date}</span>
+                                        </div>
+                                        <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">{item.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                        <div className="p-2 border-t border-white/10 bg-white/5 text-center">
+                            <button className="text-xs text-zinc-400 hover:text-white transition-colors">Mark all as read</button>
+                        </div>
+                    </PopoverContent>
+                 </Popover>
               </div>
            </div>
          )}
