@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect, ClipboardEvent, KeyboardEvent } fro
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Cpu, ArrowUp, File, X, Clipboard as ClipboardIcon, Clipboard as ClipboardPasteIcon, Figma, Camera, Upload, Check, GitBranch } from "lucide-react";
+import { Cpu, ArrowUp, File, X, Clipboard as ClipboardIcon, Clipboard as ClipboardPasteIcon, Figma, Camera, Upload, Check, GitBranch, Paperclip } from "lucide-react";
 import ModelsPopover from "./ModelsPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createProjectFromPrompt, addMessage } from "@/lib/projects";
@@ -23,19 +23,19 @@ function fileToDataUrl(file: File): Promise<string> {
 const Hero: React.FC = () => {
   const projectFileInputRef = useRef<HTMLInputElement | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
-  const screenshotFileInputRef = useRef<HTMLInputElement | null>(null);
-
+  
   const [selectedModel, setSelectedModel] = useState<string>(getSelectedModelLabel());
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedScreenshot, setSelectedScreenshot] = useState<File | null>(null);
+  
+  // Changed to array to support multiple images
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  
   const [pastedTextInfo, setPastedTextInfo] = useState<{ wordCount: number; content: string } | null>(null);
   const [prompt, setPrompt] = useState<string>("");
   const [answer, setAnswer] = useState<string>("");
   const [copyOk, setCopyOk] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
   const navigate = useNavigate();
 
   const examplePrompts = [
@@ -61,17 +61,14 @@ const Hero: React.FC = () => {
     },
   ];
 
-  const attachment = selectedFile || selectedScreenshot;
-
+  // Update preview URLs when files change
   useEffect(() => {
-    if (attachment && attachment.type.startsWith("image/")) {
-      const url = URL.createObjectURL(attachment);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [attachment]);
+    const urls = selectedImages.map(file => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+    return () => {
+      urls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [selectedImages]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 B";
@@ -83,29 +80,43 @@ const Hero: React.FC = () => {
 
   const handleUploadProjectClick = () => projectFileInputRef.current?.click();
   const handleAttachImageClick = () => imageFileInputRef.current?.click();
-  const handleCloneScreenshotClick = () => screenshotFileInputRef.current?.click();
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: 'project' | 'image' | 'screenshot') => {
-    const file = event.target.files?.[0] ?? null;
-    if (!file) return;
-
-    if (type === 'screenshot') {
-      setSelectedScreenshot(file);
-      setPrompt("Recreate the website shown in this screenshot.");
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: 'project' | 'image') => {
+    if (type === 'project') {
+       // Project upload logic typically handles one file (zip) for now
+       // For now we just log or ignore as the functionality wasn't fully detailed
+       const file = event.target.files?.[0];
+       if (file) {
+         toast.info(`Selected project file: ${file.name}`);
+       }
     } else {
-      setSelectedFile(file);
+       // Images - Append to existing
+       const files = Array.from(event.target.files || []);
+       if (files.length > 0) {
+         setSelectedImages(prev => [...prev, ...files]);
+       }
     }
     event.currentTarget.value = "";
   };
 
-  const handleClearFile = () => {
-    setSelectedFile(null);
-    setSelectedScreenshot(null);
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
+
   const handleClearPastedText = () => setPastedTextInfo(null);
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const pastedText = event.clipboardData.getData("text");
+    // Check if pasted content has files (images)
+    if (event.clipboardData.files && event.clipboardData.files.length > 0) {
+        const files = Array.from(event.clipboardData.files).filter(f => f.type.startsWith('image/'));
+        if (files.length > 0) {
+            event.preventDefault();
+            setSelectedImages(prev => [...prev, ...files]);
+            return;
+        }
+    }
+
     const wordCount = pastedText.split(/\s+/).filter(Boolean).length;
 
     if (wordCount > 20000) {
@@ -127,30 +138,30 @@ const Hero: React.FC = () => {
   };
 
   const handleSend = async () => {
-    if (!prompt.trim()) {
-      toast.message("Write a prompt", { description: "Tell me what you want to build or improve." });
+    if (!prompt.trim() && selectedImages.length === 0) {
+      toast.message("Write a prompt or attach images", { description: "Tell me what you want to build or improve." });
       return;
     }
     setLoading(true);
 
     const proj = createProjectFromPrompt(prompt);
-
-    if (selectedScreenshot) {
-      try {
-        const dataUrl = await fileToDataUrl(selectedScreenshot);
-        addMessage(proj.id, { role: "user", content: prompt, images: [dataUrl] });
-        navigate(`/editor?id=${encodeURIComponent(proj.id)}`);
-      } catch (error) {
-        console.error("Error converting file to data URL", error);
-        toast.error("Could not process screenshot.");
-        setLoading(false);
-      }
-    } else {
-      const fullPrompt = pastedTextInfo?.content
+    
+    const fullPrompt = pastedTextInfo?.content
         ? `${prompt}\n\nPasted context (${pastedTextInfo.wordCount} words):\n${pastedTextInfo.content}`
         : prompt;
-      addMessage(proj.id, { role: "user", content: fullPrompt });
-      navigate(`/editor?id=${encodeURIComponent(proj.id)}`);
+
+    try {
+        let dataUrls: string[] = [];
+        if (selectedImages.length > 0) {
+            dataUrls = await Promise.all(selectedImages.map(fileToDataUrl));
+        }
+
+        addMessage(proj.id, { role: "user", content: fullPrompt, images: dataUrls.length > 0 ? dataUrls : undefined });
+        navigate(`/editor?id=${encodeURIComponent(proj.id)}`);
+    } catch (error) {
+        console.error("Error processing request", error);
+        toast.error("Could not process request.");
+        setLoading(false);
     }
   };
 
@@ -161,9 +172,9 @@ const Hero: React.FC = () => {
     setTimeout(() => setCopyOk(false), 1200);
   };
 
-  const attachmentCount = [attachment, pastedTextInfo].filter(Boolean).length;
-  // Reduced padding here
-  const paddingTopClass = attachmentCount > 0 ? "pt-20" : "pt-4";
+  const hasAttachments = selectedImages.length > 0 || pastedTextInfo;
+  // Dynamic padding based on content
+  const paddingTopClass = hasAttachments ? "pt-24" : "pt-4";
 
   const handleTextareaKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -186,40 +197,38 @@ const Hero: React.FC = () => {
 
         <div className="max-w-2xl mx-auto space-y-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
           <div className="relative">
+            {/* Attachment preview area - Floating inside top of textarea */}
             <div className="absolute top-3 left-3 right-3 z-10 flex flex-col items-start gap-2 pointer-events-none">
-              {attachment && (
-                <div className="pointer-events-auto group relative flex items-center gap-3 px-2 py-2 bg-background/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm animate-fade-in-down hover:bg-background transition-colors max-w-full">
-                  {previewUrl ? (
-                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border/50 bg-secondary/50">
-                      <img 
-                        src={previewUrl} 
-                        alt="Preview" 
-                        className="h-full w-full object-cover" 
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
-                      <File className="h-5 w-5" />
-                    </div>
-                  )}
-                  
-                  <div className="flex flex-col gap-0.5 pr-6 min-w-0">
-                     {!previewUrl && <span className="text-xs font-medium truncate max-w-[180px]">{attachment.name}</span>}
-                     <span className="text-[10px] text-muted-foreground font-medium">{formatFileSize(attachment.size)}</span>
-                  </div>
-
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-background border border-border shadow-sm opacity-0 group-hover:opacity-100 transition-opacity" 
-                    onClick={handleClearFile}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
+              
+              {/* Image Grid - Compact & Grouped */}
+              {selectedImages.length > 0 && (
+                 <div className="pointer-events-auto flex flex-wrap gap-2 max-h-[120px] overflow-y-auto w-full pr-2">
+                    {selectedImages.map((file, idx) => (
+                        <div key={idx} className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-white/10 bg-secondary/50 shadow-sm animate-fade-in-down">
+                            <img 
+                                src={previewUrls[idx]} 
+                                alt="Preview" 
+                                className="h-full w-full object-cover transition-opacity hover:opacity-80" 
+                            />
+                            <button
+                                onClick={() => removeImage(idx)}
+                                className="absolute top-0.5 right-0.5 h-4 w-4 bg-black/50 hover:bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                                title="Remove"
+                            >
+                                <X className="h-2.5 w-2.5" />
+                            </button>
+                        </div>
+                    ))}
+                    {selectedImages.length > 0 && (
+                        <div className="flex items-center justify-center h-12 px-3 rounded-md border border-dashed border-white/20 text-xs text-muted-foreground bg-white/5">
+                            {selectedImages.length} {selectedImages.length === 1 ? 'file' : 'files'}
+                        </div>
+                    )}
+                 </div>
               )}
+
               {pastedTextInfo && (
-                <div className="pointer-events-auto flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down">
+                <div className="pointer-events-auto flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down max-w-full">
                   <div className="flex items-center gap-2 min-w-0">
                     <ClipboardPasteIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <span className="text-xs font-medium truncate">Pasted text ({pastedTextInfo.wordCount} words)</span>
@@ -242,6 +251,7 @@ const Hero: React.FC = () => {
 
             <div className="absolute left-4 bottom-4 flex items-center gap-2">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={handleAttachImageClick}>
+                <Paperclip className="h-4 w-4 mr-2" />
                 Attach
               </Button>
 
@@ -269,7 +279,7 @@ const Hero: React.FC = () => {
                 size="icon"
                 className="rounded-full transition-transform hover:scale-105 active:scale-95"
                 onClick={handleSend}
-                disabled={loading}
+                disabled={loading || (!prompt.trim() && selectedImages.length === 0)}
               >
                 <ArrowUp className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
               </Button>
@@ -301,8 +311,7 @@ const Hero: React.FC = () => {
           <div className="space-y-4 pt-2">
             <div className="flex items-center justify-center gap-3">
               <input type="file" ref={projectFileInputRef} onChange={(e) => handleFileChange(e, 'project')} className="hidden" />
-              <input type="file" ref={imageFileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" accept="image/*" />
-              <input type="file" ref={screenshotFileInputRef} onChange={(e) => handleFileChange(e, 'screenshot')} className="hidden" accept="image/*" />
+              <input type="file" ref={imageFileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" accept="image/*" multiple />
 
               <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleUploadProjectClick}>
                 <Upload className="h-4 w-4 mr-2" />
@@ -319,7 +328,7 @@ const Hero: React.FC = () => {
                 Import from Figma
               </Button>
 
-              <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleCloneScreenshotClick}>
+              <Button variant="outline" size="sm" className="rounded-full bg-secondary border-border hover:bg-muted" onClick={handleAttachImageClick}>
                 <Camera className="h-4 w-4 mr-2" />
                 Clone a Screenshot
               </Button>
