@@ -29,7 +29,8 @@ const REDUCED_MOTION_KEY = "reduced-motion";
 type Theme = "system" | "light" | "dark";
 
 const SectionAppearance = () => {
-  const [theme, setTheme] = useState<Theme>(() => storage.getJSON<Theme>(THEME_KEY, "dark"));
+  // Default changed from "dark" to "system"
+  const [theme, setTheme] = useState<Theme>(() => storage.getJSON<Theme>(THEME_KEY, "system"));
   const [reducedMotion, setReducedMotion] = useState(() => storage.getJSON<boolean>(REDUCED_MOTION_KEY, false));
 
   useEffect(() => {
@@ -47,7 +48,6 @@ const SectionAppearance = () => {
 
   useEffect(() => {
     storage.setJSON(REDUCED_MOTION_KEY, reducedMotion);
-    // In a real app, this would toggle a class on body or inject CSS
     if (reducedMotion) {
       document.documentElement.classList.add("motion-reduce");
     } else {
