@@ -250,15 +250,15 @@ async function callApi(params: {
 }
 
 function buildGenerationMessages(prompt: string, codeContext?: string | null, images?: string[]): ChatMessage[] {
-  const commonSystemPrompt = `Eres un desarrollador web experto creando un proyecto completo con Vite + React + TypeScript + Tailwind CSS.
+  const commonSystemPrompt = `You are an expert web developer creating a full Vite + React + TypeScript + Tailwind CSS project.
 
 IMPORTANTE:
-1. Primero, debes RAZONAR sobre el problema. Explica tu plan detalladamente en español antes de escribir código.
-2. Después de explicar tu plan, genera el código en un único bloque JSON.
+1. First, you MUST explain your plan and reasoning in plain text. **You MUST use the same language as the user's request** (e.g., if the user asks in Spanish, reason in Spanish; if in English, reason in English).
+2. After explaining your plan, generate the code in a single JSON block.
 
-Estructura tu respuesta EXACTAMENTE así:
+Structure your response exactly like this:
 
-[Aquí tu razonamiento y plan detallado en español...]
+[Brief explanation of your plan and reasoning in the user's language...]
 
 \`\`\`json
 { 
@@ -267,18 +267,18 @@ Estructura tu respuesta EXACTAMENTE así:
 }
 \`\`\`
 
-- "files": Array de objetos con "path" y "content". Incluye SIEMPRE package.json, vite.config.ts, tsconfig.json, tailwind.config.ts, src/main.tsx, src/App.tsx y src/index.css.
-- "previewHtml": Un string HTML único y autónomo para previsualizar la app. Debe usar Tailwind CDN.
+- "files": Array of objects, each representing a file in the project. Include package.json, vite.config.ts, tsconfig.json, tailwind.config.ts, src/main.tsx, src/App.tsx, and src/index.css.
+- "previewHtml": A single, standalone HTML string that is a visual representation of the app. It must use the Tailwind CDN (<script src="https://cdn.tailwindcss.com"></script>) and include the selection script just before </body>.
 `;
 
   if (images && images.length > 0) {
-    const userContent: ChatContent = [{ type: 'text', text: `Recrea el sitio web de esta imagen. ${prompt}` }];
+    const userContent: ChatContent = [{ type: 'text', text: `Recreate the website from this screenshot. ${prompt}` }];
     images.forEach(url => userContent.push({ type: 'image_url', image_url: { url } }));
     return [{ role: "system", content: commonSystemPrompt }, { role: "user", content: userContent }];
   }
 
   if (codeContext) {
-    const userPrompt = `Basado en los archivos actuales, aplica este cambio: "${prompt}"\n\nArchivos actuales:\n${codeContext}`;
+    const userPrompt = `Based on the current project files, apply the following change: "${prompt}"\n\nHere are the current project files:\n${codeContext}`;
     return [{ role: "system", content: commonSystemPrompt }, { role: "user", content: userPrompt }];
   }
 
@@ -299,7 +299,7 @@ export async function generateAnswer(req: {
 }): Promise<{ files: ProjectFile[], previewHtml: string, thoughtProcess?: string }> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
-  if (!apiKey) throw new Error(`Falta la API Key para ${provider}.`);
+  if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
 
   const messages = buildGenerationMessages(req.prompt, req.codeContext, req.images);
 
