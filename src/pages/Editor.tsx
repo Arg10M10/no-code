@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   ResizablePanel,
   ResizablePanelGroup,
+  ResizableHandle,
 } from "@/components/ui/resizable";
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
@@ -395,7 +396,7 @@ const EditorPage: React.FC = () => {
               onRetry={handleRetry}
             />
           </ResizablePanel>
-          <div className="h-full w-px bg-border/40 hover:bg-primary/50 transition-colors cursor-col-resize z-10" />
+          <ResizableHandle withHandle />
           <ResizablePanel defaultSize={70}>
             <PreviewPanel
               previewUrl="/preview"

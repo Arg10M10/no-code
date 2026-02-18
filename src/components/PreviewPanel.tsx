@@ -189,15 +189,15 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
           <TabsList className="h-9">
             <TabsTrigger value="preview" className="text-xs">Preview</TabsTrigger>
             <TabsTrigger value="code" className="text-xs">Code</TabsTrigger>
-            <TabsTrigger value="console" className={cn("text-xs flex items-center gap-1.5", errorCount > 0 && "text-red-500 font-medium")}>
-               <Terminal className="w-3.5 h-3.5" />
-               Console
-               {errorCount > 0 && (
-                   <span className="flex items-center justify-center bg-red-500 text-white text-[9px] h-4 min-w-[16px] px-1 rounded-full">
-                       {errorCount}
-                   </span>
-               )}
-            </TabsTrigger>
+            {errorCount > 0 && (
+                <TabsTrigger value="console" className="text-xs flex items-center gap-1.5 text-red-500 font-medium">
+                <Terminal className="w-3.5 h-3.5" />
+                Console
+                <span className="flex items-center justify-center bg-red-500 text-white text-[9px] h-4 min-w-[16px] px-1 rounded-full">
+                    {errorCount}
+                </span>
+                </TabsTrigger>
+            )}
             <TabsTrigger value="integrations" className="text-xs">Integrations</TabsTrigger>
           </TabsList>
           
