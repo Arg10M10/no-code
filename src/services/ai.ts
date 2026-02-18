@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import type { StoredMessage, ProjectFile } from "@/lib/projects";
 
 export type ChatContent = string | Array<{ type: 'text', text: string } | { type: 'image_url', image_url: { url: string; detail?: 'low' | 'high' | 'auto' } }>;
@@ -91,6 +92,11 @@ async function streamReader(
                     if (json.type === "content_block_delta" && json.delta?.text) {
                         onChunk(json.delta.text);
                     }
+                } else if (provider === "google") {
+                    // Gemini stream format in proxy
+                    if (json.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        onChunk(json.candidates[0].content.parts[0].text);
+                    }
                 } else {
                     // OpenAI / OpenRouter format
                     if (json.choices?.[0]?.delta?.content) {
@@ -100,6 +106,12 @@ async function streamReader(
             } catch (e) {
                 // Ignore incomplete JSON chunks
             }
+        } else if (provider === "google" && line.startsWith("[") || line.startsWith(",")) {
+            // Very rudimentary Gemini handling if raw stream is passed
+            // Ideally the backend normalizes this, but for now we rely on the proxy
+            // passing 'data: ' lines or raw JSON arrays.
+            // If backend passes raw google response, it's messy. 
+            // Assuming our Edge Function returns standard SSE or raw body.
         }
     }
   }
@@ -116,177 +128,69 @@ async function callApi(params: {
   onProgress?: (fullText: string) => void; 
 }): Promise<string> {
   const { provider, messages, model, apiKey, system, temperature, signal, onProgress } = params;
-  
-  // Force streaming for real-time feedback, unless it's Google (handled differently or not fully supported in this snippet)
-  const isStreaming = true; 
 
   try {
-    if (provider === "openai" || provider === "openrouter") {
-      const url = provider === "openai" 
-        ? "https://api.openai.com/v1/chat/completions" 
-        : "https://openrouter.ai/api/v1/chat/completions";
-        
-      const headers: Record<string, string> = { 
-        "Content-Type": "application/json", 
-        "Authorization": `Bearer ${apiKey}` 
-      };
-      
-      if (provider === "openrouter") {
-        headers["HTTP-Referer"] = window.location.origin;
-        headers["X-Title"] = "Framio";
-      }
+    // Usamos Supabase Functions para el backend
+    const { data: responseData, error } = await supabase.functions.invoke('generate-code', {
+      body: { 
+        provider, 
+        model, 
+        messages, 
+        apiKey, 
+        system, 
+        temperature: temperature ?? 0.7 
+      },
+      // Importante: responseType 'blob' o 'arraybuffer' a veces ayuda, 
+      // pero para streaming necesitamos acceder al body raw.
+      // supabase-js v2 'invoke' no expone el reader fácilmente si no es responseType stream (que no siempre existe explícitamente).
+      // Workaround: Usar fetch directo a la URL de la función si queremos control total del ReadableStream,
+      // pero probemos capturando la respuesta como un objeto Response si es posible.
+    });
 
-      const r = await fetch(url, {
-        method: "POST",
+    if (error) throw error;
+    
+    // NOTA: supabase.functions.invoke espera JSON por defecto.
+    // Para streaming real, a veces es mejor hacer fetch directo a la URL de la función
+    // si la librería de cliente intenta parsear el JSON antes de devolver.
+    // Vamos a intentar fetch directo a la URL de la función para garantizar streaming.
+    
+    const functionUrl = `${supabase.supabaseUrl}/functions/v1/generate-code`;
+    const headers = {
+      "Authorization": `Bearer ${supabase.supabaseKey}`, // Anon key
+      "Content-Type": "application/json"
+    };
+
+    const response = await fetch(functionUrl, {
+        method: 'POST',
         headers,
         body: JSON.stringify({ 
-          model, 
-          messages, 
-          temperature: temperature ?? 0.7, 
-          max_tokens: 8192, 
-          stream: isStreaming 
+            provider, 
+            model, 
+            messages, 
+            apiKey, 
+            system, 
+            temperature: temperature ?? 0.7 
         }),
-        signal,
-      });
-      
-      if (!r.ok) { 
-        const text = await r.text(); 
-        throw new Error(`${provider} error (${r.status}): ${text}`); 
-      }
-      
-      let fullText = "";
-      await streamReader(r, (chunk) => {
-        fullText += chunk;
-        onProgress?.(fullText);
-      }, provider);
-      return fullText;
+        signal
+    });
+
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Edge Function Error: ${errText}`);
     }
 
-    if (provider === "anthropic") {
-      const systemPrompt = messages.find((m) => m.role === "system")?.content || system || "";
-      const chatMessages = messages.filter((m) => m.role !== "system").map((m) => ({ 
-        role: m.role, 
-        content: typeof m.content === 'string' ? m.content : (m.content as any)
-      }));
-      
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { 
-          "content-type": "application/json", 
-          "x-api-key": apiKey, 
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true" 
-        },
-        body: JSON.stringify({ 
-          model, 
-          max_tokens: 8192, 
-          system: systemPrompt, 
-          messages: chatMessages, 
-          temperature: temperature ?? 0.7, 
-          stream: isStreaming 
-        }),
-        signal,
-      });
-      
-      if (!r.ok) { 
-        const text = await r.text(); 
-        throw new Error(`Anthropic error (${r.status}): ${text}`); 
-      }
+    let fullText = "";
+    await streamReader(response, (chunk) => {
+      fullText += chunk;
+      onProgress?.(fullText);
+    }, provider);
 
-      let fullText = "";
-      await streamReader(r, (chunk) => {
-        fullText += chunk;
-        onProgress?.(fullText);
-      }, provider);
-      return fullText;
-    }
+    return fullText;
 
-    if (provider === "google") {
-      // Google API (Gemini) - Streaming implementation
-      const systemPrompt = messages.find((m) => m.role === "system")?.content || system || "";
-      const contents = messages
-        .filter(m => m.role !== 'system')
-        .map((m) => ({ 
-          role: m.role === "assistant" ? "model" : "user", 
-          parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }] 
-        }));
-
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?key=${encodeURIComponent(apiKey)}`;
-      
-      const r = await fetch(url, { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({
-             contents,
-             generationConfig: { temperature: temperature ?? 0.7 },
-             system_instruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined
-        }), 
-        signal 
-      });
-      
-      if (!r.ok) { 
-        const text = await r.text(); 
-        throw new Error(`Google error (${r.status}): ${text}`); 
-      }
-
-      // Handle Gemini Streaming Response
-      const reader = r.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullText = "";
-      
-      if (reader) {
-          let buffer = "";
-          while(true) {
-             const { done, value } = await reader.read();
-             if (done) break;
-             buffer += decoder.decode(value, { stream: true });
-             
-             // Gemini returns a JSON array structure in stream, typically enclosed in brackets [ ... , ... ]
-             // Parsing this manual stream is complex because it's a single JSON array growing.
-             // Simpler approach for Gemini REST: split by standard JSON object delimiters if possible, 
-             // or just accumulate text if the structure is predictable.
-             // BUT, Gemini :streamGenerateContent returns a stream of JSON objects, usually separated by commas within an array.
-             // We will do a basic extraction.
-             
-             // Basic regex to find "text": "..." 
-             // Note: This is a naive implementation. For robust Gemini streaming, a proper parser is better.
-             // However, for this fix, we will accumulate and try to extract new text.
-             
-             // Actually, to ensure reliability without a heavy parser, we'll assume chunks arrive as valid JSON objects wrapped in the array.
-             // We can often just look for the "text" field in the raw string buffer.
-          }
-      }
-      
-      // Fallback for Google if streaming logic is too complex for this snippet: 
-      // We'll revert to non-streaming for Google just to be safe, OR implementing a simple full-wait if streaming fails.
-      // Given the complexity of manually parsing Google's JSON stream without a library, 
-      // let's stick to non-streaming for Google for now to avoid breaking it, but OpenAI/Anthropic will stream.
-      
-      const r2 = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({
-             contents,
-             generationConfig: { temperature: temperature ?? 0.7 },
-             system_instruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined
-        }), 
-        signal 
-      });
-      
-      const data = await r2.json();
-      const result = (data.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
-      onProgress?.(result); // Update once at the end
-      return result;
-    }
-
-    throw new Error(`Provider ${provider} not supported`);
-    
   } catch (error: any) {
     if (error.name === 'AbortError') throw error;
-    if (error.message.includes("Failed to fetch")) {
-      throw new Error(`Connection failed. CORS or network issue.`);
-    }
-    throw error;
+    console.error("AI Service Error:", error);
+    throw new Error(`Error conectando con la IA: ${error.message}`);
   }
 }
 
@@ -364,12 +268,10 @@ export async function generateAnswer(req: {
        if (req.onStatusUpdate) {
          // Analizar JSON parcial para detectar archivos en tiempo real
          const jsonPart = fullText.substring(jsonStartIndex);
-         // Buscamos patrones de "path": "..." para ir informando qué archivo se está escribiendo
          const regex = /"path":\s*"([^"]+)"/g;
          let match;
          let lastFile = null;
          
-         // Iterar sobre todas las coincidencias para encontrar la última
          while ((match = regex.exec(jsonPart)) !== null) {
             lastFile = match[1];
          }
@@ -388,7 +290,7 @@ export async function generateAnswer(req: {
     apiKey, 
     temperature: req.temperature, 
     signal: req.signal,
-    onProgress // Pass the streaming callback
+    onProgress
   });
 
   try {
@@ -415,7 +317,6 @@ export async function generateAnswer(req: {
       cleanedResponse = cleanedResponse.slice(0, -3).trim();
     }
     
-    // Limpieza adicional por si el modelo metió texto después del JSON
     const lastBraceIndex = cleanedResponse.lastIndexOf("}");
     if (lastBraceIndex !== -1) {
         cleanedResponse = cleanedResponse.substring(0, lastBraceIndex + 1);
@@ -429,8 +330,7 @@ export async function generateAnswer(req: {
     return { ...parsed, thoughtProcess };
   } catch (e: any) {
     console.error("Failed to parse AI JSON response:", e);
-    // Mostrar un poco del contenido crudo para depuración si es necesario
-    throw new Error(`La IA devolvió una respuesta que no se pudo procesar. Asegúrate de usar un modelo capaz de generar JSON (como GPT-4o, Claude 3.5 Sonnet).`);
+    throw new Error(`La IA devolvió una respuesta que no se pudo procesar. Intenta de nuevo.`);
   }
 }
 
@@ -467,6 +367,6 @@ export async function generateChat(req: {
     apiKey, 
     temperature: req.temperature, 
     signal: req.signal,
-    onProgress: req.onUpdate 
+    onUpdate: req.onUpdate 
   });
 }
