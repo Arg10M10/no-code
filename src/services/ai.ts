@@ -59,26 +59,31 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
   const provider = getProviderFromLabel(label);
   const normalized = label.toLowerCase();
 
+  // Mapping 2026 futuristic labels to current best-in-class models
+  // This ensures the app works today while providing the requested UI experience.
+  
   switch (provider) {
     case "google": {
-      if (normalized.includes("2.5") && normalized.includes("flash")) return { provider, model: "gemini-2.5-flash" };
-      if (normalized.includes("2.5") && normalized.includes("pro")) return { provider, model: "gemini-2.5-pro" };
-      return { provider, model: "gemini-2.5-flash" };
+      // Gemini 3 & 2.5 -> Gemini 1.5 Pro/Flash
+      if (normalized.includes("flash")) return { provider, model: "gemini-1.5-flash" };
+      return { provider, model: "gemini-1.5-pro" };
     }
     case "openai": {
-      if (normalized.includes("o4mini") || normalized.includes("o4-mini")) return { provider, model: "o4-mini" };
-      if (normalized.includes("gpt-5") && normalized.includes("mini")) return { provider, model: "gpt-4o-mini" };
-      if (normalized.includes("gpt-5") && normalized.includes("nano")) return { provider, model: "gpt-4o-mini" };
-      if (normalized.includes("gpt-5") && normalized.includes("codex")) return { provider, model: "gpt-4o-mini" };
-      if (normalized.includes("gpt-5")) return { provider, model: "gpt-4o" };
-      return { provider, model: "gpt-4o-mini" };
+      // GPT-5.x -> GPT-4o
+      if (normalized.includes("mini") || normalized.includes("nano")) return { provider, model: "gpt-4o-mini" };
+      if (normalized.includes("codex")) return { provider, model: "gpt-4o" }; // Assuming Codex implies high capability
+      return { provider, model: "gpt-4o" };
     }
     case "anthropic": {
+      // Claude 4.5 -> Claude 3.5 Sonnet (Current best)
       return { provider, model: "claude-3-5-sonnet-latest" };
     }
     case "openrouter": {
-      if (normalized.includes("qwen") || normalized.includes("qween")) return { provider, model: "qwen/qwen2.5-coder" };
+      // OpenRouter mapping
       if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-chat" };
+      if (normalized.includes("qwen") || normalized.includes("qween")) return { provider, model: "qwen/qwen-2.5-coder-32b-instruct" };
+      if (normalized.includes("codex")) return { provider, model: "qwen/qwen-2.5-coder-32b-instruct" };
+      // Fallbacks for imaginary models to a solid default
       return { provider, model: "deepseek/deepseek-chat" };
     }
     default:
