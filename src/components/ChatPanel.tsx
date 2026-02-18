@@ -70,7 +70,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     const urls = selectedImages.map((f) => URL.createObjectURL(f));
     setPreviewUrls(urls);
     return () => {
-      urls.forEach(u) => URL.revokeObjectURL(u));
+      urls.forEach((u) => URL.revokeObjectURL(u));
     };
   }, [selectedImages]);
 
