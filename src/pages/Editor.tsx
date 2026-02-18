@@ -341,6 +341,13 @@ const EditorPage: React.FC = () => {
   };
 
   const handleRetry = (text: string, images?: string[]) => handleNewMessage(text, images);
+  
+  // Función para manejar el "Fix with AI" desde la consola
+  const handleFixError = (error: string) => {
+      const prompt = `I encountered this error in the console. Please fix it:\n\n${error}`;
+      handleNewMessage(prompt);
+      toast.info("Analyzing error...");
+  };
 
   if (!projectId) return <div>Cargando...</div>;
 
@@ -402,6 +409,7 @@ const EditorPage: React.FC = () => {
               projectName={projectName}
               supabaseIntent={supabaseIntentCounter}
               projectId={projectId}
+              onFixError={handleFixError}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
