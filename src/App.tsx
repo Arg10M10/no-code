@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Editor from "./pages/Editor";
 import PreviewPage from "./pages/Preview";
 import PublishPage from "./pages/Publish";
+import Resources from "./pages/Resources";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/editor" element={<Editor />} />
             <Route path="/preview" element={<PreviewPage />} />
             <Route path="/publish/:projectId" element={<PublishPage />} />
+            <Route path="/resources" element={<Resources />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
