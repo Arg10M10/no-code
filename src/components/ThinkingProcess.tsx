@@ -1,101 +1,127 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Loader2, ChevronRight, CheckCircle2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Loader2, ChevronDown, ChevronRight, BrainCircuit, CheckCircle2, FileCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ThinkingProcessProps {
   logs: string[];
   thought?: string;
+  isFinished?: boolean;
 }
 
-export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ logs, thought }) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [isExpanded, setIsExpanded] = useState(true);
-  
-  // Lógica de auto-colapso:
-  // Si tenemos logs (empezó a escribir código), colapsamos el pensamiento por defecto.
-  // Si no hay logs (está pensando), lo mantenemos expandido.
+export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ logs, thought, isFinished = false }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [currentStep, setCurrentStep] = useState<string>("Iniciando...");
+
+  // Determinar el "paso" actual basado en el estado
   useEffect(() => {
     if (logs.length > 0) {
-        setIsExpanded(false);
+        const lastLog = logs[logs.length - 1];
+        if (lastLog.includes("Writing")) {
+            setCurrentStep("Generando código...");
+        } else {
+            setCurrentStep("Aplicando cambios...");
+        }
     } else if (thought) {
-        setIsExpanded(true);
+        if (thought.length < 50) setCurrentStep("Analizando solicitud...");
+        else if (thought.length < 200) setCurrentStep("Revisando contexto...");
+        else setCurrentStep("Planificando arquitectura...");
     }
-  }, [logs.length > 0]); // Solo reaccionar cuando cambia el estado de tener logs o no
+  }, [logs, thought]);
 
-  // Auto-scroll para logs
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [logs]);
-
-  if (!thought && logs.length === 0) {
-     return (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse p-1">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span>Analizando solicitud...</span>
-        </div>
-     );
-  }
+  if (isFinished && !isExpanded) return null;
 
   return (
-    <div className="flex flex-col gap-2 w-full animate-fade-in text-sm">
-      
-      {/* Sección de Pensamiento (Collapsible) */}
-      {thought && (
-        <div className="group">
-            <button 
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors w-full text-left"
-            >
-                <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", isExpanded && "rotate-90")} />
-                <span className={cn("font-medium", isExpanded ? "text-foreground" : "")}>
-                    Thought
+    <div className="w-full my-2 animate-fade-in">
+      <div className={cn(
+          "rounded-lg border transition-all duration-300 overflow-hidden",
+          isExpanded ? "bg-card border-border shadow-sm" : "bg-muted/30 border-transparent hover:bg-muted/50"
+      )}>
+        {/* Header - Always visible summary */}
+        <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs select-none"
+        >
+            <div className="flex items-center gap-2.5">
+                <div className={cn(
+                    "flex items-center justify-center w-4 h-4 rounded-full",
+                    isFinished ? "text-green-500" : "text-amber-500"
+                )}>
+                    {isFinished ? (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                    ) : (
+                        <BrainCircuit className={cn("w-3.5 h-3.5", !isFinished && "animate-pulse")} />
+                    )}
+                </div>
+                
+                <span className={cn(
+                    "font-medium",
+                    isFinished ? "text-muted-foreground" : "text-foreground"
+                )}>
+                    {isFinished ? "Planificación completada" : currentStep}
                 </span>
-                {!isExpanded && (
-                    <span className="text-xs text-muted-foreground/60 truncate ml-1 max-w-[300px]">
-                        {thought.split('\n')[0]}...
+
+                {/* Loading indicator dots if active */}
+                {!isFinished && (
+                    <span className="flex gap-0.5 items-center mt-1">
+                        <span className="w-0.5 h-0.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                        <span className="w-0.5 h-0.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                        <span className="w-0.5 h-0.5 bg-foreground/40 rounded-full animate-bounce" />
                     </span>
                 )}
-            </button>
-            
-            {isExpanded && (
-                <div className="pl-6 mt-1 text-muted-foreground/90 text-xs leading-relaxed whitespace-pre-wrap border-l border-border/40 ml-2 animate-fade-in">
-                    {thought}
-                </div>
-            )}
-        </div>
-      )}
-
-      {/* Sección de Archivos Editados (Logs) */}
-      {logs.length > 0 && (
-        <div className="mt-2 pl-2">
-            <div 
-                ref={scrollRef}
-                className="flex flex-col gap-1.5 overflow-hidden"
-            >
-                {logs.map((log, index) => {
-                    const isLast = index === logs.length - 1;
-                    const match = log.match(/Writing\s+(.+)\.\.\./);
-                    const fileName = match ? match[1] : log;
-
-                    return (
-                        <div key={index} className={cn(
-                            "flex items-center gap-2 text-xs transition-all",
-                            isLast ? "text-foreground opacity-100" : "text-muted-foreground opacity-60"
-                        )}>
-                            {isLast ? (
-                                <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-                            ) : (
-                                <CheckCircle2 className="h-3 w-3 text-green-500" />
-                            )}
-                            <span className="font-mono">{fileName}</span>
-                        </div>
-                    )
-                })}
             </div>
-        </div>
-      )}
+
+            <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold opacity-70">
+                    {isExpanded ? "Ocultar" : "Detalles"}
+                </span>
+                {isExpanded ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+            </div>
+        </button>
+
+        {/* Expanded Content */}
+        {isExpanded && (
+            <div className="px-3 pb-3 pt-0 border-t border-border/40 bg-background/50">
+                {/* Chain of Thought */}
+                {thought && (
+                    <div className="mt-3">
+                        <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                            <BrainCircuit className="w-3 h-3" />
+                            Razonamiento
+                        </h4>
+                        <div className="text-xs text-muted-foreground/90 leading-relaxed whitespace-pre-wrap pl-2 border-l-2 border-border/60">
+                            {thought}
+                        </div>
+                    </div>
+                )}
+
+                {/* File Generation Logs */}
+                {logs.length > 0 && (
+                    <div className="mt-4">
+                        <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                            <FileCode className="w-3 h-3" />
+                            Acciones
+                        </h4>
+                        <div className="space-y-1 pl-1">
+                            {logs.map((log, idx) => {
+                                const match = log.match(/Writing\s+(.+)\.\.\./);
+                                const fileName = match ? match[1] : log;
+                                return (
+                                    <div key={idx} className="flex items-center gap-2 text-xs text-muted-foreground/80 font-mono">
+                                        <div className="w-1 h-1 rounded-full bg-blue-500/50" />
+                                        {fileName}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
+      </div>
     </div>
   );
 };
