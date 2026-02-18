@@ -64,8 +64,9 @@ const EditorPage: React.FC = () => {
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
 
-  // Estado para los logs en tiempo real
+  // Estado para los logs en tiempo real y pensamientos
   const [generationLogs, setGenerationLogs] = useState<string[]>([]);
+  const [thoughtProcess, setThoughtProcess] = useState<string>("");
 
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -83,7 +84,8 @@ const EditorPage: React.FC = () => {
     setLoading(true);
     setPreviewLoading(true);
     setProjectFiles(null);
-    setGenerationLogs([]); // Clear logs, no initial message
+    setGenerationLogs([]); 
+    setThoughtProcess("");
     abortControllerRef.current = new AbortController();
 
     const firstMessage = initialMessages[0];
@@ -109,18 +111,18 @@ const EditorPage: React.FC = () => {
     // Don't add "Key found" message to chat, keep it clean
     
     try {
-      const { files, previewHtml } = await generateAnswer({ 
+      const { files, previewHtml, thoughtProcess: finalThought } = await generateAnswer({ 
         prompt: firstMessage.content, 
         images: firstMessage.images,
         selectedModelLabel: selectedModel, 
         apiKeys, 
         signal: abortControllerRef.current.signal,
         onStatusUpdate: (status) => {
-            // Only show file writing logs
             if (status.includes("Writing")) {
                 addLog(status);
             }
-        }
+        },
+        onThoughtUpdate: (text) => setThoughtProcess(text)
       });
       
       if (includesSupabaseIntent(previewHtml)) {
@@ -134,7 +136,13 @@ const EditorPage: React.FC = () => {
       
       setPreviewLoading(false);
       toast.success("Generación completada");
-      addMessage(projId, { role: "assistant", content: "Generación completada — la previsualización y los archivos del proyecto están listos." });
+      
+      // We can optionally add the thought process to the stored message if we want to persist it
+      const content = finalThought 
+        ? `${finalThought}\n\nGeneración completada.` 
+        : "Generación completada — la previsualización y los archivos del proyecto están listos.";
+      
+      addMessage(projId, { role: "assistant", content });
 
       const cost = Math.floor(Math.random() * 4001) + 1000;
       const newCredits = decrementCredits(projId, cost);
@@ -228,7 +236,8 @@ const EditorPage: React.FC = () => {
     setMessagesState(newMessages);
     setMessages(projectId, newMessages);
     setLoading(true);
-    setGenerationLogs([]); // Clear logs
+    setGenerationLogs([]); 
+    setThoughtProcess("");
 
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const selectedModel = getSelectedModelLabel();
@@ -270,7 +279,7 @@ const EditorPage: React.FC = () => {
         const currentFiles = getProjectFiles(projectId) || [];
         const codeContext = currentFiles.length > 0 ? JSON.stringify(currentFiles) : null;
 
-        const { files: newFiles, previewHtml } = await generateAnswer({
+        const { files: newFiles, previewHtml, thoughtProcess: finalThought } = await generateAnswer({
           prompt: messageContent,
           images: userMessage.images,
           selectedModelLabel: selectedModel,
@@ -278,11 +287,11 @@ const EditorPage: React.FC = () => {
           codeContext: codeContext,
           signal: abortControllerRef.current.signal,
           onStatusUpdate: (status) => {
-             // Only show file writing logs
              if (status.includes("Writing")) {
                  addLog(status);
              }
-          }
+          },
+          onThoughtUpdate: (text) => setThoughtProcess(text)
         });
         
         if (includesSupabaseIntent(previewHtml)) {
@@ -307,7 +316,8 @@ const EditorPage: React.FC = () => {
         setPreviewLoading(false);
 
         const changesJson = JSON.stringify(changes);
-        const aiResponseContent = `Listo. He aplicado tus cambios.\n---CHANGES---${changesJson}`;
+        // Include thought process in the final message if available
+        const aiResponseContent = `${finalThought ? finalThought + "\n\n" : ""}Listo. He aplicado tus cambios.\n---CHANGES---${changesJson}`;
         
         const cost = Math.floor(Math.random() * 4001) + 1000;
         const newCredits = decrementCredits(projectId, cost);
@@ -396,6 +406,7 @@ const EditorPage: React.FC = () => {
               selectedElement={selectedElement}
               onClearSelection={() => setSelectedElement(null)}
               generationLogs={generationLogs}
+              thought={thoughtProcess}
               onRetry={handleRetry}
             />
           </ResizablePanel>

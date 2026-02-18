@@ -22,6 +22,7 @@ type ChatPanelProps = {
   selectedElement: string | null;
   onClearSelection: () => void;
   generationLogs?: string[];
+  thought?: string;
   onRetry?: (text: string, images?: string[]) => void;
 };
 
@@ -44,6 +45,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   selectedElement,
   onClearSelection,
   generationLogs = [],
+  thought,
   onRetry,
 }) => {
   const navigate = useNavigate();
@@ -65,7 +67,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
   React.useEffect(() => {
     scrollToBottom();
-  }, [messages, loading, generationLogs]);
+  }, [messages, loading, generationLogs, thought]);
 
   React.useEffect(() => {
     const urls = selectedImages.map((f) => URL.createObjectURL(f));
@@ -255,7 +257,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     </div>
                 </div>
                 <div className="min-w-0 flex-1 py-1">
-                   <ThinkingProcess logs={generationLogs} />
+                   <ThinkingProcess logs={generationLogs} thought={thought} />
                 </div>
             </div>
           )}

@@ -265,10 +265,24 @@ async function callApi(params: {
 
 function buildGenerationMessages(prompt: string, codeContext?: string | null, images?: string[]): ChatMessage[] {
   const commonSystemPrompt = `You are an expert web developer creating a full Vite + React + TypeScript + Tailwind CSS project.
-Your response MUST be a single JSON object with this exact structure: { "files": [{ "path": "...", "content": "..." }], "previewHtml": "..." }.
+
+First, you MUST explain your plan and reasoning in plain text.
+Then, you MUST output the code in a single JSON block.
+
+Structure your response exactly like this:
+
+[Brief explanation of your plan and how you will solve the request...]
+
+\`\`\`json
+{ 
+  "files": [{ "path": "...", "content": "..." }], 
+  "previewHtml": "..." 
+}
+\`\`\`
+
 - "files": An array of objects, each representing a file in the project. Include package.json, vite.config.ts, tsconfig.json, tailwind.config.ts, src/main.tsx, src/App.tsx, and src/index.css.
 - "previewHtml": A single, standalone HTML string that is a visual representation of the app. It must use the Tailwind CDN (<script src="https://cdn.tailwindcss.com"></script>) and include the selection script just before </body>.
-Do NOT include any explanations, comments, or markdown code blocks like \`\`\`json ... \`\`\` around the JSON response.`;
+`;
 
   if (images && images.length > 0) {
     const userContent: ChatContent = [{ type: 'text', text: `Recreate the website from this screenshot. ${prompt}` }];
@@ -294,7 +308,8 @@ export async function generateAnswer(req: {
   codeContext?: string | null; 
   signal?: AbortSignal; 
   onStatusUpdate?: (status: string) => void;
-}): Promise<{ files: ProjectFile[], previewHtml: string }> {
+  onThoughtUpdate?: (thought: string) => void;
+}): Promise<{ files: ProjectFile[], previewHtml: string, thoughtProcess?: string }> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
   if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
@@ -302,23 +317,38 @@ export async function generateAnswer(req: {
   const messages = buildGenerationMessages(req.prompt, req.codeContext, req.images);
 
   const onProgress = (fullText: string) => {
-    if (!req.onStatusUpdate) return;
+    // 1. Check for JSON start to separate thoughts from code
+    const jsonStartIndex = fullText.indexOf("```json");
     
-    // Find last file path being written
-    const regex = /"path":\s*"([^"]+)"/g;
-    let match;
-    let lastFile = null;
-    while ((match = regex.exec(fullText)) !== null) {
-      lastFile = match[1];
-    }
-    
-    // Update active status
-    if (lastFile) {
-      req.onStatusUpdate(`Writing ${lastFile}...`);
+    if (jsonStartIndex === -1) {
+       // We are still in the thought process phase
+       if (req.onThoughtUpdate) {
+          req.onThoughtUpdate(fullText.trim());
+       }
     } else {
-      if (fullText.length < 50) req.onStatusUpdate("Thinking...");
-      else if (fullText.length < 500) req.onStatusUpdate(`Planning structure (${fullText.length} chars)...`);
-      else req.onStatusUpdate(`Generating code (${Math.round(fullText.length / 1024)}KB)...`);
+       // We have started generating JSON code
+       // Make sure we sent the full thought process at least once
+       if (req.onThoughtUpdate) {
+          const thoughtPart = fullText.substring(0, jsonStartIndex).trim();
+          req.onThoughtUpdate(thoughtPart);
+       }
+       
+       if (req.onStatusUpdate) {
+         // Analyze the JSON part for file paths
+         const jsonPart = fullText.substring(jsonStartIndex);
+         const regex = /"path":\s*"([^"]+)"/g;
+         let match;
+         let lastFile = null;
+         while ((match = regex.exec(jsonPart)) !== null) {
+            lastFile = match[1];
+         }
+         
+         if (lastFile) {
+            req.onStatusUpdate(`Writing ${lastFile}...`);
+         } else {
+            req.onStatusUpdate("Generating code structure...");
+         }
+       }
     }
   };
 
@@ -333,7 +363,25 @@ export async function generateAnswer(req: {
   });
 
   try {
-    let cleanedResponse = rawResponse.trim();
+    let thoughtProcess = "";
+    let jsonContent = rawResponse;
+
+    // Split thought process from JSON
+    const jsonStartIndex = rawResponse.indexOf("```json");
+    if (jsonStartIndex !== -1) {
+        thoughtProcess = rawResponse.substring(0, jsonStartIndex).trim();
+        jsonContent = rawResponse.substring(jsonStartIndex);
+    } else {
+        // Fallback: try to find the first { if ```json is missing (some models might skip fence)
+        const firstBrace = rawResponse.indexOf("{");
+        if (firstBrace !== -1) {
+            thoughtProcess = rawResponse.substring(0, firstBrace).trim();
+            jsonContent = rawResponse.substring(firstBrace);
+        }
+    }
+
+    // Clean up JSON block
+    let cleanedResponse = jsonContent.trim();
     if (cleanedResponse.startsWith("```json")) {
       cleanedResponse = cleanedResponse.substring(7).trim();
     }
@@ -345,7 +393,8 @@ export async function generateAnswer(req: {
     if (!parsed.files || !parsed.previewHtml) {
       throw new Error("Invalid JSON structure from AI. Missing 'files' or 'previewHtml'.");
     }
-    return parsed;
+    
+    return { ...parsed, thoughtProcess };
   } catch (e: any) {
     console.error("Failed to parse AI JSON response:", e);
     throw new Error(`The AI returned an invalid response that could not be parsed. Details: ${e.message}`);
