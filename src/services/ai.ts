@@ -93,12 +93,10 @@ async function streamReader(
                         onChunk(json.delta.text);
                     }
                 } else if (provider === "google") {
-                    // Gemini stream format in proxy
                     if (json.candidates?.[0]?.content?.parts?.[0]?.text) {
                         onChunk(json.candidates[0].content.parts[0].text);
                     }
                 } else {
-                    // OpenAI / OpenRouter format
                     if (json.choices?.[0]?.delta?.content) {
                         onChunk(json.choices[0].delta.content);
                     }
@@ -106,18 +104,12 @@ async function streamReader(
             } catch (e) {
                 // Ignore incomplete JSON chunks
             }
-        } else if (provider === "google" && line.startsWith("[") || line.startsWith(",")) {
-            // Very rudimentary Gemini handling if raw stream is passed
-            // Ideally the backend normalizes this, but for now we rely on the proxy
-            // passing 'data: ' lines or raw JSON arrays.
-            // If backend passes raw google response, it's messy. 
-            // Assuming our Edge Function returns standard SSE or raw body.
         }
     }
   }
 }
 
-async function callApi(params: { 
+type CallApiParams = { 
   messages: ChatMessage[]; 
   model: string; 
   apiKey: string; 
@@ -126,71 +118,178 @@ async function callApi(params: {
   temperature?: number; 
   signal?: AbortSignal;
   onProgress?: (fullText: string) => void; 
-}): Promise<string> {
+};
+
+// 1. Attempt via Supabase Edge Function
+async function callEdgeFunction(params: CallApiParams): Promise<string> {
   const { provider, messages, model, apiKey, system, temperature, signal, onProgress } = params;
+  
+  const functionUrl = `${supabase.supabaseUrl}/functions/v1/generate-code`;
+  // Use anon key from client
+  const headers = {
+    "Authorization": `Bearer ${supabase.supabaseKey}`, 
+    "Content-Type": "application/json"
+  };
 
-  try {
-    // Usamos Supabase Functions para el backend
-    const { data: responseData, error } = await supabase.functions.invoke('generate-code', {
-      body: { 
-        provider, 
-        model, 
-        messages, 
-        apiKey, 
-        system, 
-        temperature: temperature ?? 0.7 
-      },
-      // Importante: responseType 'blob' o 'arraybuffer' a veces ayuda, 
-      // pero para streaming necesitamos acceder al body raw.
-      // supabase-js v2 'invoke' no expone el reader fácilmente si no es responseType stream (que no siempre existe explícitamente).
-      // Workaround: Usar fetch directo a la URL de la función si queremos control total del ReadableStream,
-      // pero probemos capturando la respuesta como un objeto Response si es posible.
-    });
+  const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ 
+          provider, 
+          model, 
+          messages, 
+          apiKey, 
+          system, 
+          temperature: temperature ?? 0.7 
+      }),
+      signal
+  });
 
-    if (error) throw error;
-    
-    // NOTA: supabase.functions.invoke espera JSON por defecto.
-    // Para streaming real, a veces es mejor hacer fetch directo a la URL de la función
-    // si la librería de cliente intenta parsear el JSON antes de devolver.
-    // Vamos a intentar fetch directo a la URL de la función para garantizar streaming.
-    
-    const functionUrl = `${supabase.supabaseUrl}/functions/v1/generate-code`;
-    const headers = {
-      "Authorization": `Bearer ${supabase.supabaseKey}`, // Anon key
-      "Content-Type": "application/json"
-    };
+  if (!response.ok) {
+      // If 404/500/etc, throw error to trigger fallback
+      throw new Error(`Edge Function Failed: ${response.status}`);
+  }
 
-    const response = await fetch(functionUrl, {
-        method: 'POST',
+  let fullText = "";
+  await streamReader(response, (chunk) => {
+    fullText += chunk;
+    onProgress?.(fullText);
+  }, provider);
+
+  return fullText;
+}
+
+// 2. Direct Browser Fallback
+async function callDirectBrowser(params: CallApiParams): Promise<string> {
+  const { provider, messages, model, apiKey, system, temperature, signal, onProgress } = params;
+  console.log("Using Direct Browser Fallback for AI...");
+
+  if (provider === "openai" || provider === "openrouter") {
+      const url = provider === "openai" 
+        ? "https://api.openai.com/v1/chat/completions" 
+        : "https://openrouter.ai/api/v1/chat/completions";
+        
+      const headers: Record<string, string> = { 
+        "Content-Type": "application/json", 
+        "Authorization": `Bearer ${apiKey}` 
+      };
+      
+      if (provider === "openrouter") {
+        headers["HTTP-Referer"] = window.location.origin;
+        headers["X-Title"] = "Framio";
+      }
+
+      const r = await fetch(url, {
+        method: "POST",
         headers,
         body: JSON.stringify({ 
-            provider, 
-            model, 
-            messages, 
-            apiKey, 
-            system, 
-            temperature: temperature ?? 0.7 
+          model, 
+          messages, 
+          temperature: temperature ?? 0.7, 
+          max_tokens: 8192, 
+          stream: true 
         }),
-        signal
-    });
+        signal,
+      });
+      
+      if (!r.ok) { 
+        const text = await r.text(); 
+        throw new Error(`${provider} direct error (${r.status}): ${text}`); 
+      }
+      
+      let fullText = "";
+      await streamReader(r, (chunk) => {
+        fullText += chunk;
+        onProgress?.(fullText);
+      }, provider);
+      return fullText;
+  }
 
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Edge Function Error: ${errText}`);
-    }
+  if (provider === "anthropic") {
+      const systemPrompt = messages.find((m) => m.role === "system")?.content || system || "";
+      const chatMessages = messages.filter((m) => m.role !== "system").map((m) => ({ 
+        role: m.role, 
+        content: typeof m.content === 'string' ? m.content : (m.content as any)
+      }));
+      
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { 
+          "content-type": "application/json", 
+          "x-api-key": apiKey, 
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true" 
+        },
+        body: JSON.stringify({ 
+          model, 
+          max_tokens: 8192, 
+          system: systemPrompt, 
+          messages: chatMessages, 
+          temperature: temperature ?? 0.7, 
+          stream: true 
+        }),
+        signal,
+      });
+      
+      if (!r.ok) { 
+        const text = await r.text(); 
+        throw new Error(`Anthropic direct error (${r.status}): ${text}`); 
+      }
 
-    let fullText = "";
-    await streamReader(response, (chunk) => {
-      fullText += chunk;
-      onProgress?.(fullText);
-    }, provider);
+      let fullText = "";
+      await streamReader(r, (chunk) => {
+        fullText += chunk;
+        onProgress?.(fullText);
+      }, provider);
+      return fullText;
+  }
+  
+  if (provider === "google") {
+      // Basic Google Fallback (Non-streaming to keep it robust if streaming is tricky directly)
+      const systemPrompt = messages.find((m) => m.role === "system")?.content || system || "";
+      const contents = messages
+        .filter(m => m.role !== 'system')
+        .map((m) => ({ 
+          role: m.role === "assistant" ? "model" : "user", 
+          parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }] 
+        }));
 
-    return fullText;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      
+      const r = await fetch(url, { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({
+             contents,
+             generationConfig: { temperature: temperature ?? 0.7 },
+             system_instruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined
+        }), 
+        signal 
+      });
 
-  } catch (error: any) {
-    if (error.name === 'AbortError') throw error;
-    console.error("AI Service Error:", error);
-    throw new Error(`Error conectando con la IA: ${error.message}`);
+      if (!r.ok) {
+         const text = await r.text(); 
+         throw new Error(`Google direct error (${r.status}): ${text}`); 
+      }
+      
+      const data = await r.json();
+      const result = (data.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
+      onProgress?.(result);
+      return result;
+  }
+
+  throw new Error(`Provider ${provider} does not support direct browser fallback.`);
+}
+
+// Main API call router with Fallback
+async function callApi(params: CallApiParams): Promise<string> {
+  try {
+    // 1. Try backend
+    return await callEdgeFunction(params);
+  } catch (backendError) {
+    console.warn("Backend Edge Function failed, trying direct browser connection...", backendError);
+    // 2. Fallback to direct
+    return await callDirectBrowser(params);
   }
 }
 
@@ -367,6 +466,6 @@ export async function generateChat(req: {
     apiKey, 
     temperature: req.temperature, 
     signal: req.signal,
-    onUpdate: req.onUpdate 
+    onProgress: req.onUpdate 
   });
 }

@@ -6,7 +6,6 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -25,15 +24,13 @@ Deno.serve(async (req) => {
       'Authorization': `Bearer ${apiKey}`,
     };
 
-    // --- Configuración por Proveedor ---
-    
     if (provider === 'openai' || provider === 'openrouter') {
       url = provider === 'openai' 
         ? 'https://api.openai.com/v1/chat/completions' 
         : 'https://openrouter.ai/api/v1/chat/completions';
       
       if (provider === 'openrouter') {
-        headers['HTTP-Referer'] = 'https://framio.app'; // Placeholder
+        headers['HTTP-Referer'] = 'https://framio.app';
         headers['X-Title'] = 'Framio';
       }
 
@@ -52,7 +49,6 @@ Deno.serve(async (req) => {
         'anthropic-version': '2023-06-01',
       };
       
-      // Anthropic format adjustments
       const systemPrompt = messages.find((m: any) => m.role === 'system')?.content || system || "";
       const chatMessages = messages
         .filter((m: any) => m.role !== 'system')
@@ -70,10 +66,8 @@ Deno.serve(async (req) => {
         stream: true,
       };
     } else if (provider === 'google') {
-       // Google Gemini Streaming (REST)
-       // Note: Google uses a different URL structure with the key in the query param
        url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}`;
-       delete headers['Authorization']; // Google uses key in URL
+       delete headers['Authorization'];
 
        const systemPrompt = messages.find((m: any) => m.role === 'system')?.content || system || "";
        const contents = messages
@@ -92,8 +86,6 @@ Deno.serve(async (req) => {
       throw new Error(`Provider ${provider} not supported in backend yet.`);
     }
 
-    // --- Llamada al Proveedor ---
-
     const response = await fetch(url, {
       method: 'POST',
       headers,
@@ -105,10 +97,6 @@ Deno.serve(async (req) => {
       throw new Error(`${provider} API Error: ${response.status} - ${errText}`);
     }
 
-    // --- Proxy del Stream ---
-    // Simplemente reenviamos el stream del proveedor al cliente.
-    // El cliente (src/services/ai.ts) se encargará de decodificar el formato específico (data: json, etc).
-    
     return new Response(response.body, {
       headers: {
         ...corsHeaders,
