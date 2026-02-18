@@ -4,10 +4,9 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap, Image as ImageIcon, Sparkles, User, FileCode, FilePlus, RotateCcw } from "lucide-react";
+import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap, Sparkles, FileCode, FilePlus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import TypingIndicator from "./TypingIndicator";
 import { ThinkingProcess } from "./ThinkingProcess";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ModelsPopover from "./ModelsPopover";
@@ -72,7 +71,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     const urls = selectedImages.map((f) => URL.createObjectURL(f));
     setPreviewUrls(urls);
     return () => {
-      urls.forEach(u) => URL.revokeObjectURL(u));
+      urls.forEach(u => URL.revokeObjectURL(u));
     };
   }, [selectedImages]);
 
