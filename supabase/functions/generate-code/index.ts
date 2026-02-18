@@ -1,10 +1,11 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -13,7 +14,7 @@ Deno.serve(async (req) => {
     const { provider, model, messages, apiKey, temperature, system } = await req.json();
 
     if (!apiKey) {
-      throw new Error('Missing API Key');
+      throw new Error('API Key no proporcionada. Configúrala en Settings.');
     }
 
     let url = '';
@@ -37,7 +38,7 @@ Deno.serve(async (req) => {
         model,
         messages,
         temperature: temperature ?? 0.7,
-        max_tokens: 4096, // Reduced slightly to be safe
+        max_tokens: 4000,
         stream: true,
       };
     } else if (provider === 'anthropic') {
@@ -60,13 +61,12 @@ Deno.serve(async (req) => {
         model,
         messages: chatMessages,
         system: systemPrompt,
-        max_tokens: 4096,
+        max_tokens: 4000,
         temperature: temperature ?? 0.7,
         stream: true,
       };
     } else if (provider === 'google') {
        url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}`;
-       // Google API uses key in URL, remove auth header
        delete headers['Authorization'];
 
        const systemPrompt = messages.find((m: any) => m.role === 'system')?.content || system || "";
@@ -83,10 +83,9 @@ Deno.serve(async (req) => {
          system_instruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined
        };
     } else {
-      throw new Error(`Provider ${provider} not supported.`);
+      throw new Error(`Proveedor ${provider} no soportado.`);
     }
 
-    // Proxy the request to the AI provider
     const response = await fetch(url, {
       method: 'POST',
       headers,
@@ -95,11 +94,11 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error(`Provider Error (${provider}):`, errText);
-      throw new Error(`Provider API Error: ${response.status} - ${errText}`);
+      console.error(`Error en proveedor (${provider}):`, errText);
+      throw new Error(`Error API (${response.status}): ${errText}`);
     }
 
-    // Stream the response back to the client
+    // Proxy del stream
     return new Response(response.body, {
       headers: {
         ...corsHeaders,

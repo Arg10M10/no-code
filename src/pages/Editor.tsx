@@ -24,11 +24,11 @@ import {
   getProjectFiles, 
   setProjectFiles as persistProjectFiles 
 } from "@/lib/projects";
-import { storage } from "@/lib/storage";
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
 import { cn } from "@/lib/utils";
 import { Github } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 function includesSupabaseIntent(text: string): boolean {
   const t = (text || "").toLowerCase();
@@ -44,6 +44,18 @@ function fileToDataUrl(file: File): Promise<string> {
       reader.onerror = reject;
       reader.readAsDataURL(file);
   });
+}
+
+// Helper para obtener claves de Supabase
+async function fetchApiKeysFromSupabase(): Promise<Record<string, string>> {
+  const { data } = await supabase.from('user_api_keys').select('*').single();
+  if (!data) return {};
+  const keys: Record<string, string> = {};
+  if (data.openai) keys.openai = data.openai;
+  if (data.google) keys.google = data.google;
+  if (data.anthropic) keys.anthropic = data.anthropic;
+  if (data.openrouter) keys.openrouter = data.openrouter;
+  return keys;
 }
 
 const EditorPage: React.FC = () => {
@@ -64,17 +76,14 @@ const EditorPage: React.FC = () => {
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
 
-  // Estado para los logs en tiempo real y pensamientos
   const [generationLogs, setGenerationLogs] = useState<string[]>([]);
   const [thoughtProcess, setThoughtProcess] = useState<string>("");
 
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Función para añadir logs únicos
   const addLog = (text: string) => {
     setGenerationLogs(prev => {
-      // Evitar duplicados consecutivos
       if (prev.length > 0 && prev[prev.length - 1] === text) return prev;
       return [...prev, text];
     });
@@ -95,13 +104,14 @@ const EditorPage: React.FC = () => {
         return;
     }
 
-    const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
+    // Cargar claves de Supabase
+    const apiKeys = await fetchApiKeysFromSupabase();
     const selectedModel = getSelectedModelLabel();
     const provider = getProviderFromLabel(selectedModel);
 
     if (!apiKeys[provider]) {
-      toast.warning("Falta la clave de API", { description: "Por favor, configúrala en los ajustes para usar la IA." });
-      addMessage(projId, { role: "assistant", content: `¡Atención! Para generar la página web con la IA, necesitas configurar tu clave de API para el proveedor '${provider}'.\n\nPuedes hacerlo en 'Settings' > 'API Keys'.` });
+      toast.warning(`Falta la clave API de ${provider}`, { description: "Configúrala en Settings > API Keys." });
+      addMessage(projId, { role: "assistant", content: `¡Atención! Necesitas configurar tu clave de API para el proveedor **${provider}** en Settings.\n\nEl sistema la guardará de forma segura en tu base de datos Supabase.` });
       setMessagesState(getMessages(projId));
       setLoading(false);
       setPreviewLoading(false);
@@ -133,39 +143,26 @@ const EditorPage: React.FC = () => {
       persistPreviewHtml(projId, previewHtml);
       
       setPreviewLoading(false);
-      toast.success("Generación completada");
+      toast.success("Proyecto generado");
       
-      // We can optionally add the thought process to the stored message if we want to persist it
       const content = finalThought 
         ? `${finalThought}\n\nGeneración completada.` 
-        : "Generación completada — la previsualización y los archivos del proyecto están listos.";
+        : "Generación completada.";
       
       addMessage(projId, { role: "assistant", content });
-
-      const cost = Math.floor(Math.random() * 4001) + 1000;
-      const newCredits = decrementCredits(projId, cost);
-      setCredits(newCredits);
-      
+      setCredits(decrementCredits(projId, 1000));
       setLoading(false);
       setMessagesState(getMessages(projId));
-      abortControllerRef.current = null;
 
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        console.log('Initial generation aborted.');
-        setLoading(false);
-        setPreviewLoading(false);
-        return;
-      }
-      const errorMessage = err.message || "Ocurrió un error desconocido.";
-      console.error("La generación con IA ha fallado:", err);
-      
-      toast.error("La petición a la IA ha fallado", { description: errorMessage });
-      
-      addMessage(projId, { role: "assistant", content: `La generación con IA ha fallado con el siguiente error:\n\n> ${errorMessage}\n\nPor favor, revisa tu clave de API y la configuración del modelo.` });
+      if (err.name === 'AbortError') return;
+      console.error("Error IA:", err);
+      toast.error("Error en generación", { description: err.message });
+      addMessage(projId, { role: "assistant", content: `Error: ${err.message}` });
       setLoading(false);
       setPreviewLoading(false);
       setMessagesState(getMessages(projId));
+    } finally {
       abortControllerRef.current = null;
     }
   }, []);
@@ -185,7 +182,6 @@ const EditorPage: React.FC = () => {
           triggerInitialGeneration(projectId, loadedMessages);
         }
       } else {
-        console.error("Proyecto no encontrado");
         navigate("/");
       }
     } else {
@@ -198,7 +194,7 @@ const EditorPage: React.FC = () => {
     setLoading(false);
     setPreviewLoading(false);
     if (projectId) {
-      addMessage(projectId, { role: 'assistant', content: 'Generación cancelada por el usuario.' });
+      addMessage(projectId, { role: 'assistant', content: 'Operación cancelada.' });
       setMessagesState(getMessages(projectId));
     }
   };
@@ -212,12 +208,8 @@ const EditorPage: React.FC = () => {
 
     let messageContent = cleanedText;
     if (selectedElement) {
-      messageContent = `Respecto al elemento "${selectedElement}", por favor haz lo siguiente: ${cleanedText}`;
+      messageContent = `Sobre el elemento "${selectedElement}": ${cleanedText}`;
       setSelectedElement(null);
-    }
-
-    if (includesSupabaseIntent(messageContent)) {
-      setSupabaseIntentCounter((c) => c + 1);
     }
 
     const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
@@ -237,15 +229,25 @@ const EditorPage: React.FC = () => {
     setGenerationLogs([]); 
     setThoughtProcess("");
 
-    const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
+    // Cargar claves de Supabase
+    const apiKeys = await fetchApiKeysFromSupabase();
     const selectedModel = getSelectedModelLabel();
+    const provider = getProviderFromLabel(selectedModel);
+
+    if (!apiKeys[provider]) {
+        toast.warning(`Falta clave de ${provider}`);
+        const errMsg = { role: "assistant", content: `Por favor configura la API Key de **${provider}** en Settings.`, createdAt: Date.now() } as StoredMessage;
+        setMessagesState([...newMessages, errMsg]);
+        setMessages(projectId, [...newMessages, errMsg]);
+        setLoading(false);
+        return;
+    }
 
     try {
       if (isAsk) {
-        // Prepare a placeholder assistant message for streaming
+        // Modo Chat
         const placeholderId = Date.now();
-        const initialAssistantMsg: StoredMessage = { role: "assistant", content: "", createdAt: placeholderId };
-        setMessagesState([...newMessages, initialAssistantMsg]);
+        setMessagesState([...newMessages, { role: "assistant", content: "", createdAt: placeholderId }]);
 
         const aiResponseContent = await generateChat({
           messages: newMessages,
@@ -253,7 +255,6 @@ const EditorPage: React.FC = () => {
           apiKeys,
           signal: abortControllerRef.current.signal,
           onUpdate: (partialText) => {
-             // Update the last message in state with the streaming text
              setMessagesState(prev => {
                 const updated = [...prev];
                 const last = updated[updated.length - 1];
@@ -265,12 +266,12 @@ const EditorPage: React.FC = () => {
           }
         });
         
-        // Final save
         const finalMessages = [...newMessages, { role: "assistant", content: aiResponseContent, createdAt: placeholderId } as StoredMessage];
         setMessagesState(finalMessages);
         setMessages(projectId, finalMessages);
         setLoading(false);
       } else {
+        // Modo Constructor
         setPreviewLoading(true);
         setProjectFiles(null);
         
@@ -285,26 +286,19 @@ const EditorPage: React.FC = () => {
           codeContext: codeContext,
           signal: abortControllerRef.current.signal,
           onStatusUpdate: (status) => {
-             if (status.includes("Writing")) {
-                 addLog(status);
-             }
+             if (status.includes("Writing")) addLog(status);
           },
           onThoughtUpdate: (text) => setThoughtProcess(text)
         });
         
-        if (includesSupabaseIntent(previewHtml)) {
-          setSupabaseIntentCounter((c) => c + 1);
-        }
+        if (includesSupabaseIntent(previewHtml)) setSupabaseIntentCounter((c) => c + 1);
 
-        // Calculate Diffs
+        // Diff Calculation
         const changes: { type: 'create' | 'update', path: string }[] = [];
         newFiles.forEach(nf => {
             const old = currentFiles.find(of => of.path === nf.path);
-            if (!old) {
-                changes.push({ type: 'create', path: nf.path });
-            } else if (old.content !== nf.content) {
-                changes.push({ type: 'update', path: nf.path });
-            }
+            if (!old) changes.push({ type: 'create', path: nf.path });
+            else if (old.content !== nf.content) changes.push({ type: 'update', path: nf.path });
         });
 
         setProjectFiles(newFiles);
@@ -314,42 +308,32 @@ const EditorPage: React.FC = () => {
         setPreviewLoading(false);
 
         const changesJson = JSON.stringify(changes);
-        // Include thought process in the final message if available
-        const aiResponseContent = `${finalThought ? finalThought + "\n\n" : ""}Listo. He aplicado tus cambios.\n---CHANGES---${changesJson}`;
+        const aiResponseContent = `${finalThought ? finalThought + "\n\n" : ""}He aplicado los cambios.\n---CHANGES---${changesJson}`;
         
-        const cost = Math.floor(Math.random() * 4001) + 1000;
-        const newCredits = decrementCredits(projectId, cost);
-        setCredits(newCredits);
+        setCredits(decrementCredits(projectId, 1000));
 
-        const aiResponse: StoredMessage = { role: "assistant", content: aiResponseContent, createdAt: Date.now() };
-        const finalMessages = [...newMessages, aiResponse];
+        const finalMessages = [...newMessages, { role: "assistant", content: aiResponseContent, createdAt: Date.now() }];
         setMessagesState(finalMessages);
         setMessages(projectId, finalMessages);
         setLoading(false);
-        abortControllerRef.current = null;
       }
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        console.log('Generation aborted by user.');
-        setLoading(false);
-        if (!isAsk) setPreviewLoading(false);
-        return;
-      }
-      const errorMessage = err?.message || "Ocurrió un error desconocido.";
-      console.error("Error en la operación de IA:", err);
-      toast.error(isAsk ? "La pregunta a la IA ha fallado" : "La generación con IA ha fallado", { description: errorMessage });
-      const aiResponse: StoredMessage = { role: "assistant", content: `La operación de IA ha fallado:\n\n> ${errorMessage}`, createdAt: Date.now() };
-      const finalMessages = [...newMessages, aiResponse];
-      setMessagesState(finalMessages);
-      setMessages(projectId, finalMessages);
+      if (err.name === 'AbortError') return;
+      console.error(err);
+      toast.error("Error", { description: err.message });
+      const errMsg = { role: "assistant", content: `Error: ${err.message}`, createdAt: Date.now() };
+      setMessagesState([...newMessages, errMsg]);
+      setMessages(projectId, [...newMessages, errMsg]);
       setLoading(false);
       if (!isAsk) setPreviewLoading(false);
+    } finally {
+        abortControllerRef.current = null;
     }
   }, [messages, projectId, selectedElement]);
 
   const handleRefreshPreview = () => {
     setPreviewLoading(true);
-    setTimeout(() => setPreviewLoading(false), 1500);
+    setTimeout(() => setPreviewLoading(false), 800);
   };
 
   const handleElementSelected = (description: string) => {
@@ -357,28 +341,24 @@ const EditorPage: React.FC = () => {
     setIsSelectionModeActive(false);
   };
 
-  const handleRetry = (text: string, images?: string[]) => {
-    handleNewMessage(text, images);
-  };
+  const handleRetry = (text: string, images?: string[]) => handleNewMessage(text, images);
 
-  if (!projectId) {
-    return <div>Cargando proyecto...</div>;
-  }
+  if (!projectId) return <div>Cargando...</div>;
 
   return (
     <div className="h-full w-full flex flex-col bg-background text-foreground animate-fade-in">
       <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0 bg-background">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold truncate" title={projectName}>
-            {projectName || "Cargando..."}
+          <h1 className="text-lg font-semibold truncate max-w-[200px]" title={projectName}>
+            {projectName || "Proyecto"}
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => navigate(`/publish/${projectId}`)}>
+          <Button size="sm" variant="outline" onClick={() => navigate(`/publish/${projectId}`)}>
             <Github className="h-4 w-4 mr-2" />
-            Publish
+            GitHub
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
             Salir
           </Button>
         </div>
@@ -386,14 +366,14 @@ const EditorPage: React.FC = () => {
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel
-            defaultSize={25}
-            minSize={15}
-            maxSize={30}
+            defaultSize={30}
+            minSize={20}
+            maxSize={40}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
             onExpand={() => setIsLeftPanelCollapsed(false)}
-            className={cn("max-w-[400px]", isLeftPanelCollapsed ? "hidden" : "")}
+            className={cn("bg-background", isLeftPanelCollapsed ? "hidden" : "")}
           >
             <ChatPanel
               messages={messages}
@@ -408,12 +388,8 @@ const EditorPage: React.FC = () => {
               onRetry={handleRetry}
             />
           </ResizablePanel>
-          <div
-            aria-hidden="true"
-            className="h-full w-px bg-border/40"
-            role="separator"
-          />
-          <ResizablePanel defaultSize={75}>
+          <div className="h-full w-px bg-border/40 hover:bg-primary/50 transition-colors cursor-col-resize z-10" />
+          <ResizablePanel defaultSize={70}>
             <PreviewPanel
               previewUrl="/preview"
               code={previewHtml}
