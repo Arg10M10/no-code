@@ -292,7 +292,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center text-xs font-medium px-3 py-1.5 rounded-md transition-all select-none bg-background border border-border text-muted-foreground hover:text-foreground hover:border-foreground/20"
+                  className="inline-flex items-center justify-center text-xs font-medium px-4 py-2 rounded-md transition-all select-none bg-background border border-border text-muted-foreground hover:text-foreground hover:border-foreground/20"
                   onClick={() => {
                     setChatMode(prev => (prev === 'build' ? 'ask' : 'build'));
                   }}
@@ -305,7 +305,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-auto gap-1.5 px-3 py-1.5 text-xs font-medium transition-all bg-background border-border text-muted-foreground hover:text-foreground hover:border-foreground/20 select-none rounded-md"
+                      className="h-auto gap-2 px-4 py-2 text-xs font-medium transition-all bg-background border-border text-muted-foreground hover:text-foreground hover:border-foreground/20 select-none rounded-md"
                     >
                       <Cpu className="w-3.5 h-3.5" />
                       <span className="truncate max-w-[100px]">{selectedModel}</span>
