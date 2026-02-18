@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { Monitor, Moon, Sun, CreditCard, Lock, AlertTriangle, Check, BrainCircui
 import { useNavigate } from "react-router-dom";
 import ApiKeySettings from "@/components/ApiKeySettings";
 import { cn } from "@/lib/utils";
+import { storage } from "@/lib/storage";
 
 export type Section = "general" | "billing" | "appearance" | "ai" | "api" | "integrations" | "danger";
 
@@ -22,7 +23,39 @@ interface SettingsContentProps {
   section: Section;
 }
 
-const SectionAppearance = () => (
+const THEME_KEY = "app-theme";
+const REDUCED_MOTION_KEY = "reduced-motion";
+
+type Theme = "system" | "light" | "dark";
+
+const SectionAppearance = () => {
+  const [theme, setTheme] = useState<Theme>(() => storage.getJSON<Theme>(THEME_KEY, "dark"));
+  const [reducedMotion, setReducedMotion] = useState(() => storage.getJSON<boolean>(REDUCED_MOTION_KEY, false));
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark");
+
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      root.classList.add(systemTheme);
+    } else {
+      root.classList.add(theme);
+    }
+    storage.setJSON(THEME_KEY, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    storage.setJSON(REDUCED_MOTION_KEY, reducedMotion);
+    // In a real app, this would toggle a class on body or inject CSS
+    if (reducedMotion) {
+      document.documentElement.classList.add("motion-reduce");
+    } else {
+      document.documentElement.classList.remove("motion-reduce");
+    }
+  }, [reducedMotion]);
+
+  return (
    <div className="space-y-6 animate-fade-in">
     <div>
       <h3 className="text-lg font-medium">Appearance</h3>
@@ -34,15 +67,33 @@ const SectionAppearance = () => (
         <Label className="text-base">Theme</Label>
         <p className="text-xs text-muted-foreground mb-2">Select your preferred interface theme.</p>
         <div className="grid grid-cols-3 gap-4 max-w-lg">
-            <button className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent hover:border-primary/50 cursor-pointer transition-all border-border bg-card text-muted-foreground hover:text-foreground">
+            <button 
+                onClick={() => setTheme("system")}
+                className={cn(
+                    "flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent cursor-pointer transition-all",
+                    theme === "system" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground"
+                )}
+            >
                 <Monitor className="h-6 w-6" />
                 <span className="text-xs font-medium">System</span>
             </button>
-            <button className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent hover:border-primary/50 cursor-pointer transition-all border-border bg-card text-muted-foreground hover:text-foreground">
+            <button 
+                onClick={() => setTheme("light")}
+                className={cn(
+                    "flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent cursor-pointer transition-all",
+                    theme === "light" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground"
+                )}
+            >
                 <Sun className="h-6 w-6" />
                 <span className="text-xs font-medium">Light</span>
             </button>
-            <button className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent hover:border-primary/50 cursor-pointer transition-all border-primary bg-primary/5 text-primary">
+            <button 
+                onClick={() => setTheme("dark")}
+                className={cn(
+                    "flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent cursor-pointer transition-all",
+                    theme === "dark" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground"
+                )}
+            >
                 <Moon className="h-6 w-6" />
                 <span className="text-xs font-medium">Dark</span>
             </button>
@@ -54,11 +105,14 @@ const SectionAppearance = () => (
           <Label className="text-base">Reduced Motion</Label>
           <p className="text-xs text-muted-foreground">Minimize animations for a more static experience.</p>
         </div>
-        <Switch checked={false} onCheckedChange={() => {}} />
+        <Switch 
+            checked={reducedMotion} 
+            onCheckedChange={setReducedMotion} 
+        />
       </div>
     </div>
   </div>
-);
+)};
 
 const SectionBilling = () => {
   const navigate = useNavigate();
@@ -115,8 +169,9 @@ const SectionGeneral = () => {
       <div className="grid gap-6 max-w-lg">
         <div className="grid gap-2">
           <Label>Language</Label>
-          <div className="h-10 w-full px-3 py-2 rounded-md border bg-muted text-sm text-muted-foreground flex items-center">
+          <div className="h-10 w-full px-3 py-2 rounded-md border bg-muted text-sm text-muted-foreground flex items-center justify-between">
              English (United States)
+             <Lock className="h-3 w-3 opacity-50" />
           </div>
           <p className="text-[0.8rem] text-muted-foreground">System language is currently locked to English.</p>
         </div>
