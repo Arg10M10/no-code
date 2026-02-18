@@ -107,8 +107,6 @@ const EditorPage: React.FC = () => {
       setPreviewLoading(false);
       return;
     }
-
-    // Don't add "Key found" message to chat, keep it clean
     
     try {
       const { files, previewHtml, thoughtProcess: finalThought } = await generateAnswer({ 

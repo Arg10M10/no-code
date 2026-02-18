@@ -18,7 +18,6 @@ export function getProviderFromLabel(label: string): ProviderId {
   return "openai";
 }
 
-// Mapa de modelos futuristas (2026)
 function mapLabelToModelId(label: string): { provider: ProviderId; model: string } {
   const provider = getProviderFromLabel(label);
   const normalized = label.toLowerCase();
@@ -28,7 +27,6 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
     if (normalized.includes("gpt-5.1")) return { provider, model: "gpt-5.1" };
     if (normalized.includes("mini")) return { provider, model: "gpt-5-mini" };
     if (normalized.includes("codex")) return { provider, model: "gpt-5-codex" };
-    // Default flagship
     return { provider, model: "gpt-5" };
   }
   
@@ -37,7 +35,6 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
     if (normalized.includes("3 pro")) return { provider, model: "gemini-3-pro" };
     if (normalized.includes("2.5 flash")) return { provider, model: "gemini-2.5-flash" };
     if (normalized.includes("2.5 pro")) return { provider, model: "gemini-2.5-pro" };
-    // Default
     return { provider, model: "gemini-3-pro" };
   }
   
@@ -45,7 +42,6 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
     if (normalized.includes("opus 4.5")) return { provider, model: "claude-opus-4.5" };
     if (normalized.includes("sonnet 4.5")) return { provider, model: "claude-sonnet-4.5" };
     if (normalized.includes("sonnet 4")) return { provider, model: "claude-sonnet-4" };
-    // Default
     return { provider, model: "claude-sonnet-4.5" };
   }
   
@@ -55,16 +51,12 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
     if (normalized.includes("kimi")) return { provider, model: "moonshot/kimi-k2.5" };
     if (normalized.includes("devstral")) return { provider, model: "mistral/devstral-2" };
     if (normalized.includes("glm")) return { provider, model: "zhipu/glm-4.7" };
-    // Default fallback
     return { provider, model: "deepseek/deepseek-v3.1" };
   }
   
   return { provider: "openai", model: "gpt-5" };
 }
 
-/**
- * Parsea eventos Server-Sent Events (SSE) simples con buffering para chunks incompletos.
- */
 async function streamReader(
   response: Response, 
   onChunk: (chunk: string) => void,
@@ -82,8 +74,6 @@ async function streamReader(
     
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
-    
-    // Guardamos la última línea en el buffer porque puede estar incompleta
     buffer = lines.pop() || ""; 
 
     for (const line of lines) {
@@ -100,13 +90,12 @@ async function streamReader(
                onChunk(json.delta.text);
              }
           } else {
-             // OpenAI / OpenRouter
              if (json.choices?.[0]?.delta?.content) {
                onChunk(json.choices[0].delta.content);
              }
           }
         } catch (e) {
-          // Ignoramos errores de parseo en líneas individuales (ping, etc)
+          // Ignore parse errors
         }
       } 
     }
@@ -124,8 +113,6 @@ async function callApi(params: {
   onProgress?: (fullText: string) => void; 
 }): Promise<string> {
   const { provider, messages, model, apiKey, system, temperature, signal, onProgress } = params;
-  
-  // Enable streaming for OpenAI, Anthropic, OpenRouter. Google REST API requires different endpoint for stream.
   const isStreaming = !!onProgress && provider !== "google"; 
 
   try {
@@ -151,7 +138,7 @@ async function callApi(params: {
           model, 
           messages, 
           temperature: temperature ?? 0.7, 
-          max_tokens: 4096, 
+          max_tokens: 8192, 
           stream: isStreaming 
         }),
         signal,
@@ -192,7 +179,7 @@ async function callApi(params: {
         },
         body: JSON.stringify({ 
           model, 
-          max_tokens: 4096, 
+          max_tokens: 8192, 
           system: systemPrompt, 
           messages: chatMessages, 
           temperature: temperature ?? 0.7, 
@@ -247,7 +234,6 @@ async function callApi(params: {
       const data = await r.json();
       const result = (data.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
       
-      // Simulate progress for Google since we're not using streaming endpoint
       onProgress?.(result); 
       return result;
     }
@@ -257,21 +243,22 @@ async function callApi(params: {
   } catch (error: any) {
     if (error.name === 'AbortError') throw error;
     if (error.message.includes("Failed to fetch")) {
-      throw new Error(`Connection failed. If using OpenAI, this might be a CORS issue. If using Anthropic, ensure headers are allowed.`);
+      throw new Error(`Connection failed. CORS or network issue.`);
     }
     throw error;
   }
 }
 
 function buildGenerationMessages(prompt: string, codeContext?: string | null, images?: string[]): ChatMessage[] {
-  const commonSystemPrompt = `You are an expert web developer creating a full Vite + React + TypeScript + Tailwind CSS project.
+  const commonSystemPrompt = `Eres un desarrollador web experto creando un proyecto completo con Vite + React + TypeScript + Tailwind CSS.
 
-First, you MUST explain your plan and reasoning in plain text.
-Then, you MUST output the code in a single JSON block.
+IMPORTANTE:
+1. Primero, debes RAZONAR sobre el problema. Explica tu plan detalladamente en español antes de escribir código.
+2. Después de explicar tu plan, genera el código en un único bloque JSON.
 
-Structure your response exactly like this:
+Estructura tu respuesta EXACTAMENTE así:
 
-[Brief explanation of your plan and how you will solve the request...]
+[Aquí tu razonamiento y plan detallado en español...]
 
 \`\`\`json
 { 
@@ -280,18 +267,18 @@ Structure your response exactly like this:
 }
 \`\`\`
 
-- "files": An array of objects, each representing a file in the project. Include package.json, vite.config.ts, tsconfig.json, tailwind.config.ts, src/main.tsx, src/App.tsx, and src/index.css.
-- "previewHtml": A single, standalone HTML string that is a visual representation of the app. It must use the Tailwind CDN (<script src="https://cdn.tailwindcss.com"></script>) and include the selection script just before </body>.
+- "files": Array de objetos con "path" y "content". Incluye SIEMPRE package.json, vite.config.ts, tsconfig.json, tailwind.config.ts, src/main.tsx, src/App.tsx y src/index.css.
+- "previewHtml": Un string HTML único y autónomo para previsualizar la app. Debe usar Tailwind CDN.
 `;
 
   if (images && images.length > 0) {
-    const userContent: ChatContent = [{ type: 'text', text: `Recreate the website from this screenshot. ${prompt}` }];
+    const userContent: ChatContent = [{ type: 'text', text: `Recrea el sitio web de esta imagen. ${prompt}` }];
     images.forEach(url => userContent.push({ type: 'image_url', image_url: { url } }));
     return [{ role: "system", content: commonSystemPrompt }, { role: "user", content: userContent }];
   }
 
   if (codeContext) {
-    const userPrompt = `Based on the current project files, apply the following change: "${prompt}"\n\nHere are the current project files:\n${codeContext}`;
+    const userPrompt = `Basado en los archivos actuales, aplica este cambio: "${prompt}"\n\nArchivos actuales:\n${codeContext}`;
     return [{ role: "system", content: commonSystemPrompt }, { role: "user", content: userPrompt }];
   }
 
@@ -312,29 +299,28 @@ export async function generateAnswer(req: {
 }): Promise<{ files: ProjectFile[], previewHtml: string, thoughtProcess?: string }> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
-  if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
+  if (!apiKey) throw new Error(`Falta la API Key para ${provider}.`);
 
   const messages = buildGenerationMessages(req.prompt, req.codeContext, req.images);
 
   const onProgress = (fullText: string) => {
-    // 1. Check for JSON start to separate thoughts from code
+    // 1. Separar pensamiento del código JSON
     const jsonStartIndex = fullText.indexOf("```json");
     
     if (jsonStartIndex === -1) {
-       // We are still in the thought process phase
+       // Aún estamos en la fase de pensamiento (streaming)
        if (req.onThoughtUpdate) {
           req.onThoughtUpdate(fullText.trim());
        }
     } else {
-       // We have started generating JSON code
-       // Make sure we sent the full thought process at least once
+       // Hemos empezado a generar código
        if (req.onThoughtUpdate) {
           const thoughtPart = fullText.substring(0, jsonStartIndex).trim();
           req.onThoughtUpdate(thoughtPart);
        }
        
        if (req.onStatusUpdate) {
-         // Analyze the JSON part for file paths
+         // Analizar JSON parcial para detectar archivos
          const jsonPart = fullText.substring(jsonStartIndex);
          const regex = /"path":\s*"([^"]+)"/g;
          let match;
@@ -345,8 +331,6 @@ export async function generateAnswer(req: {
          
          if (lastFile) {
             req.onStatusUpdate(`Writing ${lastFile}...`);
-         } else {
-            req.onStatusUpdate("Generating code structure...");
          }
        }
     }
@@ -366,13 +350,11 @@ export async function generateAnswer(req: {
     let thoughtProcess = "";
     let jsonContent = rawResponse;
 
-    // Split thought process from JSON
     const jsonStartIndex = rawResponse.indexOf("```json");
     if (jsonStartIndex !== -1) {
         thoughtProcess = rawResponse.substring(0, jsonStartIndex).trim();
         jsonContent = rawResponse.substring(jsonStartIndex);
     } else {
-        // Fallback: try to find the first { if ```json is missing (some models might skip fence)
         const firstBrace = rawResponse.indexOf("{");
         if (firstBrace !== -1) {
             thoughtProcess = rawResponse.substring(0, firstBrace).trim();
@@ -380,7 +362,6 @@ export async function generateAnswer(req: {
         }
     }
 
-    // Clean up JSON block
     let cleanedResponse = jsonContent.trim();
     if (cleanedResponse.startsWith("```json")) {
       cleanedResponse = cleanedResponse.substring(7).trim();
@@ -391,13 +372,13 @@ export async function generateAnswer(req: {
 
     const parsed = JSON.parse(cleanedResponse);
     if (!parsed.files || !parsed.previewHtml) {
-      throw new Error("Invalid JSON structure from AI. Missing 'files' or 'previewHtml'.");
+      throw new Error("Respuesta inválida de la IA. Faltan 'files' o 'previewHtml'.");
     }
     
     return { ...parsed, thoughtProcess };
   } catch (e: any) {
     console.error("Failed to parse AI JSON response:", e);
-    throw new Error(`The AI returned an invalid response that could not be parsed. Details: ${e.message}`);
+    throw new Error(`La IA devolvió una respuesta que no se pudo procesar. Detalles: ${e.message}`);
   }
 }
 
@@ -412,7 +393,7 @@ export async function generateChat(req: {
 }): Promise<string> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
-  if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
+  if (!apiKey) throw new Error(`Falta la API Key para ${provider}.`);
   
   const chatMessages: ChatMessage[] = req.messages.map(msg => {
     if (msg.role === 'user' && msg.images && msg.images.length > 0) {
