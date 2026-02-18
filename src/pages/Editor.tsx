@@ -123,7 +123,7 @@ const EditorPage: React.FC = () => {
     try {
       const { files, previewHtml, thoughtProcess: finalThought } = await generateAnswer({ 
         prompt: firstMessage.content, 
-        images: firstMessage.images,
+        images: firstMessage.images, 
         selectedModelLabel: selectedModel, 
         apiKeys, 
         signal: abortControllerRef.current.signal,
@@ -386,7 +386,7 @@ const EditorPage: React.FC = () => {
         <ResizablePanelGroup direction="horizontal" className="h-full w-full">
           <ResizablePanel
             ref={leftPanelRef}
-            defaultSize={25} 
+            defaultSize={30} 
             minSize={20}
             maxSize={45}
             collapsible
@@ -394,7 +394,7 @@ const EditorPage: React.FC = () => {
             onCollapse={() => setIsLeftPanelCollapsed(true)}
             onExpand={() => setIsLeftPanelCollapsed(false)}
             className={cn(
-                "bg-background transition-all duration-300 ease-in-out border-r border-border", 
+                "bg-background border-r border-border", 
                 isLeftPanelCollapsed && "min-w-0 p-0 overflow-hidden border-r-0"
             )}
           >
@@ -415,10 +415,10 @@ const EditorPage: React.FC = () => {
           
           <ResizableHandle 
             withHandle 
-            className="w-6 bg-secondary border-l border-r border-border/40 hover:bg-primary/20 transition-colors z-50 flex items-center justify-center data-[active]:bg-primary/30 cursor-col-resize shadow-sm" 
+            className="w-3 bg-muted border-l border-r border-border hover:bg-primary/20 transition-colors z-50 flex items-center justify-center data-[active]:bg-primary/30 cursor-col-resize" 
           />
           
-          <ResizablePanel defaultSize={75} className="bg-muted/40">
+          <ResizablePanel defaultSize={70} className="bg-muted/40">
             <PreviewPanel
               previewUrl="/preview"
               code={previewHtml}
