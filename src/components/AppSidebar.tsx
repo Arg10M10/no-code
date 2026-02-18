@@ -37,7 +37,7 @@ const AppSidebar = () => {
       <div 
         className={cn(
           "h-screen flex flex-col bg-[#09090b] border-r border-white/5 flex-shrink-0 transition-all duration-300 ease-in-out z-20",
-          isCollapsed ? "w-[72px]" : "w-[260px]"
+          isCollapsed ? "w-[72px]" : "w-[270px]"
         )}
       >
         {/* Header Area */}
