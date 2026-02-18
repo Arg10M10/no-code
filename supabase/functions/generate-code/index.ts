@@ -1,11 +1,10 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -14,7 +13,7 @@ Deno.serve(async (req) => {
     const { provider, model, messages, apiKey, temperature, system } = await req.json();
 
     if (!apiKey) {
-      throw new Error('Missing API Key in request body');
+      throw new Error('Missing API Key');
     }
 
     let url = '';
@@ -38,7 +37,7 @@ Deno.serve(async (req) => {
         model,
         messages,
         temperature: temperature ?? 0.7,
-        max_tokens: 8192,
+        max_tokens: 4096, // Reduced slightly to be safe
         stream: true,
       };
     } else if (provider === 'anthropic') {
@@ -61,12 +60,13 @@ Deno.serve(async (req) => {
         model,
         messages: chatMessages,
         system: systemPrompt,
-        max_tokens: 8192,
+        max_tokens: 4096,
         temperature: temperature ?? 0.7,
         stream: true,
       };
     } else if (provider === 'google') {
        url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}`;
+       // Google API uses key in URL, remove auth header
        delete headers['Authorization'];
 
        const systemPrompt = messages.find((m: any) => m.role === 'system')?.content || system || "";
@@ -83,9 +83,10 @@ Deno.serve(async (req) => {
          system_instruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined
        };
     } else {
-      throw new Error(`Provider ${provider} not supported in backend yet.`);
+      throw new Error(`Provider ${provider} not supported.`);
     }
 
+    // Proxy the request to the AI provider
     const response = await fetch(url, {
       method: 'POST',
       headers,
@@ -94,9 +95,11 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`${provider} API Error: ${response.status} - ${errText}`);
+      console.error(`Provider Error (${provider}):`, errText);
+      throw new Error(`Provider API Error: ${response.status} - ${errText}`);
     }
 
+    // Stream the response back to the client
     return new Response(response.body, {
       headers: {
         ...corsHeaders,
@@ -105,6 +108,7 @@ Deno.serve(async (req) => {
     });
 
   } catch (error: any) {
+    console.error("Edge Function Error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
