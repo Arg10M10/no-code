@@ -7,7 +7,6 @@ import { Github, ArrowLeft, CheckCircle, ExternalLink, LogOut, GitBranch } from 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import Navigation from "@/components/Navigation";
 import { getProjectById, getProjectFiles, Project, setProjectRepoUrl, ProjectFile } from "@/lib/projects";
 import { publishToGitHub } from "@/lib/github";
 import { supabase } from "@/integrations/supabase/client";
@@ -229,7 +228,6 @@ const PublishPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <main className="container mx-auto px-6 pt-24 pb-20 flex justify-center items-center">
         <div className="w-full max-w-2xl">
           <Button variant="ghost" onClick={() => navigate(`/editor?id=${projectId}`)} className="mb-4">
