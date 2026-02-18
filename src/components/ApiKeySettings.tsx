@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { KeyRound, Trash2, ExternalLink, ChevronLeft, Check, Copy } from "lucide-react";
+import { KeyRound, Trash2, ExternalLink, ChevronLeft, Check, ChevronRight } from "lucide-react";
 import { storage } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -15,45 +15,40 @@ type Provider = {
   placeholder: string;
   getApiKeyUrl: string;
   models: string[];
-  color: string;
 };
 
 const providers: Provider[] = [
   { 
     id: 'openai', 
     name: 'OpenAI', 
-    description: 'Industry standard for reasoning and coding tasks.', 
+    description: 'Industry standard. Powers GPT-5 models.', 
     placeholder: 'sk-...', 
     getApiKeyUrl: 'https://platform.openai.com/api-keys', 
-    models: ['GPT-5', 'GPT-4o'],
-    color: 'bg-green-500/10 text-green-500 border-green-500/20'
+    models: ['GPT-5', 'GPT-5.2', 'GPT-5.1', 'GPT-5 Codex', 'GPT-5 Mini']
   },
   { 
     id: 'google', 
     name: 'Google', 
-    description: 'Large context window and multimodal capabilities.', 
+    description: 'Home of the Gemini family.', 
     placeholder: 'AIzaSy...', 
     getApiKeyUrl: 'https://aistudio.google.com/app/api-keys', 
-    models: ['Gemini 1.5 Pro', 'Gemini 1.5 Flash'],
-    color: 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+    models: ['Gemini 3 Pro', 'Gemini 3 Flash', 'Gemini 2.5 Pro', 'Gemini 2.5 Flash']
   },
   { 
     id: 'anthropic', 
     name: 'Anthropic', 
-    description: 'Focus on safety and high-quality creative writing.', 
+    description: 'Focus on safety and high-quality writing.', 
     placeholder: 'sk-ant-...', 
     getApiKeyUrl: 'https://console.anthropic.com/settings/keys', 
-    models: ['Claude 3.5 Sonnet', 'Claude 3 Opus'],
-    color: 'bg-orange-500/10 text-orange-500 border-orange-500/20'
+    models: ['Claude Opus 4.5', 'Claude Sonnet 4.5', 'Claude Sonnet 4']
   },
   { 
     id: 'openrouter', 
     name: 'OpenRouter', 
-    description: 'Aggregator providing access to all top models.', 
+    description: 'Aggregator access to top open source models.', 
     placeholder: 'sk-or-...', 
     getApiKeyUrl: 'https://openrouter.ai/keys', 
-    models: ['DeepSeek V3', 'Qwen 2.5', 'Llama 3'],
-    color: 'bg-purple-500/10 text-purple-500 border-purple-500/20'
+    models: ['Qwen3 Coder', 'Deepseek v3.1', 'Kimi K2.5', 'Devstral 2', 'GLM 4.7']
   },
 ];
 
@@ -143,7 +138,7 @@ const ApiKeySettings = () => {
              
              <div className="rounded-xl border bg-secondary/20 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-semibold">Supported Models</span>
+                    <span className="text-xs font-semibold">Supported Models (2026)</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {selectedProvider.models.map(m => (
@@ -151,7 +146,6 @@ const ApiKeySettings = () => {
                             {m}
                         </Badge>
                     ))}
-                    <Badge variant="outline" className="text-[10px] text-muted-foreground border-dashed">+ others</Badge>
                 </div>
              </div>
           </div>
@@ -200,51 +194,47 @@ const ApiKeySettings = () => {
 
   // List View
   return (
-    <div className="space-y-6 animate-fade-in">
-        <div className="grid gap-4 md:grid-cols-2">
-            {providers.map((provider) => {
-                const isActive = !!apiKeys[provider.id];
-                return (
-                    <div 
-                        key={provider.id} 
-                        className={cn(
-                            "group relative flex flex-col justify-between rounded-xl border p-5 transition-all hover:shadow-md cursor-pointer",
-                            isActive 
-                                ? "bg-background border-primary/30 shadow-[0_0_0_1px_rgba(0,0,0,0)] shadow-primary/10" 
-                                : "bg-card border-border hover:border-primary/20"
-                        )}
-                        onClick={() => handleManageClick(provider)}
-                    >
-                        <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <div className={cn("px-2.5 py-1 rounded-md text-xs font-semibold border", provider.color)}>
-                                    {provider.name}
-                                </div>
-                                {isActive && (
-                                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                                        Connected
-                                    </div>
-                                )}
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                                {provider.description}
-                            </p>
+    <div className="space-y-4 animate-fade-in">
+        {providers.map((provider) => {
+            const isActive = !!apiKeys[provider.id];
+            return (
+                <div 
+                    key={provider.id} 
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/40 cursor-pointer transition-colors bg-card"
+                    onClick={() => handleManageClick(provider)}
+                >
+                    <div className="flex items-center gap-4">
+                        <div className={cn(
+                          "h-10 w-10 rounded-full flex items-center justify-center border",
+                          isActive ? "bg-primary/10 border-primary/20 text-primary" : "bg-muted border-border text-muted-foreground"
+                        )}>
+                           <span className="font-semibold text-xs uppercase">{provider.name.substring(0, 2)}</span>
                         </div>
-                        
-                        <div className="flex items-center text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-1 group-hover:translate-y-0">
-                            {isActive ? "Manage Configuration" : "Setup Integration"} <ChevronLeft className="h-3 w-3 rotate-180 ml-1" />
+                        <div>
+                           <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-sm">{provider.name}</h4>
+                              {isActive && (
+                                <Badge variant="secondary" className="text-[10px] h-5 px-1.5 bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20">
+                                  Active
+                                </Badge>
+                              )}
+                           </div>
+                           <p className="text-xs text-muted-foreground">{provider.description}</p>
                         </div>
                     </div>
-                )
-            })}
-        </div>
+                    
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            )
+        })}
         
-        <div className="rounded-lg bg-blue-500/5 border border-blue-500/10 p-4">
-            <h4 className="text-sm font-medium text-blue-500 mb-1">Privacy First</h4>
-            <p className="text-xs text-blue-400/80">
+        <div className="rounded-lg bg-muted/30 border border-border/50 p-4 mt-6">
+            <h4 className="text-sm font-medium mb-1">Privacy Note</h4>
+            <p className="text-xs text-muted-foreground">
                 All API keys are encrypted and stored in your browser's Local Storage. 
-                They are sent directly from your client to the AI providers (or via a secure proxy for CORS) and never touch our database.
+                They are sent directly to the AI providers and never touch our servers.
             </p>
         </div>
     </div>
