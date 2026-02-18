@@ -28,7 +28,7 @@ import {
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
 import { cn } from "@/lib/utils";
-import { Github, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Github } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 function includesSupabaseIntent(text: string): boolean {
@@ -82,7 +82,6 @@ const EditorPage: React.FC = () => {
 
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
-  // Ref para controlar el panel izquierdo manualmente si hiciera falta
   const leftPanelRef = useRef<any>(null);
 
   const addLog = (text: string) => {
@@ -351,26 +350,12 @@ const EditorPage: React.FC = () => {
       toast.info("Analyzing error...");
   };
 
-  const toggleSidebar = () => {
-    const panel = leftPanelRef.current;
-    if (panel) {
-        if (isLeftPanelCollapsed) {
-            panel.expand();
-        } else {
-            panel.collapse();
-        }
-    }
-  };
-
   if (!projectId) return <div>Cargando...</div>;
 
   return (
     <div className="h-full w-full flex flex-col bg-background text-foreground animate-fade-in">
       <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0 bg-background z-20 relative">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-muted-foreground hover:text-foreground">
-             {isLeftPanelCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-          </Button>
           <h1 className="text-lg font-semibold truncate max-w-[200px]" title={projectName}>
             {projectName || "Proyecto"}
           </h1>
@@ -391,7 +376,7 @@ const EditorPage: React.FC = () => {
           <ResizablePanel
             ref={leftPanelRef}
             defaultSize={25} 
-            minSize={15}
+            minSize={20}
             maxSize={45}
             collapsible
             collapsedSize={0}
@@ -417,7 +402,7 @@ const EditorPage: React.FC = () => {
             />
           </ResizablePanel>
           
-          <ResizableHandle withHandle className="bg-border/40 hover:bg-primary/30 w-1.5 transition-colors z-50" />
+          <ResizableHandle withHandle className="bg-border hover:bg-primary/50 w-2.5 transition-colors z-50 border-l border-r border-background" />
           
           <ResizablePanel defaultSize={75} className="bg-muted/40">
             <PreviewPanel
