@@ -391,7 +391,7 @@ const EditorPage: React.FC = () => {
           <ResizablePanel
             ref={leftPanelRef}
             defaultSize={25} 
-            minSize={20}
+            minSize={15}
             maxSize={45}
             collapsible
             collapsedSize={0}
@@ -417,7 +417,7 @@ const EditorPage: React.FC = () => {
             />
           </ResizablePanel>
           
-          <ResizableHandle withHandle className="bg-transparent hover:bg-primary/20 w-2 z-50 -ml-1" />
+          <ResizableHandle withHandle className="bg-border/40 hover:bg-primary/30 w-1.5 transition-colors z-50" />
           
           <ResizablePanel defaultSize={75} className="bg-muted/40">
             <PreviewPanel
