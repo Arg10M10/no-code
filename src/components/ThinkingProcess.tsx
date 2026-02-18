@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Loader2, FileCode, CheckCircle2, Terminal, Pencil } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ThinkingProcessProps {
@@ -16,50 +16,38 @@ export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ logs }) => {
     }
   }, [logs]);
 
-  // Si no hay logs reales aún, mostramos un estado inicial
-  if (logs.length === 0) {
-    return (
-      <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground animate-pulse">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Iniciando conexión con la IA...</span>
-      </div>
-    );
-  }
+  if (logs.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 p-4 rounded-xl border border-border/50 bg-black/5 dark:bg-white/5 animate-fade-in font-mono text-xs">
-      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-        <Terminal className="h-3 w-3" />
-        <span>Live Output</span>
-      </div>
-      
+    <div className="flex flex-col gap-2 p-2 rounded-lg animate-fade-in font-mono text-xs">
       <div 
         ref={scrollRef}
-        className="flex flex-col gap-1.5 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar"
+        className="flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar"
       >
         {logs.map((log, index) => {
             const isLast = index === logs.length - 1;
             
-            // Detectar si es un archivo o un pensamiento general
-            const isFile = log.toLowerCase().includes("writing") || log.includes("src/");
+            // Extract filename from "Writing src/path/to/file..."
+            const match = log.match(/Writing\s+(.+)\.\.\./);
+            const fileName = match ? match[1] : log;
 
             return (
                 <div key={index} className={cn(
-                    "flex items-start gap-2 animate-fade-in transition-all",
-                    isLast ? "opacity-100" : "opacity-60"
+                    "flex items-center gap-3 animate-fade-in transition-all",
+                    isLast ? "opacity-100" : "opacity-70"
                 )}>
-                    <div className="mt-0.5">
-                       {isLast ? (
-                         <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                       ) : (
-                         isFile ? <Pencil className="h-3 w-3 text-blue-500" /> : <CheckCircle2 className="h-3 w-3 text-green-500" />
-                       )}
-                    </div>
-                    <span className={cn(
-                        "break-all leading-tight",
-                        isLast ? "text-foreground font-medium" : "text-muted-foreground"
+                    <div className={cn(
+                        "flex items-center justify-center w-6 h-6 rounded-full shrink-0",
+                        "bg-blue-500/10 text-blue-500"
                     )}>
-                        {log}
+                        {isLast ? (
+                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                             <Pencil className="h-3.5 w-3.5" />
+                        )}
+                    </div>
+                    <span className="text-foreground font-medium">
+                        {fileName}
                     </span>
                 </div>
             )

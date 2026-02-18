@@ -83,7 +83,7 @@ const EditorPage: React.FC = () => {
     setLoading(true);
     setPreviewLoading(true);
     setProjectFiles(null);
-    setGenerationLogs(["Iniciando generación..."]); // Reset logs
+    setGenerationLogs([]); // Clear logs, no initial message
     abortControllerRef.current = new AbortController();
 
     const firstMessage = initialMessages[0];
@@ -106,9 +106,8 @@ const EditorPage: React.FC = () => {
       return;
     }
 
-    addMessage(projId, { role: "assistant", content: "Clave de API encontrada. Empezando a generar tu proyecto con la IA..." });
-    setMessagesState(getMessages(projId));
-
+    // Don't add "Key found" message to chat, keep it clean
+    
     try {
       const { files, previewHtml } = await generateAnswer({ 
         prompt: firstMessage.content, 
@@ -116,10 +115,13 @@ const EditorPage: React.FC = () => {
         selectedModelLabel: selectedModel, 
         apiKeys, 
         signal: abortControllerRef.current.signal,
-        onStatusUpdate: (status) => addLog(status)
+        onStatusUpdate: (status) => {
+            // Only show file writing logs
+            if (status.includes("Writing")) {
+                addLog(status);
+            }
+        }
       });
-      
-      addLog("Finalizando procesamiento...");
       
       if (includesSupabaseIntent(previewHtml)) {
         setSupabaseIntentCounter((c) => c + 1);
@@ -226,7 +228,7 @@ const EditorPage: React.FC = () => {
     setMessagesState(newMessages);
     setMessages(projectId, newMessages);
     setLoading(true);
-    setGenerationLogs(["Analizando solicitud..."]);
+    setGenerationLogs([]); // Clear logs
 
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const selectedModel = getSelectedModelLabel();
@@ -275,10 +277,13 @@ const EditorPage: React.FC = () => {
           apiKeys,
           codeContext: codeContext,
           signal: abortControllerRef.current.signal,
-          onStatusUpdate: (status) => addLog(status)
+          onStatusUpdate: (status) => {
+             // Only show file writing logs
+             if (status.includes("Writing")) {
+                 addLog(status);
+             }
+          }
         });
-        
-        addLog("Aplicando cambios...");
         
         if (includesSupabaseIntent(previewHtml)) {
           setSupabaseIntentCounter((c) => c + 1);
