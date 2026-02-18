@@ -47,19 +47,12 @@ export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ logs, thought,
     }
   }, [logs.length, thought, isFinished]);
 
-  // Renderizado especial para la fase "Conectando" (Sin caja, solo texto animado)
+  // Renderizado especial para la fase "Conectando" (Sin caja, solo texto simple)
   if (phase === 'connecting') {
       return (
-          <div className="flex items-center gap-3 py-4 px-2 animate-fade-in">
-              <div className="relative flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping duration-1000" />
-                  <div className="relative bg-background rounded-full p-1 border border-primary/20">
-                    <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-                  </div>
-              </div>
-              <span className="text-sm font-medium bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent animate-pulse">
-                  Conectando con la IA...
-              </span>
+          <div className="flex items-center gap-2 py-4 px-2 animate-fade-in text-muted-foreground/60">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span className="text-xs font-medium">Cargando...</span>
           </div>
       );
   }
