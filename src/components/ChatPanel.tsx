@@ -72,7 +72,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     const urls = selectedImages.map((f) => URL.createObjectURL(f));
     setPreviewUrls(urls);
     return () => {
-      urls.forEach((u) => URL.revokeObjectURL(u));
+      urls.forEach(u) => URL.revokeObjectURL(u));
     };
   }, [selectedImages]);
 
@@ -183,11 +183,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-transparent hover:bg-zinc-200 dark:hover:bg-zinc-800 text-muted-foreground hover:text-foreground"
                         onClick={() => onRetry(msg.content, msg.images)}
                         title="Retry this prompt"
                       >
-                        <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                        <RotateCcw className="h-3.5 w-3.5" />
                       </Button>
                     )}
                     <div className="max-w-[85%] bg-secondary/80 text-secondary-foreground px-4 py-3 rounded-2xl rounded-tr-md">
