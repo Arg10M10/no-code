@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -11,42 +11,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Lock, Monitor, Moon, Sun, CreditCard, Bell } from "lucide-react";
+import { Monitor, Moon, Sun, CreditCard, Lock, AlertTriangle, Check, BrainCircuit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ApiKeySettings from "@/components/ApiKeySettings";
+import { cn } from "@/lib/utils";
 
-export type Section = "general" | "profile" | "billing" | "appearance" | "notifications" | "ai" | "api" | "integrations" | "danger";
+export type Section = "general" | "billing" | "appearance" | "ai" | "api" | "integrations" | "danger";
 
 interface SettingsContentProps {
   section: Section;
 }
-
-const SectionProfile = () => (
-  <div className="space-y-6 animate-fade-in">
-    <div>
-      <h3 className="text-lg font-medium">Profile</h3>
-      <p className="text-sm text-muted-foreground">Manage your public profile and personal details.</p>
-    </div>
-    <Separator />
-    <div className="space-y-4 max-w-md">
-      <div className="flex items-center gap-4">
-        <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center text-xl font-bold text-muted-foreground">
-          JP
-        </div>
-        <Button variant="outline" size="sm">Change Avatar</Button>
-      </div>
-      <div className="grid gap-2">
-        <Label>Display Name</Label>
-        <Input placeholder="John Doe" />
-      </div>
-      <div className="grid gap-2">
-        <Label>Email</Label>
-        <Input placeholder="john@example.com" disabled />
-        <p className="text-[0.8rem] text-muted-foreground">Managed via GitHub</p>
-      </div>
-    </div>
-  </div>
-);
 
 const SectionAppearance = () => (
    <div className="space-y-6 animate-fade-in">
@@ -55,64 +29,33 @@ const SectionAppearance = () => (
       <p className="text-sm text-muted-foreground">Customize the look and feel of the application.</p>
     </div>
     <Separator />
-    <div className="space-y-4">
-      <div className="grid gap-2">
-        <Label className="mb-2">Theme Preference</Label>
-        <div className="grid grid-cols-3 gap-4 max-w-md">
-            <div className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent hover:border-primary/50 cursor-pointer transition-all border-primary bg-primary/5">
+    <div className="space-y-6">
+      <div className="grid gap-3">
+        <Label className="text-base">Theme</Label>
+        <p className="text-xs text-muted-foreground mb-2">Select your preferred interface theme.</p>
+        <div className="grid grid-cols-3 gap-4 max-w-lg">
+            <button className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent hover:border-primary/50 cursor-pointer transition-all border-border bg-card text-muted-foreground hover:text-foreground">
                 <Monitor className="h-6 w-6" />
                 <span className="text-xs font-medium">System</span>
-            </div>
-            <div className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent hover:border-primary/50 cursor-pointer transition-all">
+            </button>
+            <button className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent hover:border-primary/50 cursor-pointer transition-all border-border bg-card text-muted-foreground hover:text-foreground">
                 <Sun className="h-6 w-6" />
                 <span className="text-xs font-medium">Light</span>
-            </div>
-            <div className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent hover:border-primary/50 cursor-pointer transition-all">
+            </button>
+            <button className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent hover:border-primary/50 cursor-pointer transition-all border-primary bg-primary/5 text-primary">
                 <Moon className="h-6 w-6" />
                 <span className="text-xs font-medium">Dark</span>
-            </div>
+            </button>
         </div>
       </div>
-      <div className="flex items-center justify-between max-w-md">
+      
+      <div className="flex items-center justify-between max-w-lg p-4 rounded-lg border bg-card/50">
         <div className="space-y-0.5">
-          <Label>Reduced Motion</Label>
-          <p className="text-xs text-muted-foreground">Reduce animations for accessibility</p>
+          <Label className="text-base">Reduced Motion</Label>
+          <p className="text-xs text-muted-foreground">Minimize animations for a more static experience.</p>
         </div>
-        <Switch />
+        <Switch checked={false} onCheckedChange={() => {}} />
       </div>
-    </div>
-  </div>
-);
-
-const SectionNotifications = () => (
-  <div className="space-y-6 animate-fade-in">
-    <div>
-      <h3 className="text-lg font-medium">Notifications</h3>
-      <p className="text-sm text-muted-foreground">Configure how you receive alerts.</p>
-    </div>
-    <Separator />
-    <div className="space-y-4 max-w-md">
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Email Notifications</Label>
-            <p className="text-xs text-muted-foreground">Receive updates about your projects</p>
-          </div>
-          <Switch defaultChecked />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Project Generation</Label>
-            <p className="text-xs text-muted-foreground">Notify when AI completes a task</p>
-          </div>
-          <Switch defaultChecked />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Marketing</Label>
-            <p className="text-xs text-muted-foreground">News about features and plans</p>
-          </div>
-          <Switch />
-        </div>
     </div>
   </div>
 );
@@ -127,9 +70,9 @@ const SectionBilling = () => {
       </div>
       <Separator />
       
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="rounded-xl border bg-card p-6 shadow-sm max-w-2xl">
         <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                     <CreditCard className="h-5 w-5 text-primary" />
                 </div>
@@ -150,8 +93,12 @@ const SectionBilling = () => {
             <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
                 <div className="h-full bg-primary w-[12.5%] rounded-full" />
             </div>
+            <p className="text-xs text-muted-foreground">Credits reset in 14 days.</p>
         </div>
-        <Button className="w-full" onClick={() => navigate("/pricing")}>Upgrade to Pro</Button>
+        <div className="flex gap-3">
+            <Button className="flex-1" onClick={() => navigate("/pricing")}>Upgrade to Pro</Button>
+            <Button variant="outline" className="flex-1">Manage Billing</Button>
+        </div>
       </div>
     </div>
   );
@@ -165,29 +112,26 @@ const SectionGeneral = () => {
         <p className="text-sm text-muted-foreground">Basic settings for your workspace.</p>
       </div>
       <Separator />
-      <div className="grid gap-4 max-w-md">
+      <div className="grid gap-6 max-w-lg">
         <div className="grid gap-2">
-          <Label htmlFor="language">Language</Label>
-          <Select defaultValue="en">
-            <SelectTrigger id="language" className="w-full">
-              <SelectValue placeholder="Select language" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="en">English</SelectItem>
-              <SelectItem value="es">Español</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label>Language</Label>
+          <div className="h-10 w-full px-3 py-2 rounded-md border bg-muted text-sm text-muted-foreground flex items-center">
+             English (United States)
+          </div>
+          <p className="text-[0.8rem] text-muted-foreground">System language is currently locked to English.</p>
         </div>
-        <div className="flex items-center justify-between">
+        
+        <div className="flex items-center justify-between p-4 rounded-lg border bg-card/50">
           <div className="space-y-0.5">
-            <Label htmlFor="auto-update">Auto-update</Label>
+            <Label>Auto-update</Label>
             <p className="text-xs text-muted-foreground">Keep the app up to date automatically</p>
           </div>
-          <Switch id="auto-update" defaultChecked />
+          <Switch defaultChecked />
         </div>
+        
         <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Version</span>
-            <span className="text-sm font-mono bg-secondary px-2 py-0.5 rounded">v1.2.0</span>
+            <span className="text-sm text-muted-foreground">Current Version</span>
+            <span className="text-xs font-mono bg-secondary px-2 py-1 rounded border">v2.4.0-beta</span>
         </div>
       </div>
     </div>
@@ -198,32 +142,64 @@ const SectionAI = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h3 className="text-lg font-medium">AI Configuration</h3>
-        <p className="text-sm text-muted-foreground">Fine-tune how the AI behaves.</p>
+        <h3 className="text-lg font-medium">AI Intelligence</h3>
+        <p className="text-sm text-muted-foreground">Configure model behavior and reasoning capabilities.</p>
       </div>
       <Separator />
-      <div className="grid gap-4 max-w-md">
-        <div className="grid gap-2">
-          <Label htmlFor="reasoning-size">Reasoning Depth</Label>
-          <Select defaultValue="default">
-            <SelectTrigger id="reasoning-size" className="w-full">
-              <SelectValue placeholder="Select size" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="compact">Fast (Compact)</SelectItem>
-              <SelectItem value="default">Balanced (Default)</SelectItem>
-              <SelectItem value="extended">Deep (Extended)</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-[0.8rem] text-muted-foreground">Controls the length of the internal reasoning process.</p>
-        </div>
+      
+      <div className="grid gap-6 max-w-2xl">
+         <div className="rounded-xl border bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-background p-6">
+            <div className="flex items-start gap-4">
+                <div className="h-10 w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+                    <BrainCircuit className="h-5 w-5 text-indigo-500" />
+                </div>
+                <div className="space-y-4 flex-1">
+                    <div>
+                        <h4 className="font-semibold text-foreground">Reasoning Depth</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Controls how much "thought" the AI puts into planning before writing code.
+                        </p>
+                    </div>
+                    
+                    <Select defaultValue="default">
+                        <SelectTrigger className="w-full bg-background/50">
+                        <SelectValue placeholder="Select depth" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="compact">
+                            <span className="font-medium">Fast (Compact)</span> - Good for small tweaks
+                        </SelectItem>
+                        <SelectItem value="default">
+                            <span className="font-medium">Balanced (Default)</span> - Recommended
+                        </SelectItem>
+                        <SelectItem value="extended">
+                            <span className="font-medium">Deep (Extended)</span> - For complex architectures
+                        </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+         </div>
+
+         <div className="space-y-4">
+            <h4 className="text-sm font-medium">Beta Features</h4>
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-card/50">
+                <div className="space-y-0.5">
+                    <Label className="flex items-center gap-2">
+                        Visual Component Mapping
+                        <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/30">New</span>
+                    </Label>
+                    <p className="text-xs text-muted-foreground">AI identifies existing UI components from screenshots.</p>
+                </div>
+                <Switch />
+            </div>
+         </div>
       </div>
     </div>
   );
 };
 
 const SectionIntegrations = () => {
-  const navigate = useNavigate();
   return (
     <div className="space-y-6 animate-fade-in">
        <div>
@@ -231,48 +207,73 @@ const SectionIntegrations = () => {
         <p className="text-sm text-muted-foreground">Connect with third-party tools.</p>
       </div>
       <Separator />
-      <div className="p-4 border border-dashed rounded-lg text-center space-y-3">
-         <div className="mx-auto h-12 w-12 rounded-full bg-secondary/50 flex items-center justify-center">
-            <Lock className="h-6 w-6 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center border-2 border-dashed rounded-xl bg-muted/20">
+         <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center mb-4">
+            <Lock className="h-5 w-5 text-muted-foreground" />
          </div>
-         <div>
-            <h4 className="font-medium">Pro Feature</h4>
-            <p className="text-sm text-muted-foreground">GitHub, Figma, and Vercel integrations are available on Pro.</p>
-         </div>
-         <Button size="sm" onClick={() => navigate("/pricing")}>
-            Upgrade to Pro
-         </Button>
+         <h4 className="text-lg font-semibold mb-2">Coming Soon</h4>
+         <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
+            We are working on native integrations for GitHub, Vercel, and Figma. Stay tuned for updates!
+         </p>
+         <Button variant="outline" disabled>Notify me when ready</Button>
       </div>
     </div>
   );
 };
 
 const SectionDanger = () => {
-  const handleDeleteAccount = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete your account? This action cannot be undone."
-      )
-    ) {
+  const [confirmText, setConfirmText] = useState("");
+  const isMatch = confirmText === "DELETE";
+
+  const handleDeleteAll = () => {
+    if (isMatch) {
       localStorage.clear();
       window.location.reload();
     }
   };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h3 className="text-lg font-medium text-destructive">Danger Zone</h3>
-        <p className="text-sm text-muted-foreground">Irreversible actions.</p>
+        <p className="text-sm text-muted-foreground">Irreversible actions regarding your local data.</p>
       </div>
       <Separator />
-      <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
-        <h4 className="font-medium text-destructive mb-2">Delete Account</h4>
-        <p className="text-sm text-muted-foreground mb-4">
-            Once you delete your account, there is no going back. Please be certain.
-        </p>
-        <Button variant="destructive" size="sm" onClick={handleDeleteAccount}>
-            Delete Account
-        </Button>
+      
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6">
+        <div className="flex items-start gap-4">
+            <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+            </div>
+            <div className="space-y-4 flex-1">
+                <div>
+                    <h4 className="font-semibold text-destructive">Delete All Local Data</h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        This will wipe all projects, chats, API keys, and settings stored in your browser's Local Storage. 
+                        This action cannot be undone.
+                    </p>
+                </div>
+                
+                <div className="space-y-2">
+                    <Label className="text-xs">Type <span className="font-mono font-bold">DELETE</span> to confirm</Label>
+                    <div className="flex gap-3">
+                        <Input 
+                            value={confirmText} 
+                            onChange={e => setConfirmText(e.target.value)}
+                            className="bg-background max-w-[200px]"
+                            placeholder="DELETE"
+                        />
+                        <Button 
+                            variant="destructive" 
+                            disabled={!isMatch}
+                            onClick={handleDeleteAll}
+                        >
+                            {isMatch ? "Confirm Deletion" : "Delete All"}
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
       </div>
     </div>
   );
@@ -280,19 +281,17 @@ const SectionDanger = () => {
 
 const SettingsContent: React.FC<SettingsContentProps> = ({ section }) => {
   return (
-    <div className="p-6 h-full overflow-y-auto">
-        <div className="max-w-2xl mx-auto pb-10">
+    <div className="p-6 md:p-8 h-full overflow-y-auto custom-scrollbar">
+        <div className="max-w-4xl mx-auto pb-10">
             {section === "general" && <SectionGeneral />}
-            {section === "profile" && <SectionProfile />}
             {section === "appearance" && <SectionAppearance />}
-            {section === "notifications" && <SectionNotifications />}
             {section === "billing" && <SectionBilling />}
             {section === "ai" && <SectionAI />}
             {section === "api" && (
                 <div className="space-y-6 animate-fade-in">
                     <div>
                         <h3 className="text-lg font-medium">API Keys</h3>
-                        <p className="text-sm text-muted-foreground">Manage your connection to LLM providers.</p>
+                        <p className="text-sm text-muted-foreground">Manage your connections to LLM providers.</p>
                     </div>
                     <Separator />
                     <ApiKeySettings />

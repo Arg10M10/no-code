@@ -1,7 +1,7 @@
 import React from "react";
 import { 
   Settings, SlidersHorizontal, Cpu, Key, Plug, ShieldAlert, 
-  User, CreditCard, Bell, Palette
+  CreditCard, Palette
 } from "lucide-react";
 import {
   Dialog,
@@ -22,18 +22,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ trigger }) => {
 
   const groups = [
     {
-      title: "Account",
-      items: [
-        { key: "profile", label: "Profile", icon: User },
-        { key: "billing", label: "Billing & Plans", icon: CreditCard },
-      ]
-    },
-    {
       title: "App Settings",
       items: [
         { key: "general", label: "General", icon: SlidersHorizontal },
         { key: "appearance", label: "Appearance", icon: Palette },
-        { key: "notifications", label: "Notifications", icon: Bell },
+        { key: "billing", label: "Billing & Plans", icon: CreditCard },
       ]
     },
     {
@@ -109,18 +102,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ trigger }) => {
                         </div>
                     </div>
                 ))}
-            </div>
-            
-            <div className="p-4 border-t border-border/40 shrink-0">
-                <div className="flex items-center gap-3 p-2 rounded-lg bg-background/50 border border-border/50">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <User className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">Demo User</p>
-                        <p className="text-xs text-muted-foreground truncate">Free Plan</p>
-                    </div>
-                </div>
             </div>
           </aside>
 
