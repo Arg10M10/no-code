@@ -26,12 +26,12 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
   if (provider === "openai") {
     if (normalized.includes("gpt-5.2")) return { provider, model: "gpt-5.2" };
     if (normalized.includes("gpt-5.1")) return { provider, model: "gpt-5.1" };
-    if (normalized.includes("mini")) return { provider, model: "gpt-4o-mini" }; // Fallback real a 4o-mini si gpt-5 no existe
+    if (normalized.includes("mini")) return { provider, model: "gpt-4o-mini" };
     if (normalized.includes("codex")) return { provider, model: "gpt-4o" };
-    return { provider, model: "gpt-4o" }; // Fallback seguro a gpt-4o por ahora
+    return { provider, model: "gpt-4o" };
   }
   if (provider === "google") {
-    if (normalized.includes("3 flash")) return { provider, model: "gemini-1.5-flash" }; // Usando modelos reales existentes
+    if (normalized.includes("3 flash")) return { provider, model: "gemini-1.5-flash" };
     return { provider, model: "gemini-1.5-pro" };
   }
   if (provider === "anthropic") {
@@ -39,7 +39,6 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
     return { provider, model: "claude-3-5-sonnet-20240620" };
   }
   if (provider === "openrouter") {
-    // Mapeos a modelos reales de OpenRouter para asegurar que funcione
     if (normalized.includes("kimi")) return { provider, model: "moonshot/moonshot-v1-8k" };
     if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-chat" };
     if (normalized.includes("qwen")) return { provider, model: "qwen/qwen-2-72b-instruct" };
@@ -49,7 +48,7 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
 }
 
 /**
- * Parsea eventos Server-Sent Events (SSE) simples.
+ * Parsea eventos Server-Sent Events (SSE) simples con buffering para chunks incompletos.
  */
 async function streamReader(
   response: Response, 
@@ -60,12 +59,18 @@ async function streamReader(
   const decoder = new TextDecoder();
   if (!reader) return "";
 
+  let buffer = "";
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
     
-    const lines = chunk.split("\n");
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    
+    // Guardamos la última línea en el buffer porque puede estar incompleta
+    buffer = lines.pop() || ""; 
+
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed || trimmed === "data: [DONE]") continue;
@@ -86,13 +91,13 @@ async function streamReader(
              }
           }
         } catch (e) {
-          // Ignorar chunks parciales o errores de parseo
+          // Ignoramos errores de parseo en líneas individuales (ping, etc)
         }
-      } else if (provider === "anthropic" && trimmed.startsWith("event: ")) {
-          // Anthropic events, ignoramos por ahora
-      }
+      } 
     }
   }
+  
+  // Procesar remanente si fuera necesario (raro en SSE bien formados)
 }
 
 async function callApi(params: { 
@@ -106,6 +111,8 @@ async function callApi(params: {
   onProgress?: (fullText: string) => void; 
 }): Promise<string> {
   const { provider, messages, model, apiKey, system, temperature, signal, onProgress } = params;
+  
+  // Enable streaming for OpenAI, Anthropic, OpenRouter. Google REST API requires different endpoint for stream.
   const isStreaming = !!onProgress && provider !== "google"; 
 
   try {
@@ -162,7 +169,6 @@ async function callApi(params: {
         content: typeof m.content === 'string' ? m.content : (m.content as any)
       }));
       
-      // IMPORTANT: anthropic-dangerous-direct-browser-access header is required for client-side calls
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { 
@@ -202,7 +208,6 @@ async function callApi(params: {
 
     if (provider === "google") {
       const systemPrompt = messages.find((m) => m.role === "system")?.content || system || "";
-      // Google API format adjustment
       const contents = messages
         .filter(m => m.role !== 'system')
         .map((m) => ({ 
@@ -227,16 +232,19 @@ async function callApi(params: {
         throw new Error(`Google error (${r.status}): ${text}`); 
       }
       const data = await r.json();
-      return (data.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
+      const result = (data.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
+      
+      // Simulate progress for Google since we're not using streaming endpoint
+      onProgress?.(result); 
+      return result;
     }
 
     throw new Error(`Provider ${provider} not supported`);
     
   } catch (error: any) {
     if (error.name === 'AbortError') throw error;
-    // Enhance error message for common issues
     if (error.message.includes("Failed to fetch")) {
-      throw new Error(`Connection failed. This might be a CORS issue (if using OpenAI directly) or a network problem. Check console for details.`);
+      throw new Error(`Connection failed. If using OpenAI, this might be a CORS issue. If using Anthropic, ensure headers are allowed.`);
     }
     throw error;
   }
@@ -283,7 +291,7 @@ export async function generateAnswer(req: {
   const onProgress = (fullText: string) => {
     if (!req.onStatusUpdate) return;
     
-    // Intentar encontrar el último archivo que se está escribiendo
+    // Find last file path being written
     const regex = /"path":\s*"([^"]+)"/g;
     let match;
     let lastFile = null;
@@ -291,11 +299,13 @@ export async function generateAnswer(req: {
       lastFile = match[1];
     }
     
+    // Update active status
     if (lastFile) {
-      req.onStatusUpdate(`Generando ${lastFile}...`);
+      req.onStatusUpdate(`Writing ${lastFile}...`);
     } else {
-      if (fullText.length < 50) req.onStatusUpdate("Inicializando...");
-      else if (fullText.length < 200) req.onStatusUpdate("Estructurando respuesta JSON...");
+      if (fullText.length < 50) req.onStatusUpdate("Thinking...");
+      else if (fullText.length < 500) req.onStatusUpdate(`Planning structure (${fullText.length} chars)...`);
+      else req.onStatusUpdate(`Generating code (${Math.round(fullText.length / 1024)}KB)...`);
     }
   };
 
