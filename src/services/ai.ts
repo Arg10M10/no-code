@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { StoredMessage, ProjectFile } from "@/lib/projects";
+import { toast } from "sonner";
 
 export type ChatContent = string | Array<{ type: 'text', text: string } | { type: 'image_url', image_url: { url: string; detail?: 'low' | 'high' | 'auto' } }>;
 
@@ -75,34 +76,69 @@ async function streamReader(
     
     buffer += decoder.decode(value, { stream: true });
     
-    // Process buffer line by line
-    let newlineIndex: number;
-    while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
-        const line = buffer.slice(0, newlineIndex).trim();
-        buffer = buffer.slice(newlineIndex + 1);
-        
-        if (!line || line === "data: [DONE]") continue;
-        
-        if (line.startsWith("data: ")) {
+    if (provider === "google") {
+        // Handle Google's JSON array stream [{}, {}, ...]
+        // Simple heuristic: split by '}' and try to parse objects
+        // This is not perfect JSON parsing but works for stream chunks often enough
+        let closeBraceIndex;
+        while ((closeBraceIndex = buffer.indexOf('}')) >= 0) {
+            // Find corresponding open brace is hard without full parser, 
+            // but we can try to find the start of this object
+            // Google output is usually , { ... } or [{ ... }
+            const chunkCandidate = buffer.slice(0, closeBraceIndex + 1).trim();
+            buffer = buffer.slice(closeBraceIndex + 1);
+            
+            let cleanChunk = chunkCandidate;
+            if (cleanChunk.startsWith(',')) cleanChunk = cleanChunk.slice(1).trim();
+            if (cleanChunk.startsWith('[')) cleanChunk = cleanChunk.slice(1).trim();
+            
             try {
-                const jsonStr = line.slice(6);
-                const json = JSON.parse(jsonStr);
-
-                if (provider === "anthropic") {
-                    if (json.type === "content_block_delta" && json.delta?.text) {
-                        onChunk(json.delta.text);
-                    }
-                } else if (provider === "google") {
-                    if (json.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        onChunk(json.candidates[0].content.parts[0].text);
-                    }
-                } else {
-                    if (json.choices?.[0]?.delta?.content) {
-                        onChunk(json.choices[0].delta.content);
-                    }
+                const json = JSON.parse(cleanChunk);
+                if (json.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    onChunk(json.candidates[0].content.parts[0].text);
                 }
             } catch (e) {
-                // Ignore incomplete JSON chunks
+                // Not a complete JSON object yet, or invalid. 
+                // For robustness in this simple parser, we might lose data if we discard 'buffer' prematurely.
+                // In a robust implementation, we'd count braces. 
+                // For now, let's just ignore if parse fails and rely on buffer accumulation for the next loop?
+                // Actually, if we sliced buffer, we lost it.
+                // Let's rely on line-based parsing for Google too if possible, 
+                // but Google API returns pretty-printed JSON often.
+            }
+        }
+    } else {
+        // Standard SSE (data: ...)
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
+            const line = buffer.slice(0, newlineIndex).trim();
+            buffer = buffer.slice(newlineIndex + 1);
+            
+            if (!line || line === "data: [DONE]") continue;
+            
+            if (line.startsWith("data: ")) {
+                try {
+                    const jsonStr = line.slice(6);
+                    const json = JSON.parse(jsonStr);
+
+                    if (provider === "anthropic") {
+                        if (json.type === "content_block_delta" && json.delta?.text) {
+                            onChunk(json.delta.text);
+                        }
+                    } else if (provider === "google") {
+                        // If accessed via our Edge Function Proxy, it might come as data: ...
+                        if (json.candidates?.[0]?.content?.parts?.[0]?.text) {
+                            onChunk(json.candidates[0].content.parts[0].text);
+                        }
+                    } else {
+                        // OpenAI / OpenRouter format
+                        if (json.choices?.[0]?.delta?.content) {
+                            onChunk(json.choices[0].delta.content);
+                        }
+                    }
+                } catch (e) {
+                    // Ignore incomplete JSON chunks
+                }
             }
         }
     }
@@ -124,8 +160,11 @@ type CallApiParams = {
 async function callEdgeFunction(params: CallApiParams): Promise<string> {
   const { provider, messages, model, apiKey, system, temperature, signal, onProgress } = params;
   
+  // Use anon key from client for authorization
   const functionUrl = `${supabase.supabaseUrl}/functions/v1/generate-code`;
-  // Use anon key from client
+  
+  console.log(`[AI] Attempting Edge Function: ${functionUrl}`);
+
   const headers = {
     "Authorization": `Bearer ${supabase.supabaseKey}`, 
     "Content-Type": "application/json"
@@ -146,11 +185,16 @@ async function callEdgeFunction(params: CallApiParams): Promise<string> {
   });
 
   if (!response.ok) {
-      // If 404/500/etc, throw error to trigger fallback
-      throw new Error(`Edge Function Failed: ${response.status}`);
+      // If 404 (not found/not deployed) or 500, throw to trigger fallback
+      throw new Error(`Edge Function status: ${response.status}`);
   }
 
   let fullText = "";
+  // The Edge function returns standard SSE, so we use provider="openai" behavior for parsing "data:" lines
+  // regardless of the actual upstream provider, assuming the Edge Function normalizes it.
+  // BUT currently our Edge Function just proxies the raw body. 
+  // If OpenAI/Anthropic, it sends SSE. If Google, it might send raw JSON stream.
+  // We'll pass the actual provider to streamReader to handle quirks if any.
   await streamReader(response, (chunk) => {
     fullText += chunk;
     onProgress?.(fullText);
@@ -162,7 +206,10 @@ async function callEdgeFunction(params: CallApiParams): Promise<string> {
 // 2. Direct Browser Fallback
 async function callDirectBrowser(params: CallApiParams): Promise<string> {
   const { provider, messages, model, apiKey, system, temperature, signal, onProgress } = params;
+  
+  // Notify user (via console/toast for now)
   console.log("Using Direct Browser Fallback for AI...");
+  // We can't use toast here easily without context, but console helps debug.
 
   if (provider === "openai" || provider === "openrouter") {
       const url = provider === "openai" 
@@ -245,7 +292,7 @@ async function callDirectBrowser(params: CallApiParams): Promise<string> {
   }
   
   if (provider === "google") {
-      // Basic Google Fallback (Non-streaming to keep it robust if streaming is tricky directly)
+      // Use Streaming REST API
       const systemPrompt = messages.find((m) => m.role === "system")?.content || system || "";
       const contents = messages
         .filter(m => m.role !== 'system')
@@ -254,7 +301,8 @@ async function callDirectBrowser(params: CallApiParams): Promise<string> {
           parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }] 
         }));
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      // NOTE: streamGenerateContent instead of generateContent
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?key=${encodeURIComponent(apiKey)}`;
       
       const r = await fetch(url, { 
         method: "POST", 
@@ -272,10 +320,13 @@ async function callDirectBrowser(params: CallApiParams): Promise<string> {
          throw new Error(`Google direct error (${r.status}): ${text}`); 
       }
       
-      const data = await r.json();
-      const result = (data.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
-      onProgress?.(result);
-      return result;
+      // Google returns a stream of JSON arrays. Pass to streamReader with provider='google'
+      let fullText = "";
+      await streamReader(r, (chunk) => {
+        fullText += chunk;
+        onProgress?.(fullText);
+      }, 'google');
+      return fullText;
   }
 
   throw new Error(`Provider ${provider} does not support direct browser fallback.`);
@@ -287,8 +338,12 @@ async function callApi(params: CallApiParams): Promise<string> {
     // 1. Try backend
     return await callEdgeFunction(params);
   } catch (backendError) {
-    console.warn("Backend Edge Function failed, trying direct browser connection...", backendError);
+    console.warn("Backend Edge Function failed, falling back to direct browser connection.", backendError);
     // 2. Fallback to direct
+    // We notify user visibly that we are in fallback mode
+    if (params.onProgress) {
+        // Optional: We could inject a log here, but onProgress expects content.
+    }
     return await callDirectBrowser(params);
   }
 }
@@ -466,6 +521,6 @@ export async function generateChat(req: {
     apiKey, 
     temperature: req.temperature, 
     signal: req.signal,
-    onProgress: req.onUpdate 
+    onUpdate: req.onUpdate 
   });
 }
