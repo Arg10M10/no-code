@@ -137,6 +137,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     }
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
+
   const percentOfLimit = Math.round((credits / MODEL_TOKEN_LIMIT) * 100);
   const progressWidth = `${Math.max(0, Math.min(100, percentOfLimit))}%`;
 
@@ -220,30 +228,34 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       <form onSubmit={handleSubmit} className="p-4">
         <div className="rounded-xl bg-secondary border border-border p-3 shadow-sm">
           {selectedImages.length > 0 ? (
-            <div className="mb-3">
+            <div className="mb-3 px-1">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-xs text-muted-foreground">
-                  Adjuntos: {selectedImages.length}/{maxImages} {userPlan === "pro" ? "(Pro)" : "(Free)"}
+                <div className="text-xs text-muted-foreground font-medium">
+                  {selectedImages.length} {selectedImages.length === 1 ? 'image' : 'images'} attached
                 </div>
                 <button
                   type="button"
                   onClick={clearImages}
-                  className="inline-flex items-center justify-center text-xs rounded-md px-2 py-1 bg-white/10 hover:bg-white/15"
+                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Quitar todos
+                  Clear all
                 </button>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {previewUrls.map((url, idx) => (
-                  <div key={idx} className="relative rounded-md overflow-hidden border border-white/10">
-                    <img src={url} alt={`Adjunto ${idx + 1}`} className="w-full aspect-square object-cover bg-black/5" />
+              <div className="flex flex-wrap gap-2">
+                {selectedImages.map((file, idx) => (
+                  <div key={idx} className="group relative flex items-center gap-2 bg-secondary/40 border border-white/5 rounded-lg p-1.5 pr-2 transition-all hover:bg-secondary/60">
+                    <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-md border border-white/10">
+                      <img src={previewUrls[idx]} alt="Preview" className="h-full w-full object-cover" />
+                    </div>
+                    <div className="flex flex-col">
+                       <span className="text-[9px] text-muted-foreground font-medium">{formatFileSize(file.size)}</span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeImageAt(idx)}
-                      className="absolute top-1 right-1 inline-flex items-center justify-center rounded-md bg-black/60 hover:bg-black/70 p-1"
-                      aria-label="Remove image"
+                      className="ml-1 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-white/10"
                     >
-                      <X className="h-3.5 w-3.5 text-white/90" />
+                       <X className="h-3 w-3" />
                     </button>
                   </div>
                 ))}

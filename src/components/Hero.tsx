@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, ClipboardEvent, KeyboardEvent } from "react";
+import React, { useRef, useState, useEffect, ClipboardEvent, KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,8 @@ const Hero: React.FC = () => {
   const [answer, setAnswer] = useState<string>("");
   const [copyOk, setCopyOk] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -58,6 +60,26 @@ const Hero: React.FC = () => {
         "Given a reference screenshot, outline the steps to clone the layout in Tailwind and how to break it down into reusable components.",
     },
   ];
+
+  const attachment = selectedFile || selectedScreenshot;
+
+  useEffect(() => {
+    if (attachment && attachment.type.startsWith("image/")) {
+      const url = URL.createObjectURL(attachment);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [attachment]);
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
 
   const handleUploadProjectClick = () => projectFileInputRef.current?.click();
   const handleAttachImageClick = () => imageFileInputRef.current?.click();
@@ -139,10 +161,9 @@ const Hero: React.FC = () => {
     setTimeout(() => setCopyOk(false), 1200);
   };
 
-  const attachment = selectedFile || selectedScreenshot;
   const attachmentCount = [attachment, pastedTextInfo].filter(Boolean).length;
   // Reduced padding here
-  const paddingTopClass = attachmentCount === 2 ? "pt-24" : attachmentCount === 1 ? "pt-14" : "pt-4";
+  const paddingTopClass = attachmentCount > 0 ? "pt-20" : "pt-4";
 
   const handleTextareaKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -165,20 +186,40 @@ const Hero: React.FC = () => {
 
         <div className="max-w-2xl mx-auto space-y-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
           <div className="relative">
-            <div className="absolute top-3 left-3 right-3 z-10 flex flex-col gap-2">
+            <div className="absolute top-3 left-3 right-3 z-10 flex flex-col items-start gap-2 pointer-events-none">
               {attachment && (
-                <div className="flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="text-xs font-medium truncate">{attachment.name}</span>
+                <div className="pointer-events-auto group relative flex items-center gap-3 px-2 py-2 bg-background/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm animate-fade-in-down hover:bg-background transition-colors max-w-full">
+                  {previewUrl ? (
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border/50 bg-secondary/50">
+                      <img 
+                        src={previewUrl} 
+                        alt="Preview" 
+                        className="h-full w-full object-cover" 
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+                      <File className="h-5 w-5" />
+                    </div>
+                  )}
+                  
+                  <div className="flex flex-col gap-0.5 pr-6 min-w-0">
+                     {!previewUrl && <span className="text-xs font-medium truncate max-w-[180px]">{attachment.name}</span>}
+                     <span className="text-[10px] text-muted-foreground font-medium">{formatFileSize(attachment.size)}</span>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full flex-shrink-0" onClick={handleClearFile}>
+
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-background border border-border shadow-sm opacity-0 group-hover:opacity-100 transition-opacity" 
+                    onClick={handleClearFile}
+                  >
                     <X className="h-3 w-3" />
                   </Button>
                 </div>
               )}
               {pastedTextInfo && (
-                <div className="flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down">
+                <div className="pointer-events-auto flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down">
                   <div className="flex items-center gap-2 min-w-0">
                     <ClipboardPasteIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <span className="text-xs font-medium truncate">Pasted text ({pastedTextInfo.wordCount} words)</span>
