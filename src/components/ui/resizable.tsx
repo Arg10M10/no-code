@@ -1,103 +1,45 @@
-"use client";
+"use client"
 
-import React from "react";
-import { cn } from "@/lib/utils";
+import { GripVertical } from "lucide-react"
+import * as ResizablePrimitive from "react-resizable-panels"
 
-type PanelProps = {
-  children: React.ReactNode;
-  // sizing props used by the previous resizable implementation — kept for type compatibility
-  defaultSize?: number; // percent in the original API
-  minSize?: number;
-  maxSize?: number;
-  collapsible?: boolean;
-  collapsedSize?: number;
-  onCollapse?: () => void;
-  onExpand?: () => void;
-  className?: string;
-  // legacy names previously present in other implementations
-  defaultWidth?: number;
-  minWidth?: number;
-  maxWidth?: number;
-};
+import { cn } from "@/lib/utils"
 
-type GroupProps = {
-  children: React.ReactNode;
-  className?: string;
-  // Editor passes direction="horizontal"
-  direction?: "horizontal" | "vertical" | string;
-};
-
-type HandleProps = {
-  withHandle?: boolean;
-  className?: string;
-};
-
-/**
- * ResizablePanelGroup
- * Simple horizontal container for panels. Static (no drag logic).
- * Accepts `direction` prop for compatibility.
- */
-export const ResizablePanelGroup: React.FC<GroupProps> = ({ children, className }) => {
-  return <div className={cn("flex h-full w-full", className)}>{children}</div>;
-};
-
-/**
- * ResizablePanel
- * Static panel that accepts sizing props for compatibility with the original API.
- * - If `defaultSize` is provided (assumed percentage), we don't compute real percentages here;
- *   instead we keep flex behavior but allow consumers to pass className or inline styles.
- * - If `defaultWidth` is provided, it's treated as pixels.
- */
-export const ResizablePanel: React.FC<PanelProps> = ({
-  children,
-  defaultSize,
-  minSize,
-  maxSize,
-  defaultWidth,
-  minWidth,
-  maxWidth,
+const ResizablePanelGroup = ({
   className,
-}) => {
-  // Prefer explicit pixel width if provided, otherwise do not force sizing.
-  const style: React.CSSProperties | undefined = defaultWidth
-    ? {
-        width: `${defaultWidth}px`,
-        minWidth: minWidth ? `${minWidth}px` : undefined,
-        maxWidth: maxWidth ? `${maxWidth}px` : undefined,
-      }
-    : undefined;
+  ...props
+}: React.ComponentProps<typeof ResizablePrimitive.PanelGroup>) => (
+  <ResizablePrimitive.PanelGroup
+    className={cn(
+      "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
+      className
+    )}
+    {...props}
+  />
+)
 
-  // If defaultSize is provided (likely a percentage number), we don't enforce it here —
-  // keep flex behavior but allow consumers to control via className if needed.
-  const rootClasses = defaultWidth ? "flex-none" : "flex-1";
+const ResizablePanel = ResizablePrimitive.Panel
 
-  return (
-    <div className={cn(rootClasses, "h-full", className)} style={style}>
-      <div className="h-full overflow-auto">{children}</div>
-    </div>
-  );
-};
+const ResizableHandle = ({
+  withHandle,
+  className,
+  ...props
+}: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & {
+  withHandle?: boolean
+}) => (
+  <ResizablePrimitive.PanelResizeHandle
+    className={cn(
+      "relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-4 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-4 data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:-translate-y-1/2 data-[panel-group-direction=vertical]:after:translate-x-0 [&[data-panel-group-direction=vertical]>div]:rotate-90",
+      className
+    )}
+    {...props}
+  >
+    {withHandle && (
+      <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border">
+        <GripVertical className="h-2.5 w-2.5" />
+      </div>
+    )}
+  </ResizablePrimitive.PanelResizeHandle>
+)
 
-/**
- * ResizableHandle
- * Exported for compatibility with existing imports. Intentionally inert (returns null)
- * to keep the UI static while preserving the API.
- */
-export const ResizableHandle: React.FC<HandleProps> = () => {
-  return null;
-};
-
-/**
- * Default Resizable export (kept for compatibility).
- * Acts as a simple wrapper that applies a defaultWidth if provided.
- */
-const Resizable: React.FC<PanelProps & { className?: string }> = ({ children, defaultWidth, className }) => {
-  const style = defaultWidth ? { width: `${defaultWidth}px` } : undefined;
-  return (
-    <div className={cn("relative flex h-full", className)} style={style}>
-      <div className="flex-1 overflow-hidden">{children}</div>
-    </div>
-  );
-};
-
-export default Resizable;
+export { ResizablePanelGroup, ResizablePanel, ResizableHandle }
