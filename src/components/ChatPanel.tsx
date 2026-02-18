@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ModelsPopover from "./ModelsPopover";
-import { getSelectedModelLabel, setSelectedModelLabel, getUserPlan } from "@/lib/settings";
+import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
 import { ChartNoAxes } from "./ChartNoAxes";
 import { Paperclip } from "./Paperclip";
 import { Earth } from "./Earth";
@@ -35,9 +35,6 @@ const isErrorMessage = (content: string) => {
          lowerContent.includes('cancelled');
 };
 
-const FREE_MAX_IMAGES = 3;
-const PRO_MAX_IMAGES = 10;
-
 const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
   loading,
@@ -58,8 +55,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
 
   const [selectedModel, setSelectedModel] = React.useState<string>(getSelectedModelLabel());
-  const userPlan = getUserPlan();
-  const maxImages = userPlan === "pro" ? PRO_MAX_IMAGES : FREE_MAX_IMAGES;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -86,26 +81,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     e.currentTarget.value = "";
 
     if (files.length === 0) return;
-
-    const remainingSlots = Math.max(0, maxImages - selectedImages.length);
-    const allowedFiles = files.slice(0, remainingSlots);
-
-    if (allowedFiles.length < files.length) {
-      const msg =
-        userPlan === "pro"
-          ? `Máximo ${PRO_MAX_IMAGES} imágenes por mensaje en Pro.`
-          : `Máximo ${FREE_MAX_IMAGES} imágenes por mensaje en el plan gratuito.`;
-      toast.warning("Límite de adjuntos alcanzado", {
-        description: msg,
-        action: userPlan === "pro" ? undefined : {
-          label: "Ir a Pro",
-          onClick: () => navigate("/pricing"),
-        },
-      });
-    }
-
-    if (allowedFiles.length === 0) return;
-    setSelectedImages((prev) => [...prev, ...allowedFiles]);
+    setSelectedImages((prev) => [...prev, ...files]);
   };
 
   const removeImageAt = (index: number) => {
@@ -243,8 +219,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               </div>
               <div className="flex flex-wrap gap-2">
                 {selectedImages.map((file, idx) => (
-                  <div key={idx} className="group relative flex items-center gap-2 bg-secondary/40 border border-white/5 rounded-lg p-1.5 pr-2 transition-all hover:bg-secondary/60">
-                    <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-md border border-white/10">
+                  <div key={idx} className="group relative flex items-center gap-2 bg-secondary/40 border border-white/5 rounded-md p-1 pr-2 transition-all hover:bg-secondary/60">
+                    <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded border border-white/10">
                       <img src={previewUrls[idx]} alt="Preview" className="h-full w-full object-cover" />
                     </div>
                     <div className="flex flex-col">
@@ -384,21 +360,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                         style={{ width: progressWidth }}
                         aria-hidden
                       />
-                    </div>
-
-                    <div className="pt-2 border-t border-white/6 space-y-2">
-                      <div className="text-xs text-white/80">
-                        Límite de imágenes por mensaje: {maxImages} {userPlan === "pro" ? "(Pro)" : "(Free)"}
-                      </div>
-                      {userPlan !== "pro" && (
-                        <button
-                          type="button"
-                          onClick={() => navigate('/pricing')}
-                          className="w-full text-left text-xs text-sky-400 hover:underline"
-                        >
-                          Sube a Pro para hasta 10 imágenes por mensaje
-                        </button>
-                      )}
                     </div>
                   </PopoverContent>
                 </Popover>
