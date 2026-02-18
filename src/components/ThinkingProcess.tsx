@@ -1,4 +1,3 @@
-Thinking (visible) -> Coding (loading)">
 import React, { useEffect, useState, useRef } from "react";
 import { ChevronDown, ChevronRight, BrainCircuit, CheckCircle2, FileCode, Terminal, Loader2, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
