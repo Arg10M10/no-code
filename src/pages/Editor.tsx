@@ -350,13 +350,23 @@ const EditorPage: React.FC = () => {
       toast.info("Analyzing error...");
   };
 
+  const toggleSidebar = () => {
+    const panel = leftPanelRef.current;
+    if (panel) {
+        if (isLeftPanelCollapsed) {
+            panel.expand();
+        } else {
+            panel.collapse();
+        }
+    }
+  };
+
   if (!projectId) return <div>Cargando...</div>;
 
   return (
     <div className="h-full w-full flex flex-col bg-background text-foreground animate-fade-in">
       <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0 bg-background z-20 relative">
         <div className="flex items-center gap-4">
-          {/* Botón eliminado a petición del usuario */}
           <h1 className="text-lg font-semibold truncate max-w-[200px]" title={projectName}>
             {projectName || "Proyecto"}
           </h1>
@@ -405,7 +415,7 @@ const EditorPage: React.FC = () => {
           
           <ResizableHandle 
             withHandle 
-            className="w-4 bg-border/20 hover:bg-primary/20 transition-colors z-50 flex items-center justify-center data-[active]:bg-primary/30 border-l border-r border-border/10 cursor-col-resize" 
+            className="w-6 bg-secondary border-l border-r border-border/40 hover:bg-primary/20 transition-colors z-50 flex items-center justify-center data-[active]:bg-primary/30 cursor-col-resize shadow-sm" 
           />
           
           <ResizablePanel defaultSize={75} className="bg-muted/40">
