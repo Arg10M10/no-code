@@ -23,11 +23,12 @@ function fileToDataUrl(file: File): Promise<string> {
 const Hero: React.FC = () => {
   const projectFileInputRef = useRef<HTMLInputElement | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const [selectedModel, setSelectedModel] = useState<string>(getSelectedModelLabel());
   
-  // Changed to array to support multiple images
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  // We keep previewUrls in case we want to support image pasting/logic, though we won't display them as thumbnails anymore
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   
   const [pastedTextInfo, setPastedTextInfo] = useState<{ wordCount: number; content: string } | null>(null);
@@ -61,7 +62,6 @@ const Hero: React.FC = () => {
     },
   ];
 
-  // Update preview URLs when files change
   useEffect(() => {
     const urls = selectedImages.map(file => URL.createObjectURL(file));
     setPreviewUrls(urls);
@@ -70,27 +70,24 @@ const Hero: React.FC = () => {
     };
   }, [selectedImages]);
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-  };
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 400)}px`; // Max height limit logic
+    }
+  }, [prompt]);
 
   const handleUploadProjectClick = () => projectFileInputRef.current?.click();
   const handleAttachImageClick = () => imageFileInputRef.current?.click();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: 'project' | 'image') => {
     if (type === 'project') {
-       // Project upload logic typically handles one file (zip) for now
-       // For now we just log or ignore as the functionality wasn't fully detailed
        const file = event.target.files?.[0];
        if (file) {
          toast.info(`Selected project file: ${file.name}`);
        }
     } else {
-       // Images - Append to existing
        const files = Array.from(event.target.files || []);
        if (files.length > 0) {
          setSelectedImages(prev => [...prev, ...files]);
@@ -107,7 +104,6 @@ const Hero: React.FC = () => {
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const pastedText = event.clipboardData.getData("text");
-    // Check if pasted content has files (images)
     if (event.clipboardData.files && event.clipboardData.files.length > 0) {
         const files = Array.from(event.clipboardData.files).filter(f => f.type.startsWith('image/'));
         if (files.length > 0) {
@@ -172,10 +168,6 @@ const Hero: React.FC = () => {
     setTimeout(() => setCopyOk(false), 1200);
   };
 
-  const hasAttachments = selectedImages.length > 0 || pastedTextInfo;
-  // Dynamic padding based on content
-  const paddingTopClass = hasAttachments ? "pt-24" : "pt-4";
-
   const handleTextareaKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -196,94 +188,92 @@ const Hero: React.FC = () => {
         </div>
 
         <div className="max-w-2xl mx-auto space-y-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
-          <div className="relative">
-            {/* Attachment preview area - Floating inside top of textarea */}
-            <div className="absolute top-3 left-3 right-3 z-10 flex flex-col items-start gap-2 pointer-events-none">
-              
-              {/* Image Grid - Compact & Grouped */}
-              {selectedImages.length > 0 && (
-                 <div className="pointer-events-auto flex flex-wrap gap-2 max-h-[120px] overflow-y-auto w-full pr-2">
-                    {selectedImages.map((file, idx) => (
-                        <div key={idx} className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-white/10 bg-secondary/50 shadow-sm animate-fade-in-down">
-                            <img 
-                                src={previewUrls[idx]} 
-                                alt="Preview" 
-                                className="h-full w-full object-cover transition-opacity hover:opacity-80" 
-                            />
-                            <button
-                                onClick={() => removeImage(idx)}
-                                className="absolute top-0.5 right-0.5 h-4 w-4 bg-black/50 hover:bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
-                                title="Remove"
-                            >
-                                <X className="h-2.5 w-2.5" />
-                            </button>
-                        </div>
-                    ))}
-                    {selectedImages.length > 0 && (
-                        <div className="flex items-center justify-center h-12 px-3 rounded-md border border-dashed border-white/20 text-xs text-muted-foreground bg-white/5">
-                            {selectedImages.length} {selectedImages.length === 1 ? 'file' : 'files'}
-                        </div>
-                    )}
-                 </div>
-              )}
-
-              {pastedTextInfo && (
-                <div className="pointer-events-auto flex items-center justify-between gap-2 px-2 py-1.5 bg-background border border-border rounded-lg shadow-sm animate-fade-in-down max-w-full">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <ClipboardPasteIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="text-xs font-medium truncate">Pasted text ({pastedTextInfo.wordCount} words)</span>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full flex-shrink-0" onClick={handleClearPastedText}>
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
+          {/* Main Input Container */}
+          <div className="flex flex-col w-full bg-secondary border border-border rounded-xl focus-within:ring-2 focus-within:ring-ring transition-all duration-300 ease-in-out hover:shadow-lg overflow-hidden relative">
+            
             <textarea
+              ref={textareaRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onPaste={handlePaste}
               onKeyDown={handleTextareaKeyDown}
               placeholder="Describe what you want to build or improve (website, app, business, code...)"
-              className={`w-full h-64 pl-6 pr-16 pb-16 bg-secondary border border-border text-base rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 ease-in-out hover:shadow-lg ${paddingTopClass}`}
+              className="w-full min-h-[140px] max-h-[400px] p-6 bg-transparent border-none text-base resize-none focus:outline-none placeholder:text-muted-foreground/60"
             />
 
-            <div className="absolute left-4 bottom-4 flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={handleAttachImageClick}>
-                <Paperclip className="h-4 w-4 mr-2" />
-                Attach
-              </Button>
+            {/* Attachments Area (Chips) */}
+            {(selectedImages.length > 0 || pastedTextInfo) && (
+               <div className="px-6 pb-4 flex flex-wrap gap-2 animate-fade-in">
+                  {selectedImages.map((file, idx) => (
+                      <div key={idx} className="group flex items-center gap-2 pl-3 pr-2 py-1.5 bg-background/40 hover:bg-background/60 border border-white/5 rounded-md text-sm text-muted-foreground transition-all">
+                          <span className="truncate max-w-[180px] font-medium text-xs">{file.name}</span>
+                          <button
+                              onClick={() => removeImage(idx)}
+                              className="text-muted-foreground/60 hover:text-foreground p-0.5 rounded-full hover:bg-white/10 transition-colors"
+                              title="Remove"
+                          >
+                              <X className="h-3.5 w-3.5" />
+                          </button>
+                      </div>
+                  ))}
+                  
+                  {pastedTextInfo && (
+                      <div className="flex items-center gap-2 pl-3 pr-2 py-1.5 bg-background/40 hover:bg-background/60 border border-white/5 rounded-md text-sm text-muted-foreground">
+                           <ClipboardPasteIcon className="h-3.5 w-3.5" />
+                           <span className="text-xs font-medium">Text ({pastedTextInfo.wordCount}w)</span>
+                           <button onClick={handleClearPastedText} className="text-muted-foreground/60 hover:text-foreground p-0.5 rounded-full hover:bg-white/10 transition-colors">
+                              <X className="h-3.5 w-3.5" />
+                           </button>
+                      </div>
+                  )}
+               </div>
+            )}
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                    <Cpu className="h-4 w-4 mr-2" />
-                    {selectedModel}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <ModelsPopover
-                    selectedModel={selectedModel}
-                    onSelectModel={(label) => {
-                      setSelectedModel(label);
-                      setSelectedModelLabel(label);
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+            {/* Footer Toolbar */}
+            <div className="flex items-center justify-between px-4 pb-4 pt-2">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground h-8 px-3 rounded-lg hover:bg-background/40" onClick={handleAttachImageClick}>
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Attach
+                </Button>
 
-            <div className="absolute right-4 bottom-4">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground h-8 px-3 rounded-lg hover:bg-background/40">
+                      <Cpu className="h-4 w-4 mr-2" />
+                      {selectedModel}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <ModelsPopover
+                      selectedModel={selectedModel}
+                      onSelectModel={(label) => {
+                        setSelectedModel(label);
+                        setSelectedModelLabel(label);
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               <Button
                 size="icon"
-                className="rounded-full transition-transform hover:scale-105 active:scale-95"
+                className="rounded-xl h-9 w-9 transition-transform hover:scale-105 active:scale-95 shadow-sm"
                 onClick={handleSend}
                 disabled={loading || (!prompt.trim() && selectedImages.length === 0)}
               >
-                <ArrowUp className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
+                <ArrowUp className={`h-5 w-5 ${loading ? "animate-pulse" : ""}`} />
               </Button>
             </div>
+            
+            {/* Loading Overlay (Optional visual cue) */}
+            {loading && (
+               <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-20 flex items-center justify-center rounded-xl pointer-events-none transition-opacity">
+                  <div className="bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium animate-pulse border border-primary/20">
+                     Generating...
+                  </div>
+               </div>
+            )}
           </div>
 
           {answer && (
