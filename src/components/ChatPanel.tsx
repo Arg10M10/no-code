@@ -4,7 +4,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap } from "lucide-react";
+import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
@@ -292,10 +292,10 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
           <div className="px-3 pb-2 border-t border-border/50">
             <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center text-xs font-medium px-2.5 py-1 rounded-md transition-all select-none bg-background/50 border border-border text-foreground hover:bg-background"
+                  className="inline-flex items-center justify-center text-xs font-medium px-3 py-1.5 rounded-full transition-all select-none bg-background/50 border border-border text-foreground hover:bg-background shadow-sm hover:shadow"
                   onClick={() => {
                     setChatMode(prev => (prev === 'build' ? 'ask' : 'build'));
                   }}
@@ -308,7 +308,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-auto gap-1.5 px-2.5 py-1 text-xs font-medium transition-all bg-background/50 border-border text-foreground select-none hover:bg-background"
+                      className="h-auto gap-1.5 px-3 py-1.5 text-xs font-medium transition-all bg-background/50 border-border text-foreground select-none hover:bg-background rounded-full shadow-sm hover:shadow"
                     >
                       <Cpu className="w-3.5 h-3.5" />
                       <span className="truncate max-w-[100px]">{selectedModel}</span>
@@ -327,32 +327,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               </div>
 
               <div className="flex items-center gap-1">
-                {/* Credit Toggle Button */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-8 w-8 rounded-md p-0 hover:bg-background/50",
-                    showCredits ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground hover:text-foreground"
-                  )}
-                  onClick={() => setShowCredits(!showCredits)}
-                  title="Toggle Credits View"
-                >
-                  <Zap className="h-4 w-4" />
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-md p-0 text-muted-foreground hover:text-foreground hover:bg-background/50"
-                  onClick={handleAttachClick}
-                  title="Attach images"
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -365,10 +339,26 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                       <Plus className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent side="top" align="end" className="w-[180px] p-1.5">
+                  <PopoverContent side="top" align="end" className="w-[200px] p-1.5">
                     <div className="space-y-0.5">
                       <button
-                        className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs text-foreground hover:bg-muted rounded-md transition-colors text-left"
+                        className="w-full flex items-center gap-2.5 px-2 py-2 text-xs text-foreground hover:bg-muted rounded-md transition-colors text-left"
+                        onClick={handleAttachClick}
+                      >
+                         <Paperclip className="w-4 h-4 text-muted-foreground" />
+                         <span>Attach Image</span>
+                      </button>
+
+                      <button
+                        className="w-full flex items-center gap-2.5 px-2 py-2 text-xs text-foreground hover:bg-muted rounded-md transition-colors text-left"
+                        onClick={() => setShowCredits(!showCredits)}
+                      >
+                         <Zap className={cn("w-4 h-4", showCredits ? "text-primary" : "text-muted-foreground")} />
+                         <span>{showCredits ? "Hide Token Usage" : "Show Token Usage"}</span>
+                      </button>
+
+                      <button
+                        className="w-full flex items-center gap-2.5 px-2 py-2 text-xs text-foreground hover:bg-muted rounded-md transition-colors text-left"
                         onClick={() => {
                           toast.info("Web search coming soon!");
                         }}
