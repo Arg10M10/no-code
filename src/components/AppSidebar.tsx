@@ -10,7 +10,8 @@ import {
   Plus,
   Layers,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ const AppSidebar = () => {
       <div 
         className={cn(
           "h-screen flex flex-col bg-[#09090b] border-r border-white/5 flex-shrink-0 transition-all duration-300 ease-in-out z-20",
-          isCollapsed ? "w-[72px]" : "w-[270px]"
+          isCollapsed ? "w-[72px]" : "w-[240px]"
         )}
       >
         {/* Header Area */}
@@ -144,13 +145,29 @@ const AppSidebar = () => {
 
          {/* Footer */}
          {!isCollapsed && (
-           <div className="p-4 border-t border-white/5">
-              <div className="rounded-lg bg-gradient-to-r from-zinc-900 to-zinc-800/50 border border-white/5 p-3">
-                 <div className="flex items-center gap-2">
-                     <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                     <span className="text-xs font-medium text-zinc-300">Operational</span>
+           <div className="p-4 border-t border-white/5 space-y-4">
+              {/* Pro Plan Card */}
+              <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-white/10 p-4 relative overflow-hidden group">
+                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                 <div className="relative">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="h-4 w-4 text-purple-400" />
+                        <span className="text-sm font-semibold text-white">Framio Pro</span>
+                    </div>
+                    <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
+                    Unlock advanced AI models, unlimited projects and more.
+                    </p>
+                    <Link to="/pricing">
+                    <Button size="sm" className="w-full bg-white text-black hover:bg-white/90 h-8 text-xs font-medium border-0 shadow-none">
+                        Upgrade Plan
+                    </Button>
+                    </Link>
                  </div>
-                 <p className="text-[10px] text-zinc-500 mt-1">v2.4.0 (Open Source)</p>
+              </div>
+
+              {/* Version Text */}
+              <div className="flex justify-center">
+                 <p className="text-[10px] text-zinc-600 font-mono">v2.4.0 (Open Source)</p>
               </div>
            </div>
          )}
