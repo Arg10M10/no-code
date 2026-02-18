@@ -6,16 +6,17 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import SettingsContent, { Section } from "@/components/SettingsContent";
 import { cn } from "@/lib/utils";
 
-const SettingsModal: React.FC = () => {
+interface SettingsModalProps {
+  trigger?: React.ReactNode;
+}
+
+const SettingsModal: React.FC<SettingsModalProps> = ({ trigger }) => {
   const [section, setSection] = React.useState<Section>("general");
   const [open, setOpen] = React.useState(false);
 
@@ -57,13 +58,15 @@ const SettingsModal: React.FC = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button
-          type="button"
-          className="p-2 -mr-1 sm:mr-0 rounded-md text-muted-foreground transition-colors hover:text-foreground hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-          aria-label="Open settings"
-        >
-          <Settings className="h-5 w-5" />
-        </button>
+        {trigger ? trigger : (
+          <button
+            type="button"
+            className="p-2 -mr-1 sm:mr-0 rounded-md text-muted-foreground transition-colors hover:text-foreground hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+            aria-label="Open settings"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+        )}
       </DialogTrigger>
       <DialogContent className="w-[95vw] max-w-[1000px] h-[85vh] flex flex-col p-0 gap-0 border-white/10 bg-background/95 backdrop-blur-xl sm:rounded-2xl overflow-hidden shadow-2xl">
         

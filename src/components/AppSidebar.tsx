@@ -8,14 +8,15 @@ import {
   Star, 
   Users, 
   Plus,
-  Layers,
   PanelLeftClose,
   PanelLeftOpen,
-  Sparkles
+  Sparkles,
+  Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import SearchModal from "./SearchModal";
+import SettingsModal from "./SettingsModal";
 
 const AppSidebar = () => {
   const location = useLocation();
@@ -44,11 +45,13 @@ const AppSidebar = () => {
         {/* Header Area */}
         <div className={cn("flex items-center", isCollapsed ? "flex-col justify-center py-4 gap-4" : "justify-between p-4 pb-2")}>
           <div className="flex items-center gap-3">
-            {/* App Logo - Pink/Gradient Theme */}
+            {/* App Logo - Custom Image */}
             <Link to="/" className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20 flex-shrink-0">
-                 <Layers className="h-4 w-4 text-white" />
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="h-8 w-8 rounded-lg flex-shrink-0 object-contain bg-white/5 p-0.5" 
+              />
               {!isCollapsed && <span className="font-bold text-white tracking-tight text-base">Framio</span>}
             </Link>
           </div>
@@ -110,6 +113,22 @@ const AppSidebar = () => {
                 {!isCollapsed && "Resources"}
               </button>
             </Link>
+            
+            <SettingsModal 
+              trigger={
+                <button
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                    isCollapsed ? "justify-center w-full px-2" : "w-full",
+                    "text-zinc-400 hover:bg-white/5 hover:text-white"
+                  )}
+                  title={isCollapsed ? "Settings" : undefined}
+                >
+                  <Settings className="h-5 w-5 flex-shrink-0" />
+                  {!isCollapsed && "Settings"}
+                </button>
+              }
+            />
           </div>
 
           {/* Projects */}
