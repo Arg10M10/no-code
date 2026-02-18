@@ -149,10 +149,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   ].join(" ")}
                 >
                   {isUser && msg.images && msg.images.length > 0 && (
-                    <div className="mb-2 grid grid-cols-3 gap-2">
+                    <div className="mb-2 flex flex-wrap gap-2">
                       {msg.images.map((url, idx) => (
-                        <div key={idx} className="relative rounded-md overflow-hidden border border-white/10">
-                          <img src={url} alt={`Attachment ${idx + 1}`} className="w-full aspect-square object-cover bg-black/5" />
+                        <div key={idx} className="relative h-16 w-16 rounded-md overflow-hidden border border-white/10 shrink-0 group cursor-pointer">
+                          <img 
+                            src={url} 
+                            alt={`Attachment ${idx + 1}`} 
+                            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-110 bg-black/5" 
+                            title="Click to view full size (coming soon)"
+                          />
                         </div>
                       ))}
                     </div>
@@ -219,8 +224,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               </div>
               <div className="flex flex-wrap gap-2">
                 {selectedImages.map((file, idx) => (
-                  <div key={idx} className="group relative flex items-center gap-2 bg-secondary/40 border border-white/5 rounded-md p-1 pr-2 transition-all hover:bg-secondary/60">
-                    <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded border border-white/10">
+                  <div key={idx} className="group relative flex items-center gap-2 bg-secondary/40 border border-white/5 rounded-lg p-1.5 pr-2 transition-all hover:bg-secondary/60">
+                    <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-md border border-white/10">
                       <img src={previewUrls[idx]} alt="Preview" className="h-full w-full object-cover" />
                     </div>
                     <div className="flex flex-col">
