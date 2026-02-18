@@ -28,7 +28,7 @@ import {
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
 import { cn } from "@/lib/utils";
-import { Github } from "lucide-react";
+import { Github, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 function includesSupabaseIntent(text: string): boolean {
@@ -82,6 +82,8 @@ const EditorPage: React.FC = () => {
 
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Ref para controlar el panel izquierdo manualmente si hiciera falta
+  const leftPanelRef = useRef<any>(null);
 
   const addLog = (text: string) => {
     setGenerationLogs(prev => {
@@ -343,19 +345,32 @@ const EditorPage: React.FC = () => {
 
   const handleRetry = (text: string, images?: string[]) => handleNewMessage(text, images);
   
-  // Función para manejar el "Fix with AI" desde la consola
   const handleFixError = (error: string) => {
       const prompt = `I encountered this error in the console. Please fix it:\n\n${error}`;
       handleNewMessage(prompt);
       toast.info("Analyzing error...");
   };
 
+  const toggleSidebar = () => {
+    const panel = leftPanelRef.current;
+    if (panel) {
+        if (isLeftPanelCollapsed) {
+            panel.expand();
+        } else {
+            panel.collapse();
+        }
+    }
+  };
+
   if (!projectId) return <div>Cargando...</div>;
 
   return (
     <div className="h-full w-full flex flex-col bg-background text-foreground animate-fade-in">
-      <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0 bg-background">
+      <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0 bg-background z-20 relative">
         <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-muted-foreground hover:text-foreground">
+             {isLeftPanelCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </Button>
           <h1 className="text-lg font-semibold truncate max-w-[200px]" title={projectName}>
             {projectName || "Proyecto"}
           </h1>
@@ -370,17 +385,22 @@ const EditorPage: React.FC = () => {
           </Button>
         </div>
       </header>
-      <div className="flex-1 min-h-0">
-        <ResizablePanelGroup direction="horizontal">
+      
+      <div className="flex-1 min-h-0 w-full">
+        <ResizablePanelGroup direction="horizontal" className="h-full w-full">
           <ResizablePanel
-            defaultSize={30}
+            ref={leftPanelRef}
+            defaultSize={25} 
             minSize={20}
-            maxSize={40}
+            maxSize={45}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
             onExpand={() => setIsLeftPanelCollapsed(false)}
-            className={cn("bg-background", isLeftPanelCollapsed ? "hidden" : "")}
+            className={cn(
+                "bg-background transition-all duration-300 ease-in-out border-r border-border", 
+                isLeftPanelCollapsed && "min-w-0 p-0 overflow-hidden border-r-0"
+            )}
           >
             <ChatPanel
               messages={messages}
@@ -396,8 +416,10 @@ const EditorPage: React.FC = () => {
               onRetry={handleRetry}
             />
           </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={70}>
+          
+          <ResizableHandle withHandle className="bg-transparent hover:bg-primary/20 w-2 z-50 -ml-1" />
+          
+          <ResizablePanel defaultSize={75} className="bg-muted/40">
             <PreviewPanel
               previewUrl="/preview"
               code={previewHtml}
