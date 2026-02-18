@@ -4,7 +4,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap, Sparkles, FileCode, FilePlus, RotateCcw } from "lucide-react";
+import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap, Sparkles, FilePlus, RotateCcw, Pencil, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { ThinkingProcess } from "./ThinkingProcess";
@@ -127,32 +127,49 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const renderMessageContent = (content: string) => {
     if (content.includes("---CHANGES---")) {
         const [textPart, changesPart] = content.split("---CHANGES---");
-        const changes = JSON.parse(changesPart || "[]");
+        let changes = [];
+        try {
+            changes = JSON.parse(changesPart || "[]");
+        } catch (e) {
+            console.error("Error parsing changes", e);
+        }
 
         return (
-            <div className="space-y-3">
+            <div className="space-y-4">
                 <p className="whitespace-pre-wrap">{textPart.trim()}</p>
                 {changes.length > 0 && (
-                    <div className="rounded-lg border bg-card/40 p-3 space-y-2 mt-2">
-                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Edits made</div>
-                        {changes.map((change: any, i: number) => (
-                            <div key={i} className="flex items-center gap-2 text-xs">
-                                {change.type === 'create' ? (
-                                    <FilePlus className="h-3.5 w-3.5 text-green-500" />
-                                ) : (
-                                    <FileCode className="h-3.5 w-3.5 text-blue-500" />
-                                )}
-                                <span className="font-mono text-foreground/80">{change.path}</span>
-                                <span className={cn(
-                                    "text-[9px] px-1.5 py-0.5 rounded border ml-auto",
-                                    change.type === 'create' 
-                                        ? "bg-green-500/10 border-green-500/20 text-green-600" 
-                                        : "bg-blue-500/10 border-blue-500/20 text-blue-600"
-                                )}>
-                                    {change.type === 'create' ? 'Created' : 'Modified'}
-                                </span>
-                            </div>
-                        ))}
+                    <div className="grid gap-3 mt-2">
+                        {changes.map((change: any, i: number) => {
+                            const fileName = change.path.split('/').pop();
+                            const isCreate = change.type === 'create';
+                            return (
+                                <div key={i} className="flex flex-col gap-2 rounded-xl bg-secondary/50 border border-border/50 p-4 transition-all hover:border-border/80 hover:bg-secondary/70">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className={cn(
+                                                "flex items-center justify-center w-8 h-8 rounded-full shrink-0",
+                                                isCreate ? "bg-green-500/10 text-green-500" : "bg-blue-500/10 text-blue-500"
+                                            )}>
+                                                {isCreate ? <FilePlus className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="font-semibold text-sm text-foreground truncate">{fileName}</span>
+                                                <span className="text-xs text-muted-foreground font-mono truncate">{change.path}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
+                                            <span>{isCreate ? 'View' : 'Edit'}</span>
+                                            <ChevronRight className="h-3 w-3" />
+                                        </div>
+                                    </div>
+                                    <div className="pl-11">
+                                       <span className="text-xs text-muted-foreground">
+                                          {isCreate ? 'Created new file' : 'Updated file content'}
+                                       </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
