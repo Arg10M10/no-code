@@ -353,7 +353,7 @@ const EditorPage: React.FC = () => {
   if (!projectId) return <div>Cargando...</div>;
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden">
+    <div className="h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
       {/* Header Fijo */}
       <header className="h-14 border-b border-border bg-background/95 backdrop-blur flex items-center justify-between px-4 z-20 flex-shrink-0">
         <div className="flex items-center gap-4 min-w-0">
@@ -373,15 +373,15 @@ const EditorPage: React.FC = () => {
       </header>
       
       {/* Área de Trabajo Flexible */}
-      <div className="flex-1 flex min-h-0 relative">
+      <div className="flex-1 flex min-h-0 relative overflow-hidden">
         <ResizablePanelGroup direction="horizontal" className="h-full w-full">
           
           {/* Panel Izquierdo: Chat */}
           <ResizablePanel
             ref={leftPanelRef}
-            defaultSize={30} 
-            minSize={20}
-            maxSize={50}
+            defaultSize={20} 
+            minSize={15}
+            maxSize={40}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
@@ -406,11 +406,11 @@ const EditorPage: React.FC = () => {
           {/* Barra Divisora Visible */}
           <ResizableHandle 
             withHandle 
-            className="w-2 bg-border hover:bg-primary/20 transition-colors z-50 focus:outline-none flex-shrink-0 border-l border-r border-background/20" 
+            className="w-2 bg-border hover:bg-primary/50 transition-colors z-50 focus:outline-none flex-shrink-0" 
           />
           
           {/* Panel Derecho: Preview */}
-          <ResizablePanel defaultSize={70} className="bg-muted/30 flex flex-col min-w-0">
+          <ResizablePanel defaultSize={80} minSize={30} className="bg-muted/30 flex flex-col min-w-0">
             <PreviewPanel
               previewUrl="/preview"
               code={previewHtml}
