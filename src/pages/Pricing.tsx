@@ -1,4 +1,3 @@
-import Navigation from "@/components/Navigation";
 import PricingCard from "@/components/PricingCard";
 import LavaLamp from "@/components/LavaLamp";
 import { useState } from "react";
@@ -70,11 +69,10 @@ const Pricing = () => {
   const currentPlans = fusionPlans;
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-full bg-background relative">
       <LavaLamp />
       <div className="relative z-10">
-        <Navigation />
-        <main className="container mx-auto px-6 pt-32 pb-20">
+        <main className="container mx-auto px-6 py-20">
           <div className="max-w-6xl mx-auto space-y-12">
             {/* Header */}
             <div

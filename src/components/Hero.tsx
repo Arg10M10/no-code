@@ -141,6 +141,7 @@ const Hero: React.FC = () => {
 
   const attachment = selectedFile || selectedScreenshot;
   const attachmentCount = [attachment, pastedTextInfo].filter(Boolean).length;
+  // Reduced padding here
   const paddingTopClass = attachmentCount === 2 ? "pt-24" : attachmentCount === 1 ? "pt-14" : "pt-4";
 
   const handleTextareaKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -151,8 +152,8 @@ const Hero: React.FC = () => {
   };
 
   return (
-    <section className="min-h-screen flex flex-col items-center px-6 pt-28 sm:pt-32 pb-20">
-      <div className="max-w-4xl mx-auto text-center space-y-8 mt-[350px]">
+    <section className="min-h-full flex flex-col items-center px-6 pt-12 pb-20">
+      <div className="max-w-4xl mx-auto text-center space-y-8 mt-12 sm:mt-24">
         <div className="space-y-4">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight opacity-0 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
             What should we build?
