@@ -4,7 +4,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Cpu, Square } from "lucide-react";
+import { ArrowUp, X, Cpu, Square, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
@@ -68,7 +68,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     const urls = selectedImages.map((f) => URL.createObjectURL(f));
     setPreviewUrls(urls);
     return () => {
-      urls.forEach((u) => URL.revokeObjectURL(u));
+      urls.forEach(u) => URL.revokeObjectURL(u));
     };
   }, [selectedImages]);
 
@@ -336,6 +336,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 >
                   <Paperclip width={16} height={16} strokeWidth={2} />
                 </Button>
+
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -343,45 +344,47 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                       variant="ghost"
                       size="icon"
                       className="h-9 w-9 rounded-md p-0 text-foreground hover:bg-transparent"
+                      title="More Actions"
                     >
-                      <ChartNoAxes width={20} height={20} strokeWidth={1.5} />
+                      <Plus className="h-5 w-5" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent
-                    side="top"
-                    align="end"
-                    className="w/[260px] max-w-[95vw] rounded-md bg-[#0b0b0b] border-neutral-700 p-3 text-sm text-white shadow-lg"
-                  >
-                    <div className="flex items-center justify-between text-xs text-white/90 mb-2">
-                      <div className="truncate">Tokens: <span className="font-medium">{credits.toLocaleString()}</span></div>
-                      <div className="text-right text-[11px] text-white/70">
-                        {percentOfLimit}% of {MODEL_TOKEN_LIMIT.toLocaleString()}
+                  <PopoverContent side="top" align="end" className="w-[220px] p-2">
+                    <div className="space-y-1">
+                      {/* Token Section */}
+                      <div className="p-2.5 bg-secondary/50 rounded-md mb-2">
+                        <div className="flex items-center justify-between text-xs mb-2">
+                          <div className="flex items-center gap-2 font-medium text-foreground">
+                            <ChartNoAxes width={14} height={14} />
+                            <span>Credits</span>
+                          </div>
+                          <span className="text-muted-foreground">{credits.toLocaleString()}</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-background/50 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-indigo-400 to-pink-400"
+                            style={{ width: progressWidth }}
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="w-full h-2 rounded-md bg-white/6 overflow-hidden mb-2">
-                      <div
-                        className="h-2 rounded-md bg-gradient-to-r from-emerald-400 via-indigo-400 to-pink-400"
-                        style={{ width: progressWidth }}
-                        aria-hidden
-                      />
+                      <div className="h-px bg-border my-1" />
+
+                      {/* Web Search Action */}
+                      <button
+                        className="w-full flex items-center gap-2 px-2 py-2 text-sm text-foreground hover:bg-muted rounded-md transition-colors text-left"
+                        onClick={() => {
+                          toast.info("Web search coming soon!");
+                        }}
+                      >
+                         <div className="flex items-center justify-center w-6 h-6 rounded-md bg-secondary text-foreground">
+                            <Earth width={14} height={14} />
+                         </div>
+                         <span>Web Search</span>
+                      </button>
                     </div>
                   </PopoverContent>
                 </Popover>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-md p-0 text-foreground hover:bg-transparent"
-                  onClick={() => {
-                    toast.info("Web search coming soon!");
-                  }}
-                  aria-label="Web Search"
-                  title="Web Search"
-                >
-                  <Earth width={16} height={16} strokeWidth={2} />
-                </Button>
               </div>
             </div>
           </div>
