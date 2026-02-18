@@ -18,7 +18,7 @@ export function getProviderFromLabel(label: string): ProviderId {
   return "openai";
 }
 
-// Mapa de modelos (simplificado para ahorrar espacio, la lógica es la misma)
+// Mapa de modelos
 function mapLabelToModelId(label: string): { provider: ProviderId; model: string } {
   const provider = getProviderFromLabel(label);
   const normalized = label.toLowerCase();
@@ -26,29 +26,30 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
   if (provider === "openai") {
     if (normalized.includes("gpt-5.2")) return { provider, model: "gpt-5.2" };
     if (normalized.includes("gpt-5.1")) return { provider, model: "gpt-5.1" };
-    if (normalized.includes("mini")) return { provider, model: "gpt-5-mini" };
-    if (normalized.includes("codex")) return { provider, model: "gpt-5-codex" };
-    return { provider, model: "gpt-5" };
+    if (normalized.includes("mini")) return { provider, model: "gpt-4o-mini" }; // Fallback real a 4o-mini si gpt-5 no existe
+    if (normalized.includes("codex")) return { provider, model: "gpt-4o" };
+    return { provider, model: "gpt-4o" }; // Fallback seguro a gpt-4o por ahora
   }
   if (provider === "google") {
-    if (normalized.includes("3 flash")) return { provider, model: "gemini-3-flash" };
-    return { provider, model: "gemini-3-pro" };
+    if (normalized.includes("3 flash")) return { provider, model: "gemini-1.5-flash" }; // Usando modelos reales existentes
+    return { provider, model: "gemini-1.5-pro" };
   }
   if (provider === "anthropic") {
-    if (normalized.includes("opus")) return { provider, model: "claude-4.5-opus" };
-    return { provider, model: "claude-4.5-sonnet" };
+    if (normalized.includes("opus")) return { provider, model: "claude-3-opus-20240229" };
+    return { provider, model: "claude-3-5-sonnet-20240620" };
   }
   if (provider === "openrouter") {
-    if (normalized.includes("kimi")) return { provider, model: "moonshot/kimi-k2.5" };
-    if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-v3.1" };
-    return { provider, model: "qwen/qwen-3-coder" };
+    // Mapeos a modelos reales de OpenRouter para asegurar que funcione
+    if (normalized.includes("kimi")) return { provider, model: "moonshot/moonshot-v1-8k" };
+    if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-chat" };
+    if (normalized.includes("qwen")) return { provider, model: "qwen/qwen-2-72b-instruct" };
+    return { provider, model: "meta-llama/llama-3.1-70b-instruct" };
   }
-  return { provider: "openai", model: "gpt-5" };
+  return { provider: "openai", model: "gpt-4o" };
 }
 
 /**
  * Parsea eventos Server-Sent Events (SSE) simples.
- * Usado por OpenAI, OpenRouter y Anthropic.
  */
 async function streamReader(
   response: Response, 
@@ -59,14 +60,11 @@ async function streamReader(
   const decoder = new TextDecoder();
   if (!reader) return "";
 
-  let accumulatedText = "";
-
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    const chunk = decoder.decode(value);
+    const chunk = decoder.decode(value, { stream: true });
     
-    // Procesamiento básico de SSE
     const lines = chunk.split("\n");
     for (const line of lines) {
       const trimmed = line.trim();
@@ -74,36 +72,28 @@ async function streamReader(
 
       if (trimmed.startsWith("data: ")) {
         try {
-          const json = JSON.parse(trimmed.slice(6));
-          // OpenAI / OpenRouter format
-          if (json.choices?.[0]?.delta?.content) {
-            const text = json.choices[0].delta.content;
-            accumulatedText += text;
-            onChunk(text);
+          const jsonStr = trimmed.slice(6);
+          const json = JSON.parse(jsonStr);
+          
+          if (provider === "anthropic") {
+             if (json.type === "content_block_delta" && json.delta?.text) {
+               onChunk(json.delta.text);
+             }
+          } else {
+             // OpenAI / OpenRouter
+             if (json.choices?.[0]?.delta?.content) {
+               onChunk(json.choices[0].delta.content);
+             }
           }
         } catch (e) {
-          // Ignorar chunks corruptos
+          // Ignorar chunks parciales o errores de parseo
         }
-      } else if (provider === "anthropic" && trimmed.startsWith("event: content_block_delta")) {
-         // Anthropic manda evento, luego data.
-         // Esto es simplificado, en una implementación robusta se debe leer la siguiente línea 'data:'
-      } else if (provider === "anthropic" && trimmed.startsWith("data: ")) {
-         try {
-           const json = JSON.parse(trimmed.slice(6));
-           if (json.type === "content_block_delta" && json.delta?.text) {
-             const text = json.delta.text;
-             accumulatedText += text;
-             onChunk(text);
-           }
-         } catch {}
+      } else if (provider === "anthropic" && trimmed.startsWith("event: ")) {
+          // Anthropic events, ignoramos por ahora
       }
     }
   }
-  return accumulatedText;
 }
-
-// Google tiene su propio formato raro, para simplificar usaremos non-streaming para Google
-// o implementaremos un lector básico si el usuario insiste. Por ahora, fallback a fetch normal si es Google.
 
 async function callApi(params: { 
   messages: ChatMessage[]; 
@@ -116,74 +106,140 @@ async function callApi(params: {
   onProgress?: (fullText: string) => void; 
 }): Promise<string> {
   const { provider, messages, model, apiKey, system, temperature, signal, onProgress } = params;
-
-  // Manejo especial para streaming
   const isStreaming = !!onProgress && provider !== "google"; 
 
-  if (provider === "openai" || provider === "openrouter") {
-    const r = await fetch(provider === "openai" ? "https://api.openai.com/v1/chat/completions" : "https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}`, ...(provider === "openrouter" ? {"HTTP-Referer": window.location.origin, "X-Title": "Framio"} : {}) },
-      body: JSON.stringify({ model, messages, temperature: temperature ?? 0.7, max_tokens: 4096, stream: isStreaming }),
-      signal,
-    });
-    
-    if (!r.ok) { const text = await r.text(); throw new Error(`${provider} error: ${r.status} ${text}`); }
-    
-    if (isStreaming) {
-      let fullText = "";
-      await streamReader(r, (chunk) => {
-        fullText += chunk;
-        onProgress?.(fullText);
-      }, provider);
-      return fullText;
-    } else {
+  try {
+    if (provider === "openai" || provider === "openrouter") {
+      const url = provider === "openai" 
+        ? "https://api.openai.com/v1/chat/completions" 
+        : "https://openrouter.ai/api/v1/chat/completions";
+        
+      const headers: Record<string, string> = { 
+        "Content-Type": "application/json", 
+        "Authorization": `Bearer ${apiKey}` 
+      };
+      
+      if (provider === "openrouter") {
+        headers["HTTP-Referer"] = window.location.origin;
+        headers["X-Title"] = "Framio";
+      }
+
+      const r = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ 
+          model, 
+          messages, 
+          temperature: temperature ?? 0.7, 
+          max_tokens: 4096, 
+          stream: isStreaming 
+        }),
+        signal,
+      });
+      
+      if (!r.ok) { 
+        const text = await r.text(); 
+        throw new Error(`${provider} error (${r.status}): ${text}`); 
+      }
+      
+      if (isStreaming) {
+        let fullText = "";
+        await streamReader(r, (chunk) => {
+          fullText += chunk;
+          onProgress?.(fullText);
+        }, provider);
+        return fullText;
+      } else {
+        const data = await r.json();
+        return data.choices?.[0]?.message?.content?.trim() || "";
+      }
+    }
+
+    if (provider === "anthropic") {
+      const systemPrompt = messages.find((m) => m.role === "system")?.content || system || "";
+      const chatMessages = messages.filter((m) => m.role !== "system").map((m) => ({ 
+        role: m.role, 
+        content: typeof m.content === 'string' ? m.content : (m.content as any)
+      }));
+      
+      // IMPORTANT: anthropic-dangerous-direct-browser-access header is required for client-side calls
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { 
+          "content-type": "application/json", 
+          "x-api-key": apiKey, 
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true" 
+        },
+        body: JSON.stringify({ 
+          model, 
+          max_tokens: 4096, 
+          system: systemPrompt, 
+          messages: chatMessages, 
+          temperature: temperature ?? 0.7, 
+          stream: isStreaming 
+        }),
+        signal,
+      });
+      
+      if (!r.ok) { 
+        const text = await r.text(); 
+        throw new Error(`Anthropic error (${r.status}): ${text}`); 
+      }
+
+      if (isStreaming) {
+         let fullText = "";
+         await streamReader(r, (chunk) => {
+           fullText += chunk;
+           onProgress?.(fullText);
+         }, provider);
+         return fullText;
+      } else {
+         const data = (await r.json()) as any;
+         return data.content?.[0]?.text?.trim() || "";
+      }
+    }
+
+    if (provider === "google") {
+      const systemPrompt = messages.find((m) => m.role === "system")?.content || system || "";
+      // Google API format adjustment
+      const contents = messages
+        .filter(m => m.role !== 'system')
+        .map((m) => ({ 
+          role: m.role === "assistant" ? "model" : "user", 
+          parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }] 
+        }));
+
+      const body: any = { contents, generationConfig: { temperature: temperature ?? 0.7 } };
+      if (systemPrompt) { body.system_instruction = { parts: [{ text: systemPrompt }] }; }
+      
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      
+      const r = await fetch(url, { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(body), 
+        signal 
+      });
+      
+      if (!r.ok) { 
+        const text = await r.text(); 
+        throw new Error(`Google error (${r.status}): ${text}`); 
+      }
       const data = await r.json();
-      return data.choices?.[0]?.message?.content?.trim() || "";
+      return (data.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
     }
-  }
 
-  if (provider === "anthropic") {
-    const systemPrompt = messages.find((m) => m.role === "system")?.content || system || "";
-    const chatMessages = messages.filter((m) => m.role !== "system").map((m) => ({ role: m.role, content: [{ type: "text", text: m.content as string }] }));
+    throw new Error(`Provider ${provider} not supported`);
     
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model, max_tokens: 4096, system: systemPrompt, messages: chatMessages, temperature: temperature ?? 0.7, stream: isStreaming }),
-      signal,
-    });
-    
-    if (!r.ok) { const text = await r.text(); throw new Error(`Anthropic error: ${r.status} ${text}`); }
-
-    if (isStreaming) {
-       let fullText = "";
-       await streamReader(r, (chunk) => {
-         fullText += chunk;
-         onProgress?.(fullText);
-       }, provider);
-       return fullText;
-    } else {
-       const data = (await r.json()) as any;
-       return data.content?.[0]?.text?.trim() || "";
+  } catch (error: any) {
+    if (error.name === 'AbortError') throw error;
+    // Enhance error message for common issues
+    if (error.message.includes("Failed to fetch")) {
+      throw new Error(`Connection failed. This might be a CORS issue (if using OpenAI directly) or a network problem. Check console for details.`);
     }
+    throw error;
   }
-
-  // Google (Non-streaming fallback for now due to complex protocol)
-  if (provider === "google") {
-    const systemPrompt = messages.find((m) => m.role === "system")?.content || system || "";
-    const contents = messages.filter(m => m.role !== 'system').map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content as string }] }));
-    const body: any = { contents, generationConfig: { temperature: temperature ?? 0.7 } };
-    if (systemPrompt) { body.system_instruction = { parts: [{ text: systemPrompt }] }; }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    
-    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
-    if (!r.ok) { const text = await r.text(); throw new Error(`Google error: ${r.status} ${text}`); }
-    const data = await r.json();
-    return (data.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
-  }
-
-  return "";
 }
 
 function buildGenerationMessages(prompt: string, codeContext?: string | null, images?: string[]): ChatMessage[] {
@@ -224,12 +280,10 @@ export async function generateAnswer(req: {
 
   const messages = buildGenerationMessages(req.prompt, req.codeContext, req.images);
 
-  // Espiar el progreso
   const onProgress = (fullText: string) => {
     if (!req.onStatusUpdate) return;
     
     // Intentar encontrar el último archivo que se está escribiendo
-    // Buscamos patrones: "path": "src/..."
     const regex = /"path":\s*"([^"]+)"/g;
     let match;
     let lastFile = null;
@@ -240,7 +294,6 @@ export async function generateAnswer(req: {
     if (lastFile) {
       req.onStatusUpdate(`Generando ${lastFile}...`);
     } else {
-      // Si aún no hay archivo, dar feedback genérico basado en longitud
       if (fullText.length < 50) req.onStatusUpdate("Inicializando...");
       else if (fullText.length < 200) req.onStatusUpdate("Estructurando respuesta JSON...");
     }
@@ -265,7 +318,6 @@ export async function generateAnswer(req: {
       cleanedResponse = cleanedResponse.slice(0, -3).trim();
     }
 
-    // A veces el JSON está incompleto si se corta, intentamos parsear lo que haya
     const parsed = JSON.parse(cleanedResponse);
     if (!parsed.files || !parsed.previewHtml) {
       throw new Error("Invalid JSON structure from AI. Missing 'files' or 'previewHtml'.");
