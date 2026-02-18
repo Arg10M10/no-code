@@ -4,7 +4,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap, Image as ImageIcon, Sparkles, User, FileCode, FilePlus } from "lucide-react";
+import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap, Image as ImageIcon, Sparkles, User, FileCode, FilePlus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
@@ -22,7 +22,8 @@ type ChatPanelProps = {
   onCancel: () => void;
   selectedElement: string | null;
   onClearSelection: () => void;
-  generationLogs?: string[]; // Nueva prop opcional
+  generationLogs?: string[];
+  onRetry?: (text: string, images?: string[]) => void;
 };
 
 const MODEL_TOKEN_LIMIT = 100_000;
@@ -44,6 +45,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   selectedElement,
   onClearSelection,
   generationLogs = [],
+  onRetry,
 }) => {
   const navigate = useNavigate();
   const [text, setText] = React.useState("");
@@ -64,7 +66,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
   React.useEffect(() => {
     scrollToBottom();
-  }, [messages, loading, generationLogs]); // Añadir generationLogs a la dependencia
+  }, [messages, loading, generationLogs]);
 
   React.useEffect(() => {
     const urls = selectedImages.map((f) => URL.createObjectURL(f));
@@ -123,9 +125,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  // Helper to render message content with file lists highlighted
   const renderMessageContent = (content: string) => {
-    // Si el mensaje contiene un bloque de "Changed files:", lo formateamos
     if (content.includes("---CHANGES---")) {
         const [textPart, changesPart] = content.split("---CHANGES---");
         const changes = JSON.parse(changesPart || "[]");
@@ -177,28 +177,41 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
             if (isUser) {
               return (
-                <div key={key} className="flex justify-end animate-fade-in-up">
-                  <div className="max-w-[85%] bg-secondary/80 text-secondary-foreground px-4 py-3 rounded-2xl rounded-tr-md">
-                    {msg.images && msg.images.length > 0 && (
-                      <div className="mb-2 flex flex-wrap gap-2 justify-end">
-                        {msg.images.map((url, idx) => (
-                          <div key={idx} className="relative h-20 w-20 rounded-md overflow-hidden border border-black/5 shrink-0 group cursor-pointer bg-background">
-                            <img 
-                              src={url} 
-                              alt={`Attachment ${idx + 1}`} 
-                              className="h-full w-full object-cover" 
-                            />
-                          </div>
-                        ))}
-                      </div>
+                <div key={key} className="flex justify-end animate-fade-in-up group">
+                  <div className="flex items-center gap-2">
+                    {onRetry && !loading && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => onRetry(msg.content, msg.images)}
+                        title="Retry this prompt"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
                     )}
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                    <div className="max-w-[85%] bg-secondary/80 text-secondary-foreground px-4 py-3 rounded-2xl rounded-tr-md">
+                      {msg.images && msg.images.length > 0 && (
+                        <div className="mb-2 flex flex-wrap gap-2 justify-end">
+                          {msg.images.map((url, idx) => (
+                            <div key={idx} className="relative h-20 w-20 rounded-md overflow-hidden border border-black/5 shrink-0 group cursor-pointer bg-background">
+                              <img 
+                                src={url} 
+                                alt={`Attachment ${idx + 1}`} 
+                                className="h-full w-full object-cover" 
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                    </div>
                   </div>
                 </div>
               );
             }
 
-            // Assistant Message (No Box)
+            // Assistant Message
             return (
               <div key={key} className="flex gap-3 animate-fade-in-up pr-4">
                 <div className="flex-shrink-0 mt-0.5">
@@ -226,7 +239,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     </div>
                 </div>
                 <div className="min-w-0 flex-1 py-1">
-                   {/* Usamos los logs reales */}
                    <ThinkingProcess logs={generationLogs} />
                 </div>
             </div>

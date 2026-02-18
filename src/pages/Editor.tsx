@@ -195,7 +195,7 @@ const EditorPage: React.FC = () => {
     }
   };
 
-  const handleNewMessage = useCallback(async (text: string, images?: File[]) => {
+  const handleNewMessage = useCallback(async (text: string, images?: (File | string)[]) => {
     if (!projectId) return;
     abortControllerRef.current = new AbortController();
 
@@ -215,7 +215,10 @@ const EditorPage: React.FC = () => {
     const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
     
     if (images && images.length > 0) {
-        const dataUrls = await Promise.all(images.map(fileToDataUrl));
+        const dataUrls = await Promise.all(images.map(img => {
+            if (typeof img === 'string') return Promise.resolve(img);
+            return fileToDataUrl(img);
+        }));
         userMessage.images = dataUrls;
     }
 
@@ -324,6 +327,10 @@ const EditorPage: React.FC = () => {
     setIsSelectionModeActive(false);
   };
 
+  const handleRetry = (text: string, images?: string[]) => {
+    handleNewMessage(text, images);
+  };
+
   if (!projectId) {
     return <div>Cargando proyecto...</div>;
   }
@@ -366,8 +373,8 @@ const EditorPage: React.FC = () => {
               onCancel={handleCancelGeneration}
               selectedElement={selectedElement}
               onClearSelection={() => setSelectedElement(null)}
-              // Pasamos los logs reales al chat panel
               generationLogs={generationLogs}
+              onRetry={handleRetry}
             />
           </ResizablePanel>
           <div
