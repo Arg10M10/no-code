@@ -64,13 +64,26 @@ const EditorPage: React.FC = () => {
   const [isSelectionModeActive, setIsSelectionModeActive] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
 
+  // Estado para los logs en tiempo real
+  const [generationLogs, setGenerationLogs] = useState<string[]>([]);
+
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Función para añadir logs únicos
+  const addLog = (text: string) => {
+    setGenerationLogs(prev => {
+      // Evitar duplicados consecutivos
+      if (prev.length > 0 && prev[prev.length - 1] === text) return prev;
+      return [...prev, text];
+    });
+  };
 
   const triggerInitialGeneration = useCallback(async (projId: string, initialMessages: StoredMessage[]) => {
     setLoading(true);
     setPreviewLoading(true);
     setProjectFiles(null);
+    setGenerationLogs(["Iniciando generación..."]); // Reset logs
     abortControllerRef.current = new AbortController();
 
     const firstMessage = initialMessages[0];
@@ -102,8 +115,11 @@ const EditorPage: React.FC = () => {
         images: firstMessage.images,
         selectedModelLabel: selectedModel, 
         apiKeys, 
-        signal: abortControllerRef.current.signal 
+        signal: abortControllerRef.current.signal,
+        onStatusUpdate: (status) => addLog(status)
       });
+      
+      addLog("Finalizando procesamiento...");
       
       if (includesSupabaseIntent(previewHtml)) {
         setSupabaseIntentCounter((c) => c + 1);
@@ -121,7 +137,6 @@ const EditorPage: React.FC = () => {
       const cost = Math.floor(Math.random() * 4001) + 1000;
       const newCredits = decrementCredits(projId, cost);
       setCredits(newCredits);
-      toast.info(`${cost.toLocaleString()} tokens used.`);
       
       setLoading(false);
       setMessagesState(getMessages(projId));
@@ -208,6 +223,7 @@ const EditorPage: React.FC = () => {
     setMessagesState(newMessages);
     setMessages(projectId, newMessages);
     setLoading(true);
+    setGenerationLogs(["Analizando solicitud..."]);
 
     const apiKeys = storage.getJSON<Record<string, string>>("api-keys", {});
     const selectedModel = getSelectedModelLabel();
@@ -239,7 +255,10 @@ const EditorPage: React.FC = () => {
           apiKeys,
           codeContext: codeContext,
           signal: abortControllerRef.current.signal,
+          onStatusUpdate: (status) => addLog(status)
         });
+        
+        addLog("Aplicando cambios...");
         
         if (includesSupabaseIntent(previewHtml)) {
           setSupabaseIntentCounter((c) => c + 1);
@@ -262,7 +281,6 @@ const EditorPage: React.FC = () => {
         persistPreviewHtml(projectId, previewHtml);
         setPreviewLoading(false);
 
-        // Append changes metadata to the AI response
         const changesJson = JSON.stringify(changes);
         const aiResponseContent = `Listo. He aplicado tus cambios.\n---CHANGES---${changesJson}`;
         
@@ -348,6 +366,8 @@ const EditorPage: React.FC = () => {
               onCancel={handleCancelGeneration}
               selectedElement={selectedElement}
               onClearSelection={() => setSelectedElement(null)}
+              // Pasamos los logs reales al chat panel
+              generationLogs={generationLogs}
             />
           </ResizablePanel>
           <div

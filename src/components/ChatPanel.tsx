@@ -22,6 +22,7 @@ type ChatPanelProps = {
   onCancel: () => void;
   selectedElement: string | null;
   onClearSelection: () => void;
+  generationLogs?: string[]; // Nueva prop opcional
 };
 
 const MODEL_TOKEN_LIMIT = 100_000;
@@ -42,6 +43,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   onCancel,
   selectedElement,
   onClearSelection,
+  generationLogs = [],
 }) => {
   const navigate = useNavigate();
   const [text, setText] = React.useState("");
@@ -62,13 +64,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
   React.useEffect(() => {
     scrollToBottom();
-  }, [messages, loading]);
+  }, [messages, loading, generationLogs]); // Añadir generationLogs a la dependencia
 
   React.useEffect(() => {
     const urls = selectedImages.map((f) => URL.createObjectURL(f));
     setPreviewUrls(urls);
     return () => {
-      urls.forEach((u) => URL.revokeObjectURL(u));
+      urls.forEach(u) => URL.revokeObjectURL(u));
     };
   }, [selectedImages]);
 
@@ -224,7 +226,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     </div>
                 </div>
                 <div className="min-w-0 flex-1 py-1">
-                   <ThinkingProcess />
+                   {/* Usamos los logs reales */}
+                   <ThinkingProcess logs={generationLogs} />
                 </div>
             </div>
           )}

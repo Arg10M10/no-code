@@ -1,60 +1,65 @@
-import React, { useState, useEffect } from "react";
-import { BrainCircuit, Loader2, CheckCircle2 } from "lucide-react";
+import React, { useEffect, useRef } from "react";
+import { Loader2, FileCode, CheckCircle2, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const steps = [
-  "Analizando requerimientos...",
-  "Entendiendo el contexto...",
-  "Planificando arquitectura...",
-  "Diseñando componentes...",
-  "Escribiendo código...",
-  "Aplicando estilos...",
-  "Finalizando cambios..."
-];
+interface ThinkingProcessProps {
+  logs: string[];
+}
 
-export const ThinkingProcess = () => {
-  const [currentStep, setCurrentStep] = useState(0);
+export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ logs }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll al último log
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentStep((prev) => (prev < steps.length - 1 ? prev + 1 : prev));
-    }, 2500); // Cambia de paso cada 2.5 segundos
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs]);
 
-    return () => clearInterval(interval);
-  }, []);
+  // Si no hay logs reales aún, mostramos un estado inicial
+  if (logs.length === 0) {
+    return (
+      <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground animate-pulse">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>Iniciando conexión con la IA...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-3 p-4 rounded-xl border border-border/50 bg-secondary/30 animate-fade-in">
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
-        <BrainCircuit className="h-4 w-4 text-indigo-500 animate-pulse" />
-        <span>Thinking Process</span>
+    <div className="flex flex-col gap-2 p-4 rounded-xl border border-border/50 bg-black/5 dark:bg-white/5 animate-fade-in font-mono text-xs">
+      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+        <Terminal className="h-3 w-3" />
+        <span>Live Output</span>
       </div>
       
-      <div className="space-y-3 pl-1.5">
-        {steps.map((step, index) => {
-            // Solo mostramos pasos actuales, pasados y el siguiente inmediato
-            if (index > currentStep) return null;
+      <div 
+        ref={scrollRef}
+        className="flex flex-col gap-1.5 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar"
+      >
+        {logs.map((log, index) => {
+            const isLast = index === logs.length - 1;
             
-            const isActive = index === currentStep;
-            const isDone = index < currentStep;
+            // Detectar si es un archivo o un pensamiento general
+            const isFile = log.includes("src/") || log.includes(".tsx") || log.includes(".ts") || log.includes(".css");
 
             return (
-                <div key={index} className="flex items-center gap-3 text-xs animate-fade-in">
-                    <div className="flex flex-col items-center">
-                         <div className={cn(
-                             "h-4 w-4 rounded-full flex items-center justify-center border",
-                             isDone ? "bg-green-500/10 border-green-500/30 text-green-500" : 
-                             isActive ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-500" : "border-border"
-                         )}>
-                             {isDone ? <CheckCircle2 className="h-2.5 w-2.5" /> : isActive ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />}
-                         </div>
-                         {index < currentStep && <div className="h-2 w-px bg-border/50 my-0.5" />}
+                <div key={index} className={cn(
+                    "flex items-start gap-2 animate-fade-in transition-all",
+                    isLast ? "opacity-100" : "opacity-60"
+                )}>
+                    <div className="mt-0.5">
+                       {isLast ? (
+                         <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                       ) : (
+                         isFile ? <FileCode className="h-3 w-3 text-blue-500" /> : <CheckCircle2 className="h-3 w-3 text-green-500" />
+                       )}
                     </div>
                     <span className={cn(
-                        isActive ? "text-foreground font-medium" : "text-muted-foreground",
-                        "transition-colors"
+                        "break-all leading-tight",
+                        isLast ? "text-foreground font-medium" : "text-muted-foreground"
                     )}>
-                        {step}
+                        {log}
                     </span>
                 </div>
             )
