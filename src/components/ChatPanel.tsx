@@ -11,6 +11,7 @@ import TypingIndicator from "./TypingIndicator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ModelsPopover from "./ModelsPopover";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
+import { cn } from "@/lib/utils";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -44,6 +45,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const navigate = useNavigate();
   const [text, setText] = React.useState("");
   const [chatMode, setChatMode] = React.useState<'build' | 'ask'>('build');
+  const [showCredits, setShowCredits] = React.useState(false);
 
   const [selectedImages, setSelectedImages] = React.useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = React.useState<string[]>([]);
@@ -118,7 +120,10 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  const percentRemaining = Math.max(0, Math.min(100, (credits / MODEL_TOKEN_LIMIT) * 100));
+  // Logic: Show USAGE (filling up). 
+  // Used = Limit - Remaining(credits)
+  const usedCredits = Math.max(0, MODEL_TOKEN_LIMIT - credits);
+  const percentUsed = Math.min(100, Math.max(0, (usedCredits / MODEL_TOKEN_LIMIT) * 100));
 
   return (
     <div className="flex flex-col h-full">
@@ -322,6 +327,21 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               </div>
 
               <div className="flex items-center gap-1">
+                {/* Credit Toggle Button */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-8 w-8 rounded-md p-0 hover:bg-background/50",
+                    showCredits ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => setShowCredits(!showCredits)}
+                  title="Toggle Credits View"
+                >
+                  <Zap className="h-4 w-4" />
+                </Button>
+
                 <Button
                   type="button"
                   variant="ghost"
@@ -362,21 +382,23 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               </div>
             </div>
             
-            {/* Token/Credits Bar (Screenshot style) */}
-            <div className="mt-3 mb-1">
-               <div className="flex justify-between items-center text-[10px] text-muted-foreground mb-1.5 px-0.5">
-                  <span className="flex items-center gap-1.5">
-                    Credits: <span className="text-foreground font-medium">{credits.toLocaleString()}</span> remaining
-                  </span>
-                  <span className="opacity-70">{percentRemaining.toFixed(0)}%</span>
-               </div>
-               <div className="h-1 w-full bg-background/50 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-indigo-400 to-pink-400 transition-all duration-500 ease-out"
-                    style={{ width: `${percentRemaining}%` }}
-                  />
-               </div>
-            </div>
+            {/* Token/Credits Bar (Collapsible & Usage Logic) */}
+            {showCredits && (
+              <div className="mt-3 mb-1 animate-fade-in">
+                 <div className="flex justify-between items-center text-[10px] text-muted-foreground mb-1.5 px-0.5">
+                    <span className="flex items-center gap-1.5">
+                      Usage: <span className="text-foreground font-medium">{usedCredits.toLocaleString()}</span> / {MODEL_TOKEN_LIMIT.toLocaleString()}
+                    </span>
+                    <span className="opacity-70">{percentUsed.toFixed(0)}%</span>
+                 </div>
+                 <div className="h-1 w-full bg-background/50 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-indigo-400 to-pink-400 transition-all duration-500 ease-out"
+                      style={{ width: `${percentUsed}%` }}
+                    />
+                 </div>
+              </div>
+            )}
           </div>
         </div>
       </form>
