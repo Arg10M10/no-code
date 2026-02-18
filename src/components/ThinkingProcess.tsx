@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Loader2, FileCode, CheckCircle2, Terminal } from "lucide-react";
+import { Loader2, FileCode, CheckCircle2, Terminal, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ThinkingProcessProps {
@@ -41,7 +41,7 @@ export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ logs }) => {
             const isLast = index === logs.length - 1;
             
             // Detectar si es un archivo o un pensamiento general
-            const isFile = log.includes("src/") || log.includes(".tsx") || log.includes(".ts") || log.includes(".css");
+            const isFile = log.toLowerCase().includes("writing") || log.includes("src/");
 
             return (
                 <div key={index} className={cn(
@@ -52,7 +52,7 @@ export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ logs }) => {
                        {isLast ? (
                          <Loader2 className="h-3 w-3 animate-spin text-primary" />
                        ) : (
-                         isFile ? <FileCode className="h-3 w-3 text-blue-500" /> : <CheckCircle2 className="h-3 w-3 text-green-500" />
+                         isFile ? <Pencil className="h-3 w-3 text-blue-500" /> : <CheckCircle2 className="h-3 w-3 text-green-500" />
                        )}
                     </div>
                     <span className={cn(

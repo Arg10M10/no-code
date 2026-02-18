@@ -358,7 +358,8 @@ export async function generateChat(req: {
   apiKeys: Record<string, string>; 
   system?: string; 
   temperature?: number; 
-  signal?: AbortSignal; 
+  signal?: AbortSignal;
+  onUpdate?: (fullText: string) => void; 
 }): Promise<string> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
@@ -377,5 +378,13 @@ export async function generateChat(req: {
     ? [{ role: "system", content: req.system } as ChatMessage, ...chatMessages.filter((m) => m.role !== "system")] 
     : chatMessages;
 
-  return callApi({ provider, messages: messagesWithSystem, model, apiKey, temperature: req.temperature, signal: req.signal });
+  return callApi({ 
+    provider, 
+    messages: messagesWithSystem, 
+    model, 
+    apiKey, 
+    temperature: req.temperature, 
+    signal: req.signal,
+    onProgress: req.onUpdate 
+  });
 }

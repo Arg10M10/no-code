@@ -233,14 +233,31 @@ const EditorPage: React.FC = () => {
 
     try {
       if (isAsk) {
+        // Prepare a placeholder assistant message for streaming
+        const placeholderId = Date.now();
+        const initialAssistantMsg: StoredMessage = { role: "assistant", content: "", createdAt: placeholderId };
+        setMessagesState([...newMessages, initialAssistantMsg]);
+
         const aiResponseContent = await generateChat({
           messages: newMessages,
           selectedModelLabel: selectedModel,
           apiKeys,
           signal: abortControllerRef.current.signal,
+          onUpdate: (partialText) => {
+             // Update the last message in state with the streaming text
+             setMessagesState(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last.role === "assistant" && last.createdAt === placeholderId) {
+                    last.content = partialText;
+                }
+                return updated;
+             });
+          }
         });
-        const aiResponse: StoredMessage = { role: "assistant", content: aiResponseContent, createdAt: Date.now() };
-        const finalMessages = [...newMessages, aiResponse];
+        
+        // Final save
+        const finalMessages = [...newMessages, { role: "assistant", content: aiResponseContent, createdAt: placeholderId } as StoredMessage];
         setMessagesState(finalMessages);
         setMessages(projectId, finalMessages);
         setLoading(false);
