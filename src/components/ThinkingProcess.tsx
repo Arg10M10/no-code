@@ -1,26 +1,37 @@
 import React, { useEffect, useState, useRef } from "react";
-import { ChevronDown, ChevronRight, BrainCircuit, CheckCircle2, FileCode, Terminal, Loader2, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, BrainCircuit, CheckCircle2, FileCode, Terminal, Loader2, Sparkles, Code2, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ThinkingProcessProps {
   logs: string[];
   thought?: string;
   isFinished?: boolean;
+  codeStream?: string;
 }
 
-export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ logs, thought, isFinished = false }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ logs, thought, isFinished = false, codeStream }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [showCodePreview, setShowCodePreview] = useState(false);
   const [phase, setPhase] = useState<'connecting' | 'thinking' | 'coding' | 'finished'>('connecting');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const codeRef = useRef<HTMLPreElement>(null);
 
-  // Auto-scroll cuando llega nuevo texto de pensamiento o logs
+  // Auto-scroll para pensamiento y logs
   useEffect(() => {
     if (isExpanded && scrollRef.current) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [thought, logs.length, isExpanded]);
 
-  // Máquina de estados para controlar las fases
+  // Auto-scroll para preview de código
+  useEffect(() => {
+    if (showCodePreview && codeRef.current) {
+        codeRef.current.scrollTop = codeRef.current.scrollHeight;
+    }
+  }, [codeStream, showCodePreview]);
+
+  // Máquina de estados
   useEffect(() => {
     if (isFinished) {
         setPhase('finished');
@@ -28,172 +39,191 @@ export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ logs, thought,
         return;
     }
 
-    if (logs.length > 0) {
-        // Si hay logs de archivos, estamos en fase de programación
+    if (logs.length > 0 || (codeStream && codeStream.length > 10)) {
         if (phase !== 'coding') {
              setPhase('coding');
-             // Mantenemos expandido para ver los archivos
-             setIsExpanded(true); 
+             setShowCodePreview(true); 
         }
     } else if (thought && thought.length > 0) {
-        // Si hay texto de pensamiento, estamos en fase de razonamiento
         if (phase !== 'thinking') {
             setPhase('thinking');
-            setIsExpanded(true); // Auto-expandir para mostrar el stream de texto
         }
     } else {
-        // Si no hay nada aún, estamos conectando
         setPhase('connecting');
     }
-  }, [logs.length, thought, isFinished]);
-
-  // Renderizado especial para la fase "Conectando" (Sin caja, solo texto simple)
-  if (phase === 'connecting') {
-      return (
-          <div className="flex items-center gap-2 py-4 px-2 animate-fade-in text-muted-foreground/60">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span className="text-xs font-medium">Cargando...</span>
-          </div>
-      );
-  }
-
-  // Configuración visual para las fases dentro de la caja
-  const getHeaderInfo = () => {
-    switch (phase) {
-        case 'finished':
-            return { label: "Proceso completado", icon: CheckCircle2, color: "text-green-500", bg: "bg-green-500/10", border: "border-green-500/20" };
-        case 'coding':
-            return { label: "Escribiendo código...", icon: Terminal, color: "text-blue-500", bg: "bg-blue-500/5", border: "border-blue-500/20" };
-        case 'thinking':
-            return { label: "Razonando solución...", icon: BrainCircuit, color: "text-amber-500", bg: "bg-amber-500/5", border: "border-amber-500/20" };
-        default:
-            return { label: "Procesando...", icon: Loader2, color: "text-muted-foreground", bg: "bg-muted/10", border: "border-border" };
-    }
-  };
+  }, [logs.length, thought, isFinished, codeStream]);
 
   const getLastLog = () => {
       if (logs.length === 0) return null;
       const last = logs[logs.length - 1];
-      const match = last.match(/Writing\s+(.+)\.\.\./);
-      return match ? match[1] : last;
+      const match = last.match(/(Writing|Generating)\s+(.+)(\.\.\.)?/);
+      return match ? match[2].replace('...', '') : last;
   };
 
-  // Si terminó y no está expandido, no mostramos nada (la respuesta final ya estará visible en el chat)
+  // Renderizado especial para "Conectando"
+  if (phase === 'connecting') {
+      return (
+          <div className="flex items-center gap-3 py-4 px-3 animate-fade-in bg-secondary/30 rounded-lg border border-border/40">
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <span className="text-sm font-medium text-muted-foreground">Conectando con el modelo...</span>
+          </div>
+      );
+  }
+
+  const header = {
+    finished: { label: "Proceso completado", icon: CheckCircle2, color: "text-green-500", bg: "bg-green-500/10", border: "border-green-500/20" },
+    coding: { label: "Escribiendo código...", icon: Terminal, color: "text-blue-500", bg: "bg-blue-500/5", border: "border-blue-500/20" },
+    thinking: { label: "Razonando solución...", icon: BrainCircuit, color: "text-amber-500", bg: "bg-amber-500/5", border: "border-amber-500/20" },
+    connecting: { label: "Conectando...", icon: Loader2, color: "text-muted-foreground", bg: "bg-muted/10", border: "border-border" }
+  }[phase];
+
+  const Icon = header.icon;
+  const activeFile = getLastLog();
+
+  // Si terminó y no está expandido, no mostramos nada
   if (isFinished && !isExpanded) return null;
 
-  const header = getHeaderInfo();
-  const Icon = header.icon;
-
   return (
-    <div className="w-full my-2 animate-fade-in duration-300">
+    <div className="w-full my-3 animate-fade-in duration-300">
       <div className={cn(
           "rounded-xl border transition-all duration-500 overflow-hidden shadow-sm",
           header.bg,
           header.border
       )}>
-        <button 
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full flex items-center justify-between px-4 py-3 text-xs select-none hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-        >
-            <div className="flex items-center gap-3">
+        {/* Header Clickable */}
+        <div className="flex items-center justify-between px-4 py-3 bg-background/40 backdrop-blur-sm">
+             <div className="flex items-center gap-3 overflow-hidden">
                 <div className={cn(
-                    "flex items-center justify-center w-6 h-6 rounded-full shrink-0 transition-colors border",
-                    header.bg, header.color, header.border
+                    "flex items-center justify-center w-7 h-7 rounded-full shrink-0 transition-colors border shadow-sm",
+                    "bg-background", header.color, header.border
                 )}>
-                    <Icon className={cn("w-3.5 h-3.5", phase !== 'finished' && "animate-pulse")} />
+                    <Icon className={cn("w-4 h-4", phase !== 'finished' && "animate-pulse")} />
                 </div>
                 
-                <div className="flex flex-col items-start text-left gap-0.5">
+                <div className="flex flex-col min-w-0">
                     <span className={cn(
-                        "font-semibold text-sm transition-colors",
+                        "font-semibold text-sm transition-colors truncate",
                         phase === 'finished' ? "text-muted-foreground" : "text-foreground"
                     )}>
                         {header.label}
                     </span>
                     
-                    {/* Subtítulo dinámico */}
-                    {phase === 'coding' && logs.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 opacity-80">
-                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                            {getLastLog()}
-                        </span>
-                    )}
-                    {phase === 'thinking' && (
-                        <span className="text-[10px] text-muted-foreground opacity-80">
-                            Analizando requisitos y planeando estructura...
+                    {phase === 'coding' && activeFile && (
+                        <span className="text-[11px] text-blue-600 dark:text-blue-400 font-mono flex items-center gap-1.5 opacity-90 truncate">
+                            <FileCode className="w-3 h-3" />
+                            {activeFile}
                         </span>
                     )}
                 </div>
             </div>
 
-            <div className="flex items-center gap-2 opacity-50">
-                {isExpanded ? (
-                    <ChevronDown className="w-4 h-4" />
-                ) : (
-                    <ChevronRight className="w-4 h-4" />
+            <div className="flex items-center gap-2">
+                {phase === 'coding' && (
+                    <button 
+                        onClick={() => setShowCodePreview(!showCodePreview)}
+                        className={cn(
+                            "text-[10px] px-2 py-1 rounded border flex items-center gap-1 transition-all",
+                            showCodePreview 
+                                ? "bg-blue-500/10 text-blue-600 border-blue-500/20" 
+                                : "bg-background text-muted-foreground hover:text-foreground"
+                        )}
+                        title="Ver stream de código"
+                    >
+                        <Code2 className="w-3 h-3" />
+                        {showCodePreview ? "Ocultar Código" : "Ver Código"}
+                    </button>
                 )}
-            </div>
-        </button>
-
-        <div className={cn(
-            "grid transition-all duration-300 ease-in-out border-t border-border/50 bg-background/40 backdrop-blur-sm",
-            isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-        )}>
-            <div className="overflow-hidden">
-                <div 
-                    ref={scrollRef}
-                    className="p-4 pt-2 max-h-[300px] overflow-y-auto custom-scrollbar"
+                
+                <button 
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
                 >
-                    {/* Sección: Pensamiento (Streaming) */}
-                    {thought && (
-                        <div className="mb-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                            <div className="flex items-center gap-2 mb-2 text-amber-600/90 dark:text-amber-400/90">
-                                <BrainCircuit className="w-3.5 h-3.5" />
-                                <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Process de Pensamiento</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground/90 leading-relaxed whitespace-pre-wrap pl-3 border-l-2 border-amber-500/20 font-mono">
-                                {thought}
-                                {phase === 'thinking' && (
-                                    <span className="inline-block w-1.5 h-3 ml-1 align-middle bg-amber-500/50 animate-pulse" />
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Sección: Coding Logs (Lista de archivos) */}
-                    {logs.length > 0 && (
-                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 pt-2">
-                            <div className="flex items-center gap-2 mb-2 text-blue-600/90 dark:text-blue-400/90">
-                                <FileCode className="w-3.5 h-3.5" />
-                                <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Modificando Archivos</span>
-                            </div>
-                            <div className="space-y-2 pl-3 border-l-2 border-blue-500/20">
-                                {logs.map((log, idx) => {
-                                    const match = log.match(/Writing\s+(.+)\.\.\./);
-                                    const fileName = match ? match[1] : log;
-                                    const isLast = idx === logs.length - 1;
-                                    return (
-                                        <div key={idx} className="flex items-center gap-2 text-xs font-mono text-foreground/80">
-                                            {isLast && phase === 'coding' ? (
-                                                <Loader2 className="w-3 h-3 text-blue-500 animate-spin shrink-0" />
-                                            ) : (
-                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500/40 shrink-0 ml-0.5" />
-                                            )}
-                                            <span className={cn(
-                                                "truncate transition-colors",
-                                                isLast && phase === 'coding' ? "text-blue-600 dark:text-blue-400 font-semibold" : ""
-                                            )}>
-                                                {fileName}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    {isExpanded ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />}
+                </button>
             </div>
         </div>
+
+        {/* Content Area */}
+        {isExpanded && (
+            <div className="border-t border-border/50 bg-background/60">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto]">
+                    {/* Panel Izquierdo: Pensamiento y Logs */}
+                    <div ref={scrollRef} className="p-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+                         {/* Sección Pensamiento */}
+                        {thought && (
+                            <div className="mb-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <div className="flex items-center gap-2 mb-2 text-amber-600/90 dark:text-amber-400/90">
+                                    <BrainCircuit className="w-3.5 h-3.5" />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Razonamiento</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground/90 leading-relaxed whitespace-pre-wrap pl-3 border-l-2 border-amber-500/20 font-mono">
+                                    {thought}
+                                    {phase === 'thinking' && (
+                                        <span className="inline-block w-1.5 h-3 ml-1 align-middle bg-amber-500/50 animate-pulse" />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Sección Lista de Archivos (Logs) */}
+                        {logs.length > 0 && (
+                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 pt-2">
+                                <div className="flex items-center gap-2 mb-2 text-blue-600/90 dark:text-blue-400/90">
+                                    <FileCode className="w-3.5 h-3.5" />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Generando Archivos</span>
+                                </div>
+                                <div className="space-y-1 pl-3 border-l-2 border-blue-500/20">
+                                    {logs.map((log, idx) => {
+                                        const match = log.match(/(Writing|Generating)\s+(.+)(\.\.\.)?/);
+                                        const fileName = match ? match[2].replace('...', '') : log;
+                                        const isLast = idx === logs.length - 1;
+                                        return (
+                                            <div key={idx} className="flex items-center gap-2 text-xs font-mono text-foreground/80 group">
+                                                {isLast && phase === 'coding' ? (
+                                                    <Loader2 className="w-3 h-3 text-blue-500 animate-spin shrink-0" />
+                                                ) : (
+                                                    <CheckCircle2 className="w-3 h-3 text-green-500/70 shrink-0" />
+                                                )}
+                                                <span className={cn(
+                                                    "truncate transition-colors",
+                                                    isLast && phase === 'coding' ? "text-blue-600 dark:text-blue-400 font-semibold" : ""
+                                                )}>
+                                                    {fileName}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Panel Derecho (Opcional): Live Code Stream */}
+                    {showCodePreview && codeStream && (
+                        <div className="border-t md:border-t-0 md:border-l border-border/50 w-full md:w-[320px] bg-[#1e1e1e] text-zinc-300 flex flex-col">
+                             <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-white/5">
+                                <span className="text-[10px] font-mono uppercase tracking-wider flex items-center gap-2">
+                                    <Terminal className="w-3 h-3" />
+                                    Live Output
+                                </span>
+                                <div className="flex gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-red-500/50" />
+                                    <div className="w-2 h-2 rounded-full bg-yellow-500/50" />
+                                    <div className="w-2 h-2 rounded-full bg-green-500/50" />
+                                </div>
+                             </div>
+                             <pre 
+                                ref={codeRef}
+                                className="flex-1 p-3 text-[10px] font-mono leading-tight overflow-auto custom-scrollbar whitespace-pre-wrap break-all"
+                             >
+                                {codeStream.slice(-2000)} {/* Mostrar solo los últimos 2000 caracteres para rendimiento */}
+                                <span className="inline-block w-2 h-4 bg-green-500 ml-0.5 animate-pulse align-middle" />
+                             </pre>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );

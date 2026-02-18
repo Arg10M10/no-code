@@ -96,8 +96,6 @@ async function streamReader(
                         onChunk(json.delta.text);
                     }
                 } else if (provider === "google") {
-                     // Check Google format (proxied via our edge function usually sends standard SSE if we normalized it, 
-                     // but if raw, it might differ. Assuming standard SSE wrapper in function)
                      if (json.candidates?.[0]?.content?.parts?.[0]?.text) {
                         onChunk(json.candidates[0].content.parts[0].text);
                     }
@@ -348,6 +346,7 @@ export async function generateAnswer(req: {
   signal?: AbortSignal; 
   onStatusUpdate?: (status: string) => void;
   onThoughtUpdate?: (thought: string) => void;
+  onCodeStreamUpdate?: (codeStream: string) => void; // New callback for raw code stream
 }): Promise<{ files: ProjectFile[], previewHtml: string, thoughtProcess?: string }> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
   const apiKey = req.apiKeys[provider];
@@ -372,6 +371,12 @@ export async function generateAnswer(req: {
           req.onThoughtUpdate(thoughtPart);
        }
        
+       // Pasamos la parte cruda del código para visualización en tiempo real
+       if (req.onCodeStreamUpdate) {
+          const rawCode = fullText.substring(jsonStartIndex);
+          req.onCodeStreamUpdate(rawCode);
+       }
+       
        if (req.onStatusUpdate) {
          // Analizar JSON parcial para detectar archivos en tiempo real
          const jsonPart = fullText.substring(jsonStartIndex);
@@ -384,7 +389,7 @@ export async function generateAnswer(req: {
          }
          
          if (lastFile) {
-            req.onStatusUpdate(`Writing ${lastFile}...`);
+            req.onStatusUpdate(`Generating ${lastFile}...`);
          }
        }
     }

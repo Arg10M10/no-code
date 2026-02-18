@@ -23,6 +23,7 @@ type ChatPanelProps = {
   onClearSelection: () => void;
   generationLogs?: string[];
   thought?: string;
+  codeStream?: string; // NEW PROP
   onRetry?: (text: string, images?: string[]) => void;
 };
 
@@ -85,6 +86,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   onClearSelection,
   generationLogs = [],
   thought,
+  codeStream,
   onRetry,
 }) => {
   const [text, setText] = React.useState("");
@@ -275,7 +277,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                    </div>
                 </div>
                 <div className="min-w-0 flex-1">
-                   <ThinkingProcess logs={generationLogs} thought={thought} />
+                   <ThinkingProcess logs={generationLogs} thought={thought} codeStream={codeStream} />
                 </div>
             </div>
           )}

@@ -46,7 +46,6 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-// Helper para obtener claves de Supabase
 async function fetchApiKeysFromSupabase(): Promise<Record<string, string>> {
   const { data } = await supabase.from('user_api_keys').select('*').single();
   if (!data) return {};
@@ -78,6 +77,7 @@ const EditorPage: React.FC = () => {
 
   const [generationLogs, setGenerationLogs] = useState<string[]>([]);
   const [thoughtProcess, setThoughtProcess] = useState<string>("");
+  const [codeStream, setCodeStream] = useState<string>("");
 
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -95,6 +95,7 @@ const EditorPage: React.FC = () => {
     setProjectFiles(null);
     setGenerationLogs([]); 
     setThoughtProcess("");
+    setCodeStream("");
     abortControllerRef.current = new AbortController();
 
     const firstMessage = initialMessages[0];
@@ -104,7 +105,6 @@ const EditorPage: React.FC = () => {
         return;
     }
 
-    // Cargar claves de Supabase
     const apiKeys = await fetchApiKeysFromSupabase();
     const selectedModel = getSelectedModelLabel();
     const provider = getProviderFromLabel(selectedModel);
@@ -130,7 +130,8 @@ const EditorPage: React.FC = () => {
                 addLog(status);
             }
         },
-        onThoughtUpdate: (text) => setThoughtProcess(text)
+        onThoughtUpdate: (text) => setThoughtProcess(text),
+        onCodeStreamUpdate: (code) => setCodeStream(code)
       });
       
       if (includesSupabaseIntent(previewHtml)) {
@@ -228,8 +229,8 @@ const EditorPage: React.FC = () => {
     setLoading(true);
     setGenerationLogs([]); 
     setThoughtProcess("");
+    setCodeStream("");
 
-    // Cargar claves de Supabase
     const apiKeys = await fetchApiKeysFromSupabase();
     const selectedModel = getSelectedModelLabel();
     const provider = getProviderFromLabel(selectedModel);
@@ -245,7 +246,6 @@ const EditorPage: React.FC = () => {
 
     try {
       if (isAsk) {
-        // Modo Chat
         const placeholderId = Date.now();
         setMessagesState([...newMessages, { role: "assistant", content: "", createdAt: placeholderId }]);
 
@@ -271,7 +271,6 @@ const EditorPage: React.FC = () => {
         setMessages(projectId, finalMessages);
         setLoading(false);
       } else {
-        // Modo Constructor
         setPreviewLoading(true);
         setProjectFiles(null);
         
@@ -288,12 +287,12 @@ const EditorPage: React.FC = () => {
           onStatusUpdate: (status) => {
              if (status.includes("Writing")) addLog(status);
           },
-          onThoughtUpdate: (text) => setThoughtProcess(text)
+          onThoughtUpdate: (text) => setThoughtProcess(text),
+          onCodeStreamUpdate: (code) => setCodeStream(code)
         });
         
         if (includesSupabaseIntent(previewHtml)) setSupabaseIntentCounter((c) => c + 1);
 
-        // Diff Calculation
         const changes: { type: 'create' | 'update', path: string }[] = [];
         newFiles.forEach(nf => {
             const old = currentFiles.find(of => of.path === nf.path);
@@ -385,6 +384,7 @@ const EditorPage: React.FC = () => {
               onClearSelection={() => setSelectedElement(null)}
               generationLogs={generationLogs}
               thought={thoughtProcess}
+              codeStream={codeStream}
               onRetry={handleRetry}
             />
           </ResizablePanel>
