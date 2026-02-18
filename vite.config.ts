@@ -10,11 +10,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
-  plugins: [
-    dyadComponentTagger(), 
-    react(), 
-    mode === "development" && componentTagger(),
-  ].filter(Boolean),
+  plugins: [dyadComponentTagger(), react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

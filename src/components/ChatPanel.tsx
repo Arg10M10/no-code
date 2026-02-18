@@ -4,7 +4,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Plus, Paperclip, Globe, Zap, Sparkles, RotateCcw, Eye, Undo2, Coins, Cpu } from "lucide-react";
+import { ArrowUp, X, Cpu, Plus, Paperclip, Globe, Zap, Sparkles, RotateCcw, Eye, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { ThinkingProcess } from "./ThinkingProcess";
 import { FileChangeList, FileChange } from "./FileChangeList";
@@ -12,7 +12,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import ModelsPopover from "./ModelsPopover";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -24,9 +23,11 @@ type ChatPanelProps = {
   onClearSelection: () => void;
   generationLogs?: string[];
   thought?: string;
-  codeStream?: string;
+  codeStream?: string; // NEW PROP
   onRetry?: (text: string, images?: string[]) => void;
 };
+
+const MODEL_TOKEN_LIMIT = 100_000;
 
 const isErrorMessage = (content: string) => {
   const lowerContent = content.toLowerCase();
@@ -36,15 +37,18 @@ const isErrorMessage = (content: string) => {
          lowerContent.includes('cancelled');
 };
 
+// Simple Markdown Parser for Bold (**text**) and Lists (* item)
 const SimpleMarkdown = ({ text }: { text: string }) => {
   const lines = text.split('\n');
   
   return (
     <div className="text-sm leading-relaxed text-foreground/90 space-y-1">
       {lines.map((line, i) => {
+        // List item detection
         const isListItem = line.trim().startsWith('* ') || line.trim().startsWith('- ');
         const cleanLine = isListItem ? line.trim().substring(2) : line;
 
+        // Bold parsing logic
         const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
         
         const content = parts.map((part, index) => {
@@ -63,6 +67,7 @@ const SimpleMarkdown = ({ text }: { text: string }) => {
           );
         }
 
+        // Empty line
         if (!cleanLine.trim()) return <div key={i} className="h-2" />;
 
         return <div key={i} className="min-h-[1.2em]">{content}</div>;
@@ -152,6 +157,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     }
   };
 
+  // --- RENDERING LOGIC ---
+
   const renderAssistantMessage = (content: string) => {
     const parts = content.split("---CHANGES---");
     const summaryText = parts[0].trim();
@@ -177,14 +184,27 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
     return (
         <div className="space-y-6">
+            {/* ETAPA 2: CAMBIOS (Si existen) */}
             {hasChanges && <FileChangeList changes={changes} />}
+
+            {/* ETAPA 3: RESULTADO FINAL (Con Markdown) */}
             <div className="space-y-3">
                 <SimpleMarkdown text={summaryText} />
+                
                 {hasChanges && (
                     <div className="flex flex-wrap gap-2 pt-2">
                         <Button variant="outline" size="sm" className="h-8 gap-2 bg-background hover:bg-secondary/80">
                             <Eye className="w-3.5 h-3.5" />
                             Ver cambios
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => toast.info("Función de revertir próximamente disponible")}
+                        >
+                            <Undo2 className="w-3.5 h-3.5" />
+                            Revertir
                         </Button>
                     </div>
                 )}
@@ -194,9 +214,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background relative">
+    <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 min-h-0">
-        <div className="flex flex-col gap-6 p-4 pb-0">
+        <div className="flex flex-col gap-8 p-6">
           {messages.map((msg, index) => {
             const isUser = msg.role === "user";
             const key = msg.createdAt ? `${msg.createdAt}-${index}` : `${index}`;
@@ -204,7 +224,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             if (isUser) {
               return (
                 <div key={key} className="flex justify-end animate-fade-in-up group">
-                  <div className="flex items-center gap-2 max-w-[90%]">
+                  <div className="flex items-center gap-2 max-w-[85%]">
                     {onRetry && !loading && (
                       <Button
                         variant="ghost"
@@ -216,11 +236,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                         <RotateCcw className="h-3.5 w-3.5" />
                       </Button>
                     )}
-                    <div className="bg-secondary/80 text-secondary-foreground px-4 py-3 rounded-2xl rounded-tr-sm shadow-sm border border-border/50 backdrop-blur-sm">
+                    <div className="bg-secondary text-secondary-foreground px-4 py-3 rounded-2xl rounded-tr-sm shadow-sm border border-border/50">
                       {msg.images && msg.images.length > 0 && (
                         <div className="mb-2 flex flex-wrap gap-2 justify-end">
                           {msg.images.map((url, idx) => (
-                            <div key={idx} className="relative h-16 w-16 rounded-md overflow-hidden border border-black/5 shrink-0 bg-background">
+                            <div key={idx} className="relative h-20 w-20 rounded-md overflow-hidden border border-black/5 shrink-0 bg-background">
                               <img src={url} alt="Attachment" className="h-full w-full object-cover" />
                             </div>
                           ))}
@@ -233,11 +253,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               );
             }
 
+            // Assistant Message
             return (
-              <div key={key} className="flex gap-3 animate-fade-in-up pr-1 max-w-full">
+              <div key={key} className="flex gap-4 animate-fade-in-up pr-2 max-w-full">
                 <div className="flex-shrink-0 mt-1">
-                   <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 text-primary shadow-sm">
-                      <Sparkles className="h-3.5 w-3.5" />
+                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 text-primary shadow-sm">
+                      <Sparkles className="h-4 w-4" />
                    </div>
                 </div>
                 <div className="min-w-0 flex-1 space-y-2">
@@ -247,11 +268,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             );
           })}
 
+          {/* ETAPA 1: THINKING (LOADING STATE) */}
           {loading && (
-            <div className="flex gap-3 animate-fade-in-up pr-1 pb-4">
+            <div className="flex gap-4 animate-fade-in-up pr-2">
                 <div className="flex-shrink-0 mt-1">
-                   <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center border border-border">
-                      <Cpu className="h-3.5 w-3.5 text-muted-foreground animate-pulse" />
+                   <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center border border-border">
+                      <Cpu className="h-4 w-4 text-muted-foreground animate-pulse" />
                    </div>
                 </div>
                 <div className="min-w-0 flex-1">
@@ -259,20 +281,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 </div>
             </div>
           )}
-          <div ref={messagesEndRef} className="h-2" />
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
       {/* FOOTER / INPUT */}
-      <div className="p-3 bg-background border-t border-border z-10">
-        
+      <div className="p-4 pt-2 border-t border-border/40 bg-background/50 backdrop-blur-sm z-10">
         {selectedElement && (
-            <div className="bg-secondary/40 border border-border/60 rounded-lg p-2 flex items-center justify-between gap-2 text-xs mb-2 animate-fade-in-up">
-                <div className="flex items-center gap-2 min-w-0">
-                    <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium whitespace-nowrap">Editando</span>
-                    <span className="text-foreground truncate">{selectedElement}</span>
+            <div className="bg-secondary/40 border border-border/60 rounded-lg p-2 flex items-center justify-between gap-2 text-xs mb-3 animate-fade-in-up">
+                <div className="flex items-center gap-2">
+                    <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Elemento seleccionado</span>
+                    <span className="text-foreground truncate max-w-[200px]">{selectedElement}</span>
                 </div>
-                <Button variant="ghost" size="icon" className="h-5 w-5 hover:bg-background shrink-0" onClick={onClearSelection}>
+                <Button variant="ghost" size="icon" className="h-5 w-5 hover:bg-background" onClick={onClearSelection}>
                     <X className="h-3.5 w-3.5" />
                 </Button>
             </div>
@@ -280,17 +301,18 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
         <form onSubmit={handleSubmit} className="relative">
           <div className={cn(
-            "rounded-[24px] bg-background border shadow-lg shadow-black/5 transition-all duration-200",
-            loading ? "opacity-60 pointer-events-none border-border" : "border-border/60 hover:border-border focus-within:ring-1 focus-within:ring-ring/20 focus-within:border-ring/30"
+            "rounded-xl bg-background border shadow-sm transition-all duration-200",
+            loading ? "opacity-60 pointer-events-none border-border" : "border-border hover:border-border/80 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"
           )}>
-             {selectedImages.length > 0 && (
+            {selectedImages.length > 0 && (
               <div className="pt-3 px-3">
                 <div className="flex flex-wrap gap-2">
                   {selectedImages.map((file, idx) => (
                     <div key={idx} className="relative flex items-center gap-2 bg-secondary/30 border border-border rounded-md p-1 pr-2">
-                      <div className="h-6 w-6 shrink-0 overflow-hidden rounded border border-border/50">
+                      <div className="h-8 w-8 shrink-0 overflow-hidden rounded border border-border/50">
                         <img src={previewUrls[idx]} alt="Preview" className="h-full w-full object-cover" />
                       </div>
+                      <span className="text-[10px] text-muted-foreground font-medium max-w-[60px] truncate">{file.name}</span>
                       <button
                         type="button"
                         onClick={() => removeImageAt(idx)}
@@ -301,87 +323,44 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     </div>
                   ))}
                 </div>
-                <Separator className="mt-2 mb-1" />
+                <div className="h-px bg-border/40 w-full mt-3" />
               </div>
             )}
 
             <div className="flex items-end gap-2 p-2">
-              {/* PLUS BUTTON (Stats & Model) */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary/80 shrink-0 mb-1"
-                  >
-                      <Plus className="h-5 w-5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-[280px] p-3 shadow-xl" side="top">
-                    <div className="space-y-3">
-                        <div className="space-y-1">
-                            <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Modelo Activo</h4>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium truncate max-w-[160px]">{selectedModel}</span>
-                                <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => toast.info("Cambia el modelo en el menú superior o ajustes.")}>
-                                    Cambiar
-                                </Button>
-                            </div>
-                        </div>
-                        <Separator />
-                        <div className="space-y-2">
-                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <Coins className="w-4 h-4 text-yellow-500" />
-                                    <span>Créditos</span>
-                                </div>
-                                <span className="font-mono font-medium">{credits.toLocaleString()}</span>
-                             </div>
-                             <div className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded">
-                                Costo aprox. por mensaje: ~1000 créditos (dependiendo de la longitud y el modelo).
-                             </div>
-                        </div>
-                    </div>
-                </PopoverContent>
-              </Popover>
+              <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground mb-1"
+                  onClick={handleAttachClick}
+              >
+                  <Paperclip className="h-4 w-4" />
+              </Button>
               
               <textarea
                 ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder={selectedElement ? "Describe los cambios..." : "Escribe instrucciones..."}
-                className="flex-1 min-h-[40px] max-h-[120px] bg-transparent text-sm resize-none outline-none py-2.5 placeholder:text-muted-foreground/50"
+                placeholder={selectedElement ? "Describe los cambios para este elemento..." : "Describe lo que quieres construir..."}
+                className="flex-1 min-h-[44px] max-h-36 bg-transparent text-sm resize-none outline-none py-2.5 placeholder:text-muted-foreground/60"
                 rows={1}
                 disabled={loading}
               />
-              
-              <div className="flex gap-1 mb-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-                    onClick={handleAttachClick}
-                    title="Adjuntar imagen"
-                  >
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
 
-                  <Button
-                    type="submit"
-                    disabled={loading || (!text.trim() && selectedImages.length === 0)}
-                    size="icon"
-                    className={cn(
-                        "h-8 w-8 rounded-full transition-all duration-300 shadow-sm",
-                        loading ? "bg-muted text-muted-foreground" : "bg-foreground text-background hover:opacity-90"
-                    )}
-                    onClick={loading ? onCancel : undefined}
-                  >
-                    {loading ? <X className="h-4 w-4" /> : <ArrowUp className="h-5 w-5" />}
-                  </Button>
-              </div>
+              <Button
+                type="submit"
+                disabled={loading || (!text.trim() && selectedImages.length === 0)}
+                size="icon"
+                className={cn(
+                    "h-8 w-8 rounded-lg mb-1 transition-all duration-300",
+                    loading ? "bg-destructive text-destructive-foreground hover:bg-destructive" : "bg-primary text-primary-foreground shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                )}
+                onClick={loading ? onCancel : undefined}
+              >
+                {loading ? <X className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
+              </Button>
             </div>
             
             <input
@@ -393,18 +372,39 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               onChange={handleFileChange}
             />
           </div>
-          
-          <div className="flex justify-between items-center mt-2 px-2">
-               <button 
-                  onClick={() => setChatMode(prev => prev === 'build' ? 'ask' : 'build')}
-                  className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                  {chatMode === 'build' ? <Zap className="w-3 h-3 text-amber-500" /> : <Globe className="w-3 h-3 text-blue-500" />}
-                  {chatMode === 'build' ? "Modo Constructor" : "Modo Chat"}
-              </button>
-              <span className="text-[10px] text-muted-foreground/60">
-                 {selectedModel.split(' - ')[1] || selectedModel}
-              </span>
+
+          <div className="flex justify-between items-center mt-2 px-1">
+             <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors border border-transparent hover:border-border/50">
+                       <Cpu className="w-3 h-3" />
+                       {selectedModel}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start" side="top">
+                    <ModelsPopover
+                      selectedModel={selectedModel}
+                      onSelectModel={(label) => {
+                        setSelectedModel(label);
+                        setSelectedModelLabel(label);
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <button 
+                    onClick={() => setChatMode(prev => prev === 'build' ? 'ask' : 'build')}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors border border-transparent hover:border-border/50"
+                >
+                    {chatMode === 'build' ? <Zap className="w-3 h-3 text-amber-500" /> : <Globe className="w-3 h-3 text-blue-500" />}
+                    {chatMode === 'build' ? "Modo Constructor" : "Modo Chat"}
+                </button>
+             </div>
+
+             <div className="text-[10px] text-muted-foreground opacity-60">
+                {text.length > 0 && `${text.length} caracteres`}
+             </div>
           </div>
         </form>
       </div>
