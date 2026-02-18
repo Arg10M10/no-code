@@ -28,7 +28,7 @@ import {
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
 import { cn } from "@/lib/utils";
-import { Github } from "lucide-react";
+import { Github, ChevronLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 function includesSupabaseIntent(text: string): boolean {
@@ -350,53 +350,43 @@ const EditorPage: React.FC = () => {
       toast.info("Analyzing error...");
   };
 
-  const toggleSidebar = () => {
-    const panel = leftPanelRef.current;
-    if (panel) {
-        if (isLeftPanelCollapsed) {
-            panel.expand();
-        } else {
-            panel.collapse();
-        }
-    }
-  };
-
   if (!projectId) return <div>Cargando...</div>;
 
   return (
-    <div className="h-full w-full flex flex-col bg-background text-foreground animate-fade-in">
-      <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0 bg-background z-20 relative">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold truncate max-w-[200px]" title={projectName}>
-            {projectName || "Proyecto"}
-          </h1>
+    <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden">
+      {/* Header Fijo */}
+      <header className="h-14 border-b border-border bg-background/95 backdrop-blur flex items-center justify-between px-4 z-20 flex-shrink-0">
+        <div className="flex items-center gap-4 min-w-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/')}>
+               <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-sm font-semibold truncate max-w-[200px] md:max-w-md" title={projectName}>
+                {projectName || "Proyecto Sin Nombre"}
+            </h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => navigate(`/publish/${projectId}`)}>
-            <Github className="h-4 w-4 mr-2" />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate(`/publish/${projectId}`)}>
+            <Github className="h-3.5 w-3.5 mr-2" />
             GitHub
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-            Salir
           </Button>
         </div>
       </header>
       
-      <div className="flex-1 min-h-0 w-full">
+      {/* Área de Trabajo Flexible */}
+      <div className="flex-1 flex min-h-0 relative">
         <ResizablePanelGroup direction="horizontal" className="h-full w-full">
+          
+          {/* Panel Izquierdo: Chat */}
           <ResizablePanel
             ref={leftPanelRef}
             defaultSize={30} 
             minSize={20}
-            maxSize={45}
+            maxSize={50}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
             onExpand={() => setIsLeftPanelCollapsed(false)}
-            className={cn(
-                "bg-background", 
-                isLeftPanelCollapsed && "min-w-0 p-0 overflow-hidden"
-            )}
+            className="bg-background flex flex-col min-w-0"
           >
             <ChatPanel
               messages={messages}
@@ -413,11 +403,14 @@ const EditorPage: React.FC = () => {
             />
           </ResizablePanel>
           
+          {/* Barra Divisora Visible */}
           <ResizableHandle 
-            className="w-1.5 bg-border hover:bg-primary/50 transition-colors cursor-col-resize z-50 focus:outline-none flex-shrink-0" 
+            withHandle 
+            className="w-2 bg-border hover:bg-primary/20 transition-colors z-50 focus:outline-none flex-shrink-0 border-l border-r border-background/20" 
           />
           
-          <ResizablePanel defaultSize={70} className="bg-muted/40">
+          {/* Panel Derecho: Preview */}
+          <ResizablePanel defaultSize={70} className="bg-muted/30 flex flex-col min-w-0">
             <PreviewPanel
               previewUrl="/preview"
               code={previewHtml}
@@ -433,6 +426,7 @@ const EditorPage: React.FC = () => {
               onFixError={handleFixError}
             />
           </ResizablePanel>
+
         </ResizablePanelGroup>
       </div>
     </div>
