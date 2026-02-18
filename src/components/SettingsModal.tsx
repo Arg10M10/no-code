@@ -35,51 +35,64 @@ const SettingsModal: React.FC = () => {
           <Settings className="h-5 w-5" />
         </button>
       </DialogTrigger>
-      <DialogContent
-        className={[
-          "w-[96vw] sm:max-w-[1100px] max-w-[1200px] max-h-[78vh] p-0",
-          "border border-white/10 bg-background/60 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/50",
-          "shadow-2xl",
-        ].join(" ")}
-      >
-        <DialogHeader className="px-6 pt-6">
+      <DialogContent className="w-[90vw] max-w-[1000px] h-[80vh] flex flex-col p-0 gap-0 border-white/10 bg-background/95 backdrop-blur-xl sm:rounded-xl overflow-hidden">
+        <DialogHeader className="px-6 py-5 border-b border-border/40 space-y-1 shrink-0">
           <DialogTitle className="text-xl">Settings</DialogTitle>
           <DialogDescription>Configure your experience and connections</DialogDescription>
         </DialogHeader>
 
-        <div className="px-4 sm:px-6 pb-6">
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-            <aside className="sm:w-56 shrink-0">
-              <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
-                {items.map((it) => {
-                  const Icon = it.icon;
-                  const active = section === it.key;
-                  return (
-                    <Button
-                      key={it.key}
-                      variant="ghost"
-                      className={[
-                        "justify-start h-9",
-                        active
-                          ? "bg-muted text-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-                        "focus-visible:ring-0 focus-visible:ring-offset-0",
-                      ].join(" ")}
-                      onClick={() => setSection(it.key)}
-                      aria-pressed={active}
-                    >
-                      <Icon className="h-4 w-4 mr-2" />
-                      {it.label}
-                    </Button>
-                  );
-                })}
-              </div>
-            </aside>
+        <div className="flex flex-1 min-h-0">
+          <aside className="hidden sm:flex w-64 border-r border-border/40 p-3 flex-col gap-1 overflow-y-auto shrink-0 bg-muted/20">
+            {items.map((it) => {
+              const Icon = it.icon;
+              const active = section === it.key;
+              return (
+                <Button
+                  key={it.key}
+                  variant="ghost"
+                  className={[
+                    "justify-start h-10 px-3 font-medium",
+                    active
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+                  ].join(" ")}
+                  onClick={() => setSection(it.key)}
+                >
+                  <Icon className="h-4 w-4 mr-3" />
+                  {it.label}
+                </Button>
+              );
+            })}
+          </aside>
 
-            <section className="flex-1 overflow-y-auto max-h-[58vh] rounded-md">
-              <SettingsContent section={section} />
-            </section>
+          {/* Mobile navigation (simplified, horizontal on top if sidebar hidden) */}
+          <div className="sm:hidden border-b border-border/40 overflow-x-auto whitespace-nowrap p-2 flex gap-2 shrink-0 bg-muted/20">
+             {items.map((it) => {
+              const Icon = it.icon;
+              const active = section === it.key;
+              return (
+                <Button
+                  key={it.key}
+                  variant="ghost"
+                  size="sm"
+                  className={[
+                    "h-8",
+                    active
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground",
+                  ].join(" ")}
+                  onClick={() => setSection(it.key)}
+                >
+                  <Icon className="h-3.5 w-3.5 mr-2" />
+                  {it.label}
+                </Button>
+              );
+            })}
           </div>
+
+          <main className="flex-1 overflow-y-auto bg-background/50">
+            <SettingsContent section={section} />
+          </main>
         </div>
       </DialogContent>
     </Dialog>
