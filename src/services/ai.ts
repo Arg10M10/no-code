@@ -18,7 +18,7 @@ export function getProviderFromLabel(label: string): ProviderId {
   return "openai";
 }
 
-// Mapa de modelos
+// Mapa de modelos futuristas (2026)
 function mapLabelToModelId(label: string): { provider: ProviderId; model: string } {
   const provider = getProviderFromLabel(label);
   const normalized = label.toLowerCase();
@@ -26,25 +26,40 @@ function mapLabelToModelId(label: string): { provider: ProviderId; model: string
   if (provider === "openai") {
     if (normalized.includes("gpt-5.2")) return { provider, model: "gpt-5.2" };
     if (normalized.includes("gpt-5.1")) return { provider, model: "gpt-5.1" };
-    if (normalized.includes("mini")) return { provider, model: "gpt-4o-mini" };
-    if (normalized.includes("codex")) return { provider, model: "gpt-4o" };
-    return { provider, model: "gpt-4o" };
+    if (normalized.includes("mini")) return { provider, model: "gpt-5-mini" };
+    if (normalized.includes("codex")) return { provider, model: "gpt-5-codex" };
+    // Default flagship
+    return { provider, model: "gpt-5" };
   }
+  
   if (provider === "google") {
-    if (normalized.includes("3 flash")) return { provider, model: "gemini-1.5-flash" };
-    return { provider, model: "gemini-1.5-pro" };
+    if (normalized.includes("3 flash")) return { provider, model: "gemini-3-flash" };
+    if (normalized.includes("3 pro")) return { provider, model: "gemini-3-pro" };
+    if (normalized.includes("2.5 flash")) return { provider, model: "gemini-2.5-flash" };
+    if (normalized.includes("2.5 pro")) return { provider, model: "gemini-2.5-pro" };
+    // Default
+    return { provider, model: "gemini-3-pro" };
   }
+  
   if (provider === "anthropic") {
-    if (normalized.includes("opus")) return { provider, model: "claude-3-opus-20240229" };
-    return { provider, model: "claude-3-5-sonnet-20240620" };
+    if (normalized.includes("opus 4.5")) return { provider, model: "claude-opus-4.5" };
+    if (normalized.includes("sonnet 4.5")) return { provider, model: "claude-sonnet-4.5" };
+    if (normalized.includes("sonnet 4")) return { provider, model: "claude-sonnet-4" };
+    // Default
+    return { provider, model: "claude-sonnet-4.5" };
   }
+  
   if (provider === "openrouter") {
-    if (normalized.includes("kimi")) return { provider, model: "moonshot/moonshot-v1-8k" };
-    if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-chat" };
-    if (normalized.includes("qwen")) return { provider, model: "qwen/qwen-2-72b-instruct" };
-    return { provider, model: "meta-llama/llama-3.1-70b-instruct" };
+    if (normalized.includes("coder")) return { provider, model: "qwen/qwen-3-coder" };
+    if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-v3.1" };
+    if (normalized.includes("kimi")) return { provider, model: "moonshot/kimi-k2.5" };
+    if (normalized.includes("devstral")) return { provider, model: "mistral/devstral-2" };
+    if (normalized.includes("glm")) return { provider, model: "zhipu/glm-4.7" };
+    // Default fallback
+    return { provider, model: "deepseek/deepseek-v3.1" };
   }
-  return { provider: "openai", model: "gpt-4o" };
+  
+  return { provider: "openai", model: "gpt-5" };
 }
 
 /**
@@ -96,8 +111,6 @@ async function streamReader(
       } 
     }
   }
-  
-  // Procesar remanente si fuera necesario (raro en SSE bien formados)
 }
 
 async function callApi(params: { 
