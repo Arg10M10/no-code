@@ -4,16 +4,13 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Cpu, Square, Plus } from "lucide-react";
+import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ModelsPopover from "./ModelsPopover";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
-import { ChartNoAxes } from "./ChartNoAxes";
-import { Paperclip } from "./Paperclip";
-import { Earth } from "./Earth";
 
 type ChatPanelProps = {
   messages: StoredMessage[];
@@ -25,7 +22,7 @@ type ChatPanelProps = {
   onClearSelection: () => void;
 };
 
-const MODEL_TOKEN_LIMIT = 1_000_000;
+const MODEL_TOKEN_LIMIT = 100_000; // Adjusted based on typical usage
 
 const isErrorMessage = (content: string) => {
   const lowerContent = content.toLowerCase();
@@ -121,8 +118,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  const percentOfLimit = Math.round((credits / MODEL_TOKEN_LIMIT) * 100);
-  const progressWidth = `${Math.max(0, Math.min(100, percentOfLimit))}%`;
+  const percentRemaining = Math.max(0, Math.min(100, (credits / MODEL_TOKEN_LIMIT) * 100));
 
   return (
     <div className="flex flex-col h-full">
@@ -156,7 +152,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                             src={url} 
                             alt={`Attachment ${idx + 1}`} 
                             className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-110 bg-black/5" 
-                            title="Click to view full size (coming soon)"
+                            title="Click to view full size"
                           />
                         </div>
                       ))}
@@ -207,9 +203,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       )}
 
       <form onSubmit={handleSubmit} className="p-4">
-        <div className="rounded-xl bg-secondary border border-border p-3 shadow-sm">
+        <div className="rounded-xl bg-secondary border border-border shadow-sm flex flex-col">
           {selectedImages.length > 0 ? (
-            <div className="mb-3 px-1">
+            <div className="pt-3 px-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-xs text-muted-foreground font-medium">
                   {selectedImages.length} {selectedImages.length === 1 ? 'image' : 'images'} attached
@@ -244,14 +240,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             </div>
           ) : null}
 
-          <div className="flex items-center gap-3">
+          {/* Text Area and Send Button Row */}
+          <div className="flex items-start gap-2 p-3">
             <textarea
               ref={textareaRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder={selectedElement ? "Describe the changes..." : (chatMode === 'build' ? "Ask AI to build..." : "Ask AI a question...")}
-              className="resize-none flex-1 min-h-[44px] max-h-36 bg-transparent text-foreground placeholder:text-muted-foreground outline-none px-3 py-2 rounded-md"
+              className="resize-none flex-1 min-h-[44px] max-h-36 bg-transparent text-foreground placeholder:text-muted-foreground outline-none px-2 py-2 text-sm"
               rows={1}
               aria-label="Message"
               disabled={loading}
@@ -271,7 +268,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               <Button
                 type="button"
                 onClick={onCancel}
-                className="h-9 w-9 rounded-md p-0 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="h-8 w-8 rounded-lg p-0 bg-destructive text-destructive-foreground hover:bg-destructive/90 mt-1.5 flex-shrink-0"
                 aria-label="Cancel Generation"
               >
                 <Square className="h-4 w-4" />
@@ -280,7 +277,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               <Button
                 type="submit"
                 disabled={!text.trim() && selectedImages.length === 0}
-                className="h-9 w-9 rounded-md p-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                className="h-8 w-8 rounded-lg p-0 bg-primary text-primary-foreground hover:bg-primary/90 mt-1.5 flex-shrink-0"
                 aria-label="Send"
               >
                 <ArrowUp className="h-4 w-4" />
@@ -288,12 +285,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             )}
           </div>
 
-          <div className="mt-3 border-t border-border pt-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2 justify-start flex-wrap">
+          <div className="px-3 pb-2 border-t border-border/50">
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center text-sm font-medium px-3 py-1 rounded-md transition-all select-none bg-transparent border border-border text-foreground hover:bg-muted"
+                  className="inline-flex items-center justify-center text-xs font-medium px-2.5 py-1 rounded-md transition-all select-none bg-background/50 border border-border text-foreground hover:bg-background"
                   onClick={() => {
                     setChatMode(prev => (prev === 'build' ? 'ask' : 'build'));
                   }}
@@ -306,10 +303,10 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-auto gap-2 px-3 py-1 text-sm font-medium transition-all bg-transparent border-border text-foreground select-none hover:bg-muted"
+                      className="h-auto gap-1.5 px-2.5 py-1 text-xs font-medium transition-all bg-background/50 border-border text-foreground select-none hover:bg-background"
                     >
-                      <Cpu className="w-4 w-4" />
-                      <span className="truncate max-w-[120px]">{selectedModel}</span>
+                      <Cpu className="w-3.5 h-3.5" />
+                      <span className="truncate max-w-[100px]">{selectedModel}</span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start" side="top">
@@ -324,17 +321,16 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 </Popover>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-md p-0 text-foreground flex items-center justify-center hover:bg-transparent"
+                  className="h-8 w-8 rounded-md p-0 text-muted-foreground hover:text-foreground hover:bg-background/50"
                   onClick={handleAttachClick}
-                  aria-label="Adjuntar imágenes"
-                  title="Adjuntar imágenes"
+                  title="Attach images"
                 >
-                  <Paperclip width={16} height={16} strokeWidth={2} />
+                  <Paperclip className="h-4 w-4" />
                 </Button>
 
                 <Popover>
@@ -343,49 +339,43 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9 rounded-md p-0 text-foreground hover:bg-transparent"
+                      className="h-8 w-8 rounded-md p-0 text-muted-foreground hover:text-foreground hover:bg-background/50"
                       title="More Actions"
                     >
-                      <Plus className="h-5 w-5" />
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent side="top" align="end" className="w-[220px] p-2">
-                    <div className="space-y-1">
-                      {/* Token Section */}
-                      <div className="p-2.5 bg-secondary/50 rounded-md mb-2">
-                        <div className="flex items-center justify-between text-xs mb-2">
-                          <div className="flex items-center gap-2 font-medium text-foreground">
-                            <ChartNoAxes width={14} height={14} />
-                            <span>Credits</span>
-                          </div>
-                          <span className="text-muted-foreground">{credits.toLocaleString()}</span>
-                        </div>
-                        <div className="w-full h-1.5 rounded-full bg-background/50 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-indigo-400 to-pink-400"
-                            style={{ width: progressWidth }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="h-px bg-border my-1" />
-
-                      {/* Web Search Action */}
+                  <PopoverContent side="top" align="end" className="w-[180px] p-1.5">
+                    <div className="space-y-0.5">
                       <button
-                        className="w-full flex items-center gap-2 px-2 py-2 text-sm text-foreground hover:bg-muted rounded-md transition-colors text-left"
+                        className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs text-foreground hover:bg-muted rounded-md transition-colors text-left"
                         onClick={() => {
                           toast.info("Web search coming soon!");
                         }}
                       >
-                         <div className="flex items-center justify-center w-6 h-6 rounded-md bg-secondary text-foreground">
-                            <Earth width={14} height={14} />
-                         </div>
+                         <Globe className="w-4 h-4 text-muted-foreground" />
                          <span>Web Search</span>
                       </button>
                     </div>
                   </PopoverContent>
                 </Popover>
               </div>
+            </div>
+            
+            {/* Token/Credits Bar (Screenshot style) */}
+            <div className="mt-3 mb-1">
+               <div className="flex justify-between items-center text-[10px] text-muted-foreground mb-1.5 px-0.5">
+                  <span className="flex items-center gap-1.5">
+                    Credits: <span className="text-foreground font-medium">{credits.toLocaleString()}</span> remaining
+                  </span>
+                  <span className="opacity-70">{percentRemaining.toFixed(0)}%</span>
+               </div>
+               <div className="h-1 w-full bg-background/50 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-indigo-400 to-pink-400 transition-all duration-500 ease-out"
+                    style={{ width: `${percentRemaining}%` }}
+                  />
+               </div>
             </div>
           </div>
         </div>
