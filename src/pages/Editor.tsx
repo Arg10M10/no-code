@@ -394,8 +394,8 @@ const EditorPage: React.FC = () => {
             onCollapse={() => setIsLeftPanelCollapsed(true)}
             onExpand={() => setIsLeftPanelCollapsed(false)}
             className={cn(
-                "bg-background border-r border-border", 
-                isLeftPanelCollapsed && "min-w-0 p-0 overflow-hidden border-r-0"
+                "bg-background", 
+                isLeftPanelCollapsed && "min-w-0 p-0 overflow-hidden"
             )}
           >
             <ChatPanel
@@ -414,8 +414,7 @@ const EditorPage: React.FC = () => {
           </ResizablePanel>
           
           <ResizableHandle 
-            withHandle 
-            className="w-3 bg-muted border-l border-r border-border hover:bg-primary/20 transition-colors z-50 flex items-center justify-center data-[active]:bg-primary/30 cursor-col-resize" 
+            className="w-1.5 bg-border hover:bg-primary/50 transition-colors cursor-col-resize z-50 focus:outline-none flex-shrink-0" 
           />
           
           <ResizablePanel defaultSize={70} className="bg-muted/40">
