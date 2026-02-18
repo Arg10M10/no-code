@@ -12,12 +12,14 @@ import PreviewPage from "./pages/Preview";
 import PublishPage from "./pages/Publish";
 import Resources from "./pages/Resources";
 import ProjectsPage from "./pages/Projects";
+import { ThemeInitializer } from "@/components/ThemeInitializer";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <ThemeInitializer />
       <Toaster />
       <Sonner />
       <BrowserRouter>
