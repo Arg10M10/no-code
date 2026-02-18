@@ -99,7 +99,7 @@ const ProjectsGallery: React.FC = () => {
       );
     }
 
-    return filteredProjects.map((project, index) => {
+    return filteredProjects.slice(0, 6).map((project, index) => { // Limit to 6 on home page
       const gradient = gradientPalette[index % gradientPalette.length];
       const showPublished = index % 3 === 0; // simple hint badge like the screenshot
       const code = getPreviewHtml(project.id);
@@ -175,7 +175,7 @@ const ProjectsGallery: React.FC = () => {
             <button
               type="button"
               className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/projects")}
               aria-label="View all"
             >
               View all

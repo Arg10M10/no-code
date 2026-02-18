@@ -5,9 +5,8 @@ import {
   Search, 
   Compass, 
   LayoutGrid, 
-  Star, 
-  Users, 
   Plus,
+  Layers,
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles,
@@ -28,8 +27,6 @@ const AppSidebar = () => {
 
   const projectItems = [
     { icon: LayoutGrid, label: "All projects", path: "/projects" },
-    { icon: Star, label: "Starred", path: "/starred" },
-    { icon: Users, label: "Shared with me", path: "/shared" },
   ];
 
   return (
@@ -144,14 +141,14 @@ const AppSidebar = () => {
                <div className="h-4" /> /* Spacer when collapsed */
              )}
              {projectItems.map((item) => (
-               <Link key={item.path} to={item.path === "/projects" ? "/" : "#"} title={isCollapsed ? item.label : undefined}>
+               <Link key={item.path} to={item.path} title={isCollapsed ? item.label : undefined}>
                 <button
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
                     isCollapsed ? "justify-center w-full px-2" : "w-full",
-                    // Highlight logic...
-                    location.pathname === '/' && item.path === '/projects' ? "" : // Custom
-                    "text-zinc-400 hover:bg-white/5 hover:text-white"
+                    isActive(item.path)
+                      ? "bg-white/10 text-white shadow-sm"
+                      : "text-zinc-400 hover:bg-white/5 hover:text-white"
                   )}
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
