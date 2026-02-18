@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SearchModal from "./SearchModal";
 import SettingsModal from "./SettingsModal";
 
@@ -185,40 +186,91 @@ const AppSidebar = () => {
 
               {/* Version & Inbox */}
               <div className="flex items-center justify-between px-1">
-                 <p className="text-xs font-medium text-zinc-500">v2.4.0 (Beta)</p>
+                 <p className="text-sm font-medium text-zinc-400">v2.4.0 (Beta)</p>
                  
                  <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-200 hover:bg-white/5">
-                            <Inbox className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-200 hover:bg-white/5">
+                            <Inbox className="h-5 w-5" />
+                            {/* Notification Dot */}
+                            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 border border-[#09090b]" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent side="right" align="end" className="w-80 p-0 border-white/10 bg-[#09090b] text-white shadow-xl">
-                        <div className="p-3 border-b border-white/10 flex items-center justify-between bg-white/5">
-                            <span className="font-semibold text-sm">Inbox</span>
-                            <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">3 New</span>
-                        </div>
-                        <ScrollArea className="h-[300px]">
-                            <div className="divide-y divide-white/5">
-                                {[
-                                    { title: "New AI Models Available", date: "2h ago", desc: "We've added support for the latest GPT-5 and Gemini 3 models." },
-                                    { title: "Project Syncing Fixed", date: "5h ago", desc: "Resolved an issue where some files weren't syncing to GitHub correctly." },
-                                    { title: "Welcome to Framio v2.4", date: "1d ago", desc: "Experience the new sidebar, enhanced editor, and improved performance." },
-                                    { title: "Community Challenge", date: "2d ago", desc: "Join our weekend build challenge and win Pro credits!" }
-                                ].map((item, i) => (
-                                    <div key={i} className="p-3 hover:bg-white/5 transition-colors cursor-pointer group">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <h4 className="text-sm font-medium text-zinc-200 group-hover:text-blue-400 transition-colors">{item.title}</h4>
-                                            <span className="text-[10px] text-zinc-500 whitespace-nowrap ml-2">{item.date}</span>
-                                        </div>
-                                        <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">{item.desc}</p>
-                                    </div>
-                                ))}
+                    <PopoverContent side="right" align="end" className="w-[380px] p-0 border-white/10 bg-[#09090b] text-white shadow-2xl overflow-hidden mr-4">
+                        <Tabs defaultValue="whats_new" className="w-full">
+                            <div className="p-2 bg-black/40 border-b border-white/5">
+                                <TabsList className="w-full bg-white/5 p-1 h-9">
+                                    <TabsTrigger value="inbox" className="flex-1 text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-zinc-400">Inbox</TabsTrigger>
+                                    <TabsTrigger value="whats_new" className="flex-1 text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-zinc-400">What's new</TabsTrigger>
+                                </TabsList>
                             </div>
-                        </ScrollArea>
-                        <div className="p-2 border-t border-white/10 bg-white/5 text-center">
-                            <button className="text-xs text-zinc-400 hover:text-white transition-colors">Mark all as read</button>
-                        </div>
+                            
+                            <TabsContent value="inbox" className="m-0 h-[400px] flex items-center justify-center text-zinc-500 text-xs">
+                                No new notifications
+                            </TabsContent>
+                            
+                            <TabsContent value="whats_new" className="m-0">
+                                <ScrollArea className="h-[450px]">
+                                    <div className="p-4 space-y-6">
+                                        {/* Featured Item */}
+                                        <div className="space-y-3 cursor-pointer group">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                                                <h3 className="font-semibold text-sm text-white">Slack connector is here</h3>
+                                            </div>
+                                            <p className="text-xs text-zinc-400 leading-relaxed">
+                                                Add Slack notifications, alerts, and channel updates directly into your app.
+                                            </p>
+                                            <div className="w-full aspect-video rounded-xl bg-gradient-to-br from-[#4A154B] via-[#36C5F0] to-[#E01E5A] flex items-center justify-center relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-300 border border-white/10">
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                                                <div className="relative z-10 flex items-center gap-2">
+                                                    <span className="text-2xl font-bold text-white tracking-tight"># Slack</span>
+                                                </div>
+                                            </div>
+                                            <p className="text-[10px] text-zinc-500 font-medium">1 day ago</p>
+                                        </div>
+
+                                        <div className="h-px w-full bg-white/5" />
+
+                                        {/* List Item 1 */}
+                                        <div className="flex gap-4 cursor-pointer group">
+                                             <div className="flex-1 space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                                    <h3 className="font-medium text-sm text-zinc-200 group-hover:text-white transition-colors">Latest Framio update...</h3>
+                                                </div>
+                                                <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed">
+                                                    Take a look at all the latest features, improvements, and bug fixes in Framio. Check out the full changelog.
+                                                </p>
+                                                <p className="text-[10px] text-zinc-600">13 days ago</p>
+                                             </div>
+                                             <div className="w-24 h-16 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shrink-0 flex items-center justify-center border border-white/10 group-hover:border-white/20 transition-colors">
+                                                 <span className="text-[9px] font-bold text-white/90">Changelog</span>
+                                             </div>
+                                        </div>
+
+                                        <div className="h-px w-full bg-white/5" />
+
+                                         {/* List Item 2 */}
+                                         <div className="flex gap-4 cursor-pointer group">
+                                             <div className="flex-1 space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                                    <h3 className="font-medium text-sm text-zinc-200 group-hover:text-white transition-colors">Show off your vibe cod...</h3>
+                                                </div>
+                                                <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed">
+                                                    Unlock badges as you build and showcase your vibe coding momentum on your LinkedIn profile.
+                                                </p>
+                                                <p className="text-[10px] text-zinc-600">15 days ago</p>
+                                             </div>
+                                             <div className="w-24 h-16 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-900 shrink-0 flex items-center justify-center border border-white/10 group-hover:border-white/20 transition-colors">
+                                                 <span className="text-[9px] font-bold text-white/90">LinkedIn</span>
+                                             </div>
+                                        </div>
+                                    </div>
+                                </ScrollArea>
+                            </TabsContent>
+                        </Tabs>
                     </PopoverContent>
                  </Popover>
               </div>
