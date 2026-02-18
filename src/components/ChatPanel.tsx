@@ -36,6 +36,45 @@ const isErrorMessage = (content: string) => {
          lowerContent.includes('cancelled');
 };
 
+// Simple Markdown Parser for Bold (**text**) and Lists (* item)
+const SimpleMarkdown = ({ text }: { text: string }) => {
+  const lines = text.split('\n');
+  
+  return (
+    <div className="text-sm leading-relaxed text-foreground/90 space-y-1">
+      {lines.map((line, i) => {
+        // List item detection
+        const isListItem = line.trim().startsWith('* ') || line.trim().startsWith('- ');
+        const cleanLine = isListItem ? line.trim().substring(2) : line;
+
+        // Bold parsing logic
+        const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
+        
+        const content = parts.map((part, index) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={index} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>;
+          }
+          return part;
+        });
+
+        if (isListItem) {
+          return (
+            <div key={i} className="flex items-start gap-2 ml-1">
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-foreground/40 shrink-0" />
+              <span>{content}</span>
+            </div>
+          );
+        }
+
+        // Empty line
+        if (!cleanLine.trim()) return <div key={i} className="h-2" />;
+
+        return <div key={i} className="min-h-[1.2em]">{content}</div>;
+      })}
+    </div>
+  );
+};
+
 const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
   loading,
@@ -50,7 +89,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 }) => {
   const [text, setText] = React.useState("");
   const [chatMode, setChatMode] = React.useState<'build' | 'ask'>('build');
-  const [showCredits, setShowCredits] = React.useState(false);
 
   const [selectedImages, setSelectedImages] = React.useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = React.useState<string[]>([]);
@@ -117,14 +155,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     }
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-  };
-
   // --- RENDERING LOGIC ---
 
   const renderAssistantMessage = (content: string) => {
@@ -155,14 +185,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             {/* ETAPA 2: CAMBIOS (Si existen) */}
             {hasChanges && <FileChangeList changes={changes} />}
 
-            {/* ETAPA 3: RESULTADO FINAL */}
+            {/* ETAPA 3: RESULTADO FINAL (Con Markdown) */}
             <div className="space-y-3">
-                <div className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                    {summaryText}
-                </div>
+                <SimpleMarkdown text={summaryText} />
                 
                 {hasChanges && (
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="flex flex-wrap gap-2 pt-2">
                         <Button variant="outline" size="sm" className="h-8 gap-2 bg-background hover:bg-secondary/80">
                             <Eye className="w-3.5 h-3.5" />
                             Ver cambios
@@ -182,9 +210,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         </div>
     );
   };
-
-  const usedCredits = Math.max(0, MODEL_TOKEN_LIMIT - credits);
-  const percentUsed = Math.min(100, Math.max(0, (usedCredits / MODEL_TOKEN_LIMIT) * 100));
 
   return (
     <div className="flex flex-col h-full">
@@ -235,8 +260,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                    </div>
                 </div>
                 <div className="min-w-0 flex-1 space-y-2">
-                    {/* Renderizamos el pensamiento histórico si lo hubiera (en el futuro se podría guardar) */}
-                    {/* Renderizamos el contenido estructurado */}
                     {renderAssistantMessage(msg.content)}
                 </div>
               </div>
