@@ -58,37 +58,46 @@ const selectionScript = `
 function mapLabelToModelId(label: string): { provider: ProviderId; model: string } {
   const provider = getProviderFromLabel(label);
   const normalized = label.toLowerCase();
-
-  // Mapping 2026 futuristic labels to current best-in-class models
-  // This ensures the app works today while providing the requested UI experience.
   
-  switch (provider) {
-    case "google": {
-      // Gemini 3 & 2.5 -> Gemini 1.5 Pro/Flash
-      if (normalized.includes("flash")) return { provider, model: "gemini-1.5-flash" };
-      return { provider, model: "gemini-1.5-pro" };
-    }
-    case "openai": {
-      // GPT-5.x -> GPT-4o
-      if (normalized.includes("mini") || normalized.includes("nano")) return { provider, model: "gpt-4o-mini" };
-      if (normalized.includes("codex")) return { provider, model: "gpt-4o" }; // Assuming Codex implies high capability
-      return { provider, model: "gpt-4o" };
-    }
-    case "anthropic": {
-      // Claude 4.5 -> Claude 3.5 Sonnet (Current best)
-      return { provider, model: "claude-3-5-sonnet-latest" };
-    }
-    case "openrouter": {
-      // OpenRouter mapping
-      if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-chat" };
-      if (normalized.includes("qwen") || normalized.includes("qween")) return { provider, model: "qwen/qwen-2.5-coder-32b-instruct" };
-      if (normalized.includes("codex")) return { provider, model: "qwen/qwen-2.5-coder-32b-instruct" };
-      // Fallbacks for imaginary models to a solid default
-      return { provider, model: "deepseek/deepseek-chat" };
-    }
-    default:
-      return { provider: "openai", model: "gpt-4o-mini" };
+  // Logic to return exact model IDs based on the user's 2026 list
+  
+  if (provider === "openai") {
+    if (normalized.includes("gpt-5.2")) return { provider, model: "gpt-5.2" };
+    if (normalized.includes("gpt-5.1")) return { provider, model: "gpt-5.1" };
+    if (normalized.includes("mini")) return { provider, model: "gpt-5-mini" };
+    if (normalized.includes("codex")) return { provider, model: "gpt-5-codex" };
+    if (normalized.includes("gpt-5")) return { provider, model: "gpt-5" };
+    return { provider, model: "gpt-5" }; // Default for OpenAI category
   }
+
+  if (provider === "google") {
+    if (normalized.includes("gemini 3 pro")) return { provider, model: "gemini-3-pro" };
+    if (normalized.includes("gemini 3 flash")) return { provider, model: "gemini-3-flash" };
+    if (normalized.includes("gemini 2.5 pro")) return { provider, model: "gemini-2.5-pro" };
+    if (normalized.includes("gemini 2.5 flash")) return { provider, model: "gemini-2.5-flash" };
+    return { provider, model: "gemini-3-pro" }; // Default for Google category
+  }
+
+  if (provider === "anthropic") {
+    if (normalized.includes("opus 4.5")) return { provider, model: "claude-4.5-opus" };
+    if (normalized.includes("sonnet 4.5")) return { provider, model: "claude-4.5-sonnet" };
+    if (normalized.includes("sonnet 4")) return { provider, model: "claude-4-sonnet" };
+    return { provider, model: "claude-4.5-sonnet" }; // Default for Anthropic category
+  }
+
+  if (provider === "openrouter") {
+    if (normalized.includes("kimi k2.5")) return { provider, model: "moonshot/kimi-k2.5" };
+    if (normalized.includes("kimi k2")) return { provider, model: "moonshot/kimi-k2" };
+    if (normalized.includes("qwen3 coder")) return { provider, model: "qwen/qwen-3-coder" };
+    if (normalized.includes("devstral 2")) return { provider, model: "mistral/devstral-2" };
+    if (normalized.includes("glm 4.7")) return { provider, model: "thudm/glm-4.7" };
+    if (normalized.includes("deepseek v3.1")) return { provider, model: "deepseek/deepseek-v3.1" };
+    // Fallback logic for OpenRouter if exact match not found but keywords present
+    if (normalized.includes("deepseek")) return { provider, model: "deepseek/deepseek-v3.1" };
+    return { provider, model: "qwen/qwen-3-coder" }; // Default for OpenRouter category
+  }
+
+  return { provider: "openai", model: "gpt-5" };
 }
 
 async function callApi(params: { messages: ChatMessage[]; model: string; apiKey: string; provider: ProviderId; system?: string; temperature?: number; signal?: AbortSignal }): Promise<string> {
