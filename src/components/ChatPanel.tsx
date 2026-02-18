@@ -4,10 +4,11 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { StoredMessage } from "@/lib/projects";
-import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap, Image as ImageIcon, Sparkles, User } from "lucide-react";
+import { ArrowUp, X, Cpu, Square, Plus, Paperclip, Globe, Zap, Image as ImageIcon, Sparkles, User, FileCode, FilePlus } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import TypingIndicator from "./TypingIndicator";
+import { ThinkingProcess } from "./ThinkingProcess";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ModelsPopover from "./ModelsPopover";
 import { getSelectedModelLabel, setSelectedModelLabel } from "@/lib/settings";
@@ -67,7 +68,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     const urls = selectedImages.map((f) => URL.createObjectURL(f));
     setPreviewUrls(urls);
     return () => {
-      urls.forEach((u) => URL.revokeObjectURL(u));
+      urls.forEach(u) => URL.revokeObjectURL(u));
     };
   }, [selectedImages]);
 
@@ -120,6 +121,45 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
+  // Helper to render message content with file lists highlighted
+  const renderMessageContent = (content: string) => {
+    // Si el mensaje contiene un bloque de "Changed files:", lo formateamos
+    if (content.includes("---CHANGES---")) {
+        const [textPart, changesPart] = content.split("---CHANGES---");
+        const changes = JSON.parse(changesPart || "[]");
+
+        return (
+            <div className="space-y-3">
+                <p className="whitespace-pre-wrap">{textPart.trim()}</p>
+                {changes.length > 0 && (
+                    <div className="rounded-lg border bg-card/40 p-3 space-y-2 mt-2">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Edits made</div>
+                        {changes.map((change: any, i: number) => (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                                {change.type === 'create' ? (
+                                    <FilePlus className="h-3.5 w-3.5 text-green-500" />
+                                ) : (
+                                    <FileCode className="h-3.5 w-3.5 text-blue-500" />
+                                )}
+                                <span className="font-mono text-foreground/80">{change.path}</span>
+                                <span className={cn(
+                                    "text-[9px] px-1.5 py-0.5 rounded border ml-auto",
+                                    change.type === 'create' 
+                                        ? "bg-green-500/10 border-green-500/20 text-green-600" 
+                                        : "bg-blue-500/10 border-blue-500/20 text-blue-600"
+                                )}>
+                                    {change.type === 'create' ? 'Created' : 'Modified'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    }
+    return <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>;
+  };
+
   const usedCredits = Math.max(0, MODEL_TOKEN_LIMIT - credits);
   const percentUsed = Math.min(100, Math.max(0, (usedCredits / MODEL_TOKEN_LIMIT) * 100));
 
@@ -168,8 +208,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                    </div>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className={cn("text-sm leading-relaxed whitespace-pre-wrap", isError ? "text-destructive" : "text-foreground")}>
-                    {msg.content}
+                  <div className={cn("text-sm leading-relaxed", isError ? "text-destructive" : "text-foreground")}>
+                    {renderMessageContent(msg.content)}
                   </div>
                 </div>
               </div>
@@ -184,7 +224,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     </div>
                 </div>
                 <div className="min-w-0 flex-1 py-1">
-                   <TypingIndicator />
+                   <ThinkingProcess />
                 </div>
             </div>
           )}

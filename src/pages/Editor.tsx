@@ -229,10 +229,10 @@ const EditorPage: React.FC = () => {
         setPreviewLoading(true);
         setProjectFiles(null);
         
-        const currentFiles = getProjectFiles(projectId);
-        const codeContext = currentFiles ? JSON.stringify(currentFiles) : null;
+        const currentFiles = getProjectFiles(projectId) || [];
+        const codeContext = currentFiles.length > 0 ? JSON.stringify(currentFiles) : null;
 
-        const { files, previewHtml } = await generateAnswer({
+        const { files: newFiles, previewHtml } = await generateAnswer({
           prompt: messageContent,
           images: userMessage.images,
           selectedModelLabel: selectedModel,
@@ -245,13 +245,27 @@ const EditorPage: React.FC = () => {
           setSupabaseIntentCounter((c) => c + 1);
         }
 
-        setProjectFiles(files);
-        persistProjectFiles(projectId, files);
+        // Calculate Diffs
+        const changes: { type: 'create' | 'update', path: string }[] = [];
+        newFiles.forEach(nf => {
+            const old = currentFiles.find(of => of.path === nf.path);
+            if (!old) {
+                changes.push({ type: 'create', path: nf.path });
+            } else if (old.content !== nf.content) {
+                changes.push({ type: 'update', path: nf.path });
+            }
+        });
+
+        setProjectFiles(newFiles);
+        persistProjectFiles(projectId, newFiles);
         setPreviewHtml(previewHtml);
         persistPreviewHtml(projectId, previewHtml);
         setPreviewLoading(false);
 
-        const aiResponseContent = "Listo. He aplicado tus cambios y actualizado la previsualización y los archivos.";
+        // Append changes metadata to the AI response
+        const changesJson = JSON.stringify(changes);
+        const aiResponseContent = `Listo. He aplicado tus cambios.\n---CHANGES---${changesJson}`;
+        
         const cost = Math.floor(Math.random() * 4001) + 1000;
         const newCredits = decrementCredits(projectId, cost);
         setCredits(newCredits);
