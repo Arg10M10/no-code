@@ -96,6 +96,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
 
   return (
     <div className="h-full w-full flex flex-col bg-background overflow-hidden relative">
+      {/* Barra de Pestañas Superior */}
       <div className="flex items-center justify-between p-2 border-b bg-background/95 backdrop-blur-sm z-20 shrink-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
           <TabsList className="bg-muted/50 h-8">
@@ -142,9 +143,10 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 relative min-h-0 w-full overflow-hidden">
+      {/* Contenido Flexible */}
+      <div className="flex-1 relative min-h-0 w-full overflow-hidden flex flex-col">
         {activeTab === "preview" && (
-          <div className="absolute inset-0 flex flex-col bg-white">
+          <div className="flex-1 flex flex-col bg-white overflow-hidden">
             <div className="h-9 bg-muted/20 border-b flex items-center px-4 gap-3 shrink-0">
               <div className="flex gap-1.5 shrink-0">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-400/40" />
@@ -157,7 +159,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
               </div>
             </div>
             
-            <div className="flex-1 relative">
+            <div className="flex-1 relative overflow-hidden">
               {(loading || (isNpmRunning && !localhostUrl)) && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-30">
                   <Loader />
@@ -178,19 +180,19 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         )}
 
         {activeTab === "code" && (
-          <div className="absolute inset-0 bg-background z-10">
+          <div className="flex-1 overflow-hidden bg-background">
              <CodePanel files={files} onSaveFile={onSaveFile} />
           </div>
         )}
 
         {activeTab === "integrations" && (
-          <div className="absolute inset-0 bg-background overflow-auto p-8">
+          <div className="flex-1 bg-background overflow-auto p-8">
              <div className="max-w-2xl mx-auto space-y-6">
-                <h2 className="text-xl font-bold">Ajustes</h2>
+                <h2 className="text-xl font-bold">Ajustes del Proyecto</h2>
                 <div className="p-6 border rounded-xl bg-card">
-                   <h3 className="font-semibold mb-2">Supabase</h3>
-                   <p className="text-sm text-muted-foreground mb-4">Conecta tu base de datos.</p>
-                   <Button onClick={() => setOpenSupabaseModal(true)}>Configurar</Button>
+                   <h3 className="font-semibold mb-2">Conexión con Supabase</h3>
+                   <p className="text-sm text-muted-foreground mb-4">Configura tu base de datos cloud y autenticación.</p>
+                   <Button onClick={() => setOpenSupabaseModal(true)}>Abrir Configuración</Button>
                 </div>
              </div>
              <SupabaseConnectModal open={openSupabaseModal} onOpenChange={setOpenSupabaseModal} />
@@ -198,6 +200,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         )}
       </div>
 
+      {/* Terminal Inferior */}
       <div 
         className={cn(
           "absolute bottom-0 left-0 right-0 z-40 bg-[#0c0c0c] border-t border-white/10 transition-all duration-300 flex flex-col",
@@ -210,7 +213,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         >
           <div className="flex items-center gap-2">
             <Terminal className="h-3.5 w-3.5 text-blue-400" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Terminal</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Terminal de Desarrollo</span>
           </div>
           {isTerminalOpen ? <ChevronDown className="h-4 w-4 text-zinc-500" /> : <ChevronUp className="h-4 w-4 text-zinc-500" />}
         </div>
@@ -229,7 +232,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
                  value={commandInput}
                  onChange={(e) => setCommandInput(e.target.value)}
                  className="flex-1 bg-transparent border-none text-[11px] font-mono focus:ring-0 text-zinc-200"
-                 placeholder="npm install..."
+                 placeholder="Ej: npm install..."
                />
             </form>
           </div>
