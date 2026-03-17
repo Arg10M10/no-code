@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
+import { spawn } from 'child_process'; // Removed ChildProcessWithoutNullStreams type import
 
 // Obtener __dirname en módulos ES
 const __filename = fileURLToPath(import.meta.url);
@@ -11,9 +11,9 @@ const isDev = !app.isPackaged;
 const VITE_DEV_SERVER_URL = 'http://127.0.0.1:5173';
 
 // --- Project Dev Server Management ---
-let currentDevServerProcess: ChildProcessWithoutNullStreams | null = null;
-let currentDevServerUrl: string | null = null;
-let currentProjectRootPath: string | null = null;
+let currentDevServerProcess = null; // Removed type annotation
+let currentDevServerUrl = null; // Removed type annotation
+let currentProjectRootPath = null; // Removed type annotation
 
 async function loadApp(win, urlOrPath, retries = 10) {
   try {
@@ -161,7 +161,7 @@ ipcMain.handle('is-maximized', (event) => {
 });
 
 // --- New IPC Handlers for Project Dev Server ---
-ipcMain.handle('start-project-dev-server', async (event, basePath: string, projectId: string) => {
+ipcMain.handle('start-project-dev-server', async (event, basePath, projectId) => { // Removed type annotations for basePath and projectId
   if (currentDevServerProcess) {
     currentDevServerProcess.kill('SIGTERM');
     currentDevServerProcess = null;
