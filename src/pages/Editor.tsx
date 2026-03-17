@@ -28,9 +28,8 @@ import {
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
 import { cn } from "@/lib/utils";
-import { Github } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { getApiKeysFromLocalStorage } from "@/lib/storage"; // Import the new local storage utility
+import { Github, Save } from "lucide-react";
+import { getApiKeysFromLocalStorage } from "@/lib/storage";
 
 function includesSupabaseIntent(text: string): boolean {
   const t = (text || "").toLowerCase();
@@ -47,8 +46,6 @@ function fileToDataUrl(file: File): Promise<string> {
       reader.readAsDataURL(file);
   });
 }
-
-// Removed fetchApiKeysFromSupabase as keys are now local
 
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -75,7 +72,7 @@ const EditorPage: React.FC = () => {
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // NPM Command States
+  // Estados de Terminal y Node.js
   const [localhostUrl, setLocalhostUrl] = useState<string | null>(null);
   const [npmOutput, setNpmOutput] = useState<string[]>([]);
   const [npmError, setNpmError] = useState<string[]>([]);
@@ -89,7 +86,7 @@ const EditorPage: React.FC = () => {
     });
   };
 
-  // Effect to listen for npm command output from Electron
+  // Escuchar salida de la terminal de Electron
   useEffect(() => {
     if (!isElectron) return;
 
@@ -104,23 +101,22 @@ const EditorPage: React.FC = () => {
     const unsubscribeReady = window.electronAPI.onProjectDevServerReady((url) => {
         setLocalhostUrl(url);
         setPreviewLoading(false);
-        setIsNpmRunning(true); // Mark as running once URL is ready
-        toast.success(`Dev server running at ${url}`);
+        setIsNpmRunning(true);
+        toast.success(`Servidor listo en ${url}`, { duration: 5000 });
     });
 
     const unsubscribeStopped = window.electronAPI.onProjectDevServerStopped(() => {
         setLocalhostUrl(null);
         setIsNpmRunning(false);
         setPreviewLoading(false);
-        toast.info("Dev server stopped.");
+        toast.info("Servidor detenido.");
     });
 
-    // Get initial URL if server is already running
+    // Consultar estado inicial
     window.electronAPI.getProjectDevServerUrl().then(url => {
         if (url) {
             setLocalhostUrl(url);
             setIsNpmRunning(true);
-            setPreviewLoading(false);
         }
     });
 
@@ -132,69 +128,55 @@ const EditorPage: React.FC = () => {
     };
   }, [isElectron]);
 
-  // Helper to execute NPM commands via Electron
   const executeNpmCommand = useCallback(async (command: string, args: string[], showToast = true) => {
     if (!isElectron) {
-        toast.error("Electron API not available. Cannot run NPM commands.");
+        toast.error("Terminal no disponible en navegador.");
         return;
     }
-    setNpmOutput([]);
-    setNpmError([]);
-    setIsNpmRunning(true); // Assume running for any command
+    const fullCmd = `${command} ${args.join(' ')}`;
+    setNpmOutput(prev => [...prev, `\n> ${fullCmd}`]);
+    
     try {
-        // No need to get projectPath here, as runNpmCommand uses currentProjectRootPath from main.js
         const result = await window.electronAPI.runNpmCommand(command, args);
-        console.log(`NPM command '${command} ${args.join(' ')}' finished:`, result);
-        if (showToast) toast.success(`NPM command '${command} ${args.join(' ')}' completed.`);
+        if (showToast && result) toast.success(`Comando completado: ${command}`);
     } catch (error: any) {
-        console.error(`NPM command '${command} ${args.join(' ')}' failed:`, error);
-        if (showToast) toast.error(`NPM command failed: ${error.message}`);
-    } finally {
-        setIsNpmRunning(false); // Reset after command finishes
+        console.error(`Error ejecuciòn:`, error);
+        if (showToast) toast.error(`Error en terminal: ${error.message}`);
     }
   }, [isElectron]);
 
   const handleRebuild = useCallback(async () => {
       if (!isElectron || !projectId) return;
-      toast.info("Rebuilding project: Running npm install and restarting dev server...");
+      toast.info("Reinstalando dependencias y reiniciando servidor...");
       setPreviewLoading(true);
-      setIsNpmRunning(true);
-      setNpmOutput([]);
-      setNpmError([]);
-      setLocalhostUrl(null);
-
+      setNpmOutput(prev => [...prev, "\n--- INICIANDO REBUILD ---"]);
+      
       try {
         const userProjectsBasePath = await window.electronAPI.getProjectPath();
-        await window.electronAPI.runNpmCommand('npm', ['install']); // This will run in the current project's directory
+        await window.electronAPI.runNpmCommand('npm', ['install']);
         await window.electronAPI.startProjectDevServer(userProjectsBasePath, projectId);
       } catch (error: any) {
-        toast.error(`Rebuild failed: ${error.message}`);
+        toast.error(`Rebuild falló: ${error.message}`);
         setPreviewLoading(false);
-        setIsNpmRunning(false);
       }
   }, [isElectron, projectId]);
 
   const handleRestart = useCallback(async () => {
       if (!isElectron || !projectId) return;
-      toast.info("Restarting dev server...");
+      toast.info("Reiniciando servidor de desarrollo...");
       setPreviewLoading(true);
-      setIsNpmRunning(true);
-      setNpmOutput([]);
-      setNpmError([]);
       setLocalhostUrl(null);
       try {
         const userProjectsBasePath = await window.electronAPI.getProjectPath();
         await window.electronAPI.startProjectDevServer(userProjectsBasePath, projectId);
       } catch (error: any) {
-        toast.error(`Restart failed: ${error.message}`);
+        toast.error(`Error al iniciar: ${error.message}`);
         setPreviewLoading(false);
-        setIsNpmRunning(false);
       }
   }, [isElectron, projectId]);
 
   const handleStopDevServer = useCallback(async () => {
     if (!isElectron) return;
-    toast.info("Stopping dev server...");
     await window.electronAPI.stopProjectDevServer();
   }, [isElectron]);
 
@@ -214,13 +196,13 @@ const EditorPage: React.FC = () => {
         return;
     }
 
-    const apiKeys = getApiKeysFromLocalStorage(); // Fetch from local storage
+    const apiKeys = getApiKeysFromLocalStorage();
     const selectedModel = getSelectedModelLabel();
     const provider = getProviderFromLabel(selectedModel);
 
     if (!apiKeys[provider]) {
-      toast.warning(`Falta la clave API de ${provider}`, { description: "Configúrala en Settings > API Keys." });
-      addMessage(projId, { role: "assistant", content: `¡Atención! Necesitas configurar tu clave de API para el proveedor **${provider}** en Settings.` });
+      toast.warning(`Falta clave de API de ${provider}`, { description: "Ve a Configuración > API Keys para añadirla." });
+      addMessage(projId, { role: "assistant", content: `Para empezar a construir, necesito que configures tu **API Key** de **${provider}** en la pestaña de Configuración.` });
       setMessagesState(getMessages(projId));
       setLoading(false);
       setPreviewLoading(false);
@@ -235,51 +217,34 @@ const EditorPage: React.FC = () => {
         apiKeys, 
         signal: abortControllerRef.current.signal,
         onStatusUpdate: (status) => {
-            if (status.includes("Writing")) {
-                addLog(status);
-            }
+            if (status.includes("Writing")) addLog(status);
         },
         onThoughtUpdate: (text) => setThoughtProcess(text),
         onCodeStreamUpdate: (code) => setCodeStream(code)
       });
       
-      if (includesSupabaseIntent(previewHtml)) {
-        setSupabaseIntentCounter((c) => c + 1);
-      }
-
       setProjectFiles(files);
       persistProjectFiles(projId, files);
       
-      // Save files to disk via Electron IPC
       if (isElectron) {
         await window.electronAPI.saveProjectFiles(projId, files);
       }
 
       setPreviewHtml(previewHtml);
       persistPreviewHtml(projId, previewHtml);
-      
       setPreviewLoading(false);
-      toast.success("Proyecto generado");
       
-      const content = finalThought 
-        ? `${finalThought}\n\nGeneración completada.` 
-        : "Generación completada.";
-      
-      addMessage(projId, { role: "assistant", content });
+      addMessage(projId, { role: "assistant", content: finalThought || "Proyecto generado con éxito." });
       setCredits(decrementCredits(projId, 1000));
       setLoading(false);
       setMessagesState(getMessages(projId));
 
-      // If in Electron, start the dev server after initial generation
-      if (isElectron) {
-        handleRestart();
-      }
+      if (isElectron) handleRestart();
 
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      console.error("Error IA:", err);
-      toast.error("Error en generación", { description: err.message });
-      addMessage(projId, { role: "assistant", content: `Error: ${err.message}` });
+      toast.error("Error de IA", { description: err.message });
+      addMessage(projId, { role: "assistant", content: `Lo siento, algo ha fallado: ${err.message}` });
       setLoading(false);
       setPreviewLoading(false);
       setMessagesState(getMessages(projId));
@@ -301,9 +266,6 @@ const EditorPage: React.FC = () => {
 
         if (loadedMessages.length === 1 && loadedMessages[0].role === 'user') {
           triggerInitialGeneration(projectId, loadedMessages);
-        } else if (isElectron && projectFiles && projectFiles.length > 0 && !localhostUrl && !isNpmRunning) {
-          // If project files exist and not already running, start dev server
-          handleRestart();
         }
       } else {
         navigate("/");
@@ -311,14 +273,14 @@ const EditorPage: React.FC = () => {
     } else {
       navigate("/");
     }
-  }, [projectId, navigate, triggerInitialGeneration, isElectron, projectFiles, localhostUrl, isNpmRunning, handleRestart]);
+  }, [projectId, navigate, triggerInitialGeneration]);
 
   const handleCancelGeneration = () => {
     abortControllerRef.current?.abort();
     setLoading(false);
     setPreviewLoading(false);
     if (projectId) {
-      addMessage(projectId, { role: 'assistant', content: 'Operación cancelada.' });
+      addMessage(projectId, { role: 'assistant', content: 'Generación cancelada por el usuario.' });
       setMessagesState(getMessages(projectId));
     }
   };
@@ -332,17 +294,14 @@ const EditorPage: React.FC = () => {
 
     let messageContent = cleanedText;
     if (selectedElement) {
-      messageContent = `Sobre el elemento "${selectedElement}": ${cleanedText}`;
+      messageContent = `[Elemento: ${selectedElement}] ${cleanedText}`;
       setSelectedElement(null);
     }
 
     const userMessage: StoredMessage = { role: "user", content: messageContent, createdAt: Date.now() };
     
     if (images && images.length > 0) {
-        const dataUrls = await Promise.all(images.map(img => {
-            if (typeof img === 'string') return Promise.resolve(img);
-            return fileToDataUrl(img);
-        }));
+        const dataUrls = await Promise.all(images.map(img => typeof img === 'string' ? Promise.resolve(img) : fileToDataUrl(img)));
         userMessage.images = dataUrls;
     }
 
@@ -354,13 +313,13 @@ const EditorPage: React.FC = () => {
     setThoughtProcess("");
     setCodeStream("");
 
-    const apiKeys = getApiKeysFromLocalStorage(); // Fetch from local storage
+    const apiKeys = getApiKeysFromLocalStorage();
     const selectedModel = getSelectedModelLabel();
     const provider = getProviderFromLabel(selectedModel);
 
     if (!apiKeys[provider]) {
         toast.warning(`Falta clave de ${provider}`);
-        const errMsg = { role: "assistant", content: `Por favor configura la API Key de **${provider}** en Settings.`, createdAt: Date.now() } as StoredMessage;
+        const errMsg = { role: "assistant", content: `Por favor configura la API Key de **${provider}** en Configuración.`, createdAt: Date.now() } as StoredMessage;
         setMessagesState([...newMessages, errMsg]);
         setMessages(projectId, [...newMessages, errMsg]);
         setLoading(false);
@@ -381,9 +340,7 @@ const EditorPage: React.FC = () => {
              setMessagesState(prev => {
                 const updated = [...prev];
                 const last = updated[updated.length - 1];
-                if (last.role === "assistant" && last.createdAt === placeholderId) {
-                    last.content = partialText;
-                }
+                if (last.role === "assistant" && last.createdAt === placeholderId) last.content = partialText;
                 return updated;
              });
           }
@@ -395,8 +352,6 @@ const EditorPage: React.FC = () => {
         setLoading(false);
       } else {
         setPreviewLoading(true);
-        setProjectFiles(null);
-        
         const currentFiles = getProjectFiles(projectId) || [];
         const codeContext = currentFiles.length > 0 ? JSON.stringify(currentFiles) : null;
 
@@ -405,16 +360,20 @@ const EditorPage: React.FC = () => {
           images: userMessage.images,
           selectedModelLabel: selectedModel,
           apiKeys,
-          codeContext: codeContext,
+          codeContext,
           signal: abortControllerRef.current.signal,
-          onStatusUpdate: (status) => {
-             if (status.includes("Writing")) addLog(status);
-          },
+          onStatusUpdate: (status) => { if (status.includes("Writing")) addLog(status); },
           onThoughtUpdate: (text) => setThoughtProcess(text),
           onCodeStreamUpdate: (code) => setCodeStream(code)
         });
         
-        if (includesSupabaseIntent(previewHtml)) setSupabaseIntentCounter((c) => c + 1);
+        setProjectFiles(newFiles);
+        persistProjectFiles(projectId, newFiles);
+        if (isElectron) await window.electronAPI.saveProjectFiles(projectId, newFiles);
+
+        setPreviewHtml(previewHtml);
+        persistPreviewHtml(projectId, previewHtml);
+        setPreviewLoading(false);
 
         const changes: { type: 'create' | 'update', path: string }[] = [];
         newFiles.forEach(nf => {
@@ -423,51 +382,33 @@ const EditorPage: React.FC = () => {
             else if (old.content !== nf.content) changes.push({ type: 'update', path: nf.path });
         });
 
-        setProjectFiles(newFiles);
-        persistProjectFiles(projectId, newFiles);
-
-        // Save files to disk via Electron IPC
-        if (isElectron) {
-          await window.electronAPI.saveProjectFiles(projectId, newFiles);
-        }
-
-        setPreviewHtml(previewHtml);
-        persistPreviewHtml(projectId, previewHtml);
-        setPreviewLoading(false);
-
         const changesJson = JSON.stringify(changes);
-        const aiResponseContent = `${finalThought ? finalThought + "\n\n" : ""}He aplicado los cambios.\n---CHANGES---${changesJson}`;
+        const aiResponseContent = `${finalThought || "Cambios aplicados con éxito."}\n---CHANGES---${changesJson}`;
         
         setCredits(decrementCredits(projectId, 1000));
-
         const finalMessages = [...newMessages, { role: "assistant", content: aiResponseContent, createdAt: Date.now() }];
         setMessagesState(finalMessages);
         setMessages(projectId, finalMessages);
         setLoading(false);
 
-        // If in Electron, restart the dev server after code generation
-        if (isElectron) {
-          handleRestart();
-        }
+        if (isElectron) handleRestart();
       }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      console.error(err);
       toast.error("Error", { description: err.message });
       const errMsg = { role: "assistant", content: `Error: ${err.message}`, createdAt: Date.now() };
       setMessagesState([...newMessages, errMsg]);
       setMessages(projectId, [...newMessages, errMsg]);
       setLoading(false);
-      if (!isAsk) setPreviewLoading(false);
+      setPreviewLoading(false);
     } finally {
         abortControllerRef.current = null;
     }
   }, [messages, projectId, selectedElement, isElectron, handleRestart]);
 
   const handleRefreshPreview = () => {
-    if (isElectron) {
-      handleRestart(); // In Electron, refresh means restarting the dev server
-    } else {
+    if (isElectron) handleRestart();
+    else {
       setPreviewLoading(true);
       setTimeout(() => setPreviewLoading(false), 800);
     }
@@ -478,39 +419,41 @@ const EditorPage: React.FC = () => {
     setIsSelectionModeActive(false);
   };
 
-  const handleRetry = (text: string, images?: string[]) => handleNewMessage(text, images);
-
-  if (!projectId) return <div>Cargando...</div>;
+  if (!projectId) return <div className="flex h-screen items-center justify-center font-bold">Cargando...</div>;
 
   return (
-    <div className="h-full w-full flex flex-col bg-background text-foreground animate-fade-in">
-      <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0 bg-background">
+    <div className="h-full w-full flex flex-col bg-background text-foreground animate-fade-in overflow-hidden">
+      <header className="h-14 border-b flex items-center px-4 justify-between flex-shrink-0 bg-card/40 backdrop-blur-md z-10">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold truncate max-w-[200px]" title={projectName}>
-            {projectName || "Proyecto"}
-          </h1>
+          <div className="flex items-center gap-2 px-3 py-1 bg-secondary rounded-lg border border-border/50">
+             <Save className="h-4 w-4 text-muted-foreground" />
+             <h1 className="text-sm font-bold truncate max-w-[250px]" title={projectName}>
+                {projectName || "Nuevo Proyecto"}
+             </h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => navigate(`/publish/${projectId}`)}>
-            <Github className="h-4 w-4 mr-2" />
-            GitHub
+          <Button size="sm" variant="outline" className="h-9 px-4 gap-2 border-primary/20 hover:bg-primary/5 hover:border-primary/40 text-primary" onClick={() => navigate(`/publish/${projectId}`)}>
+            <Github className="h-4 w-4" />
+            Publicar
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+          <Button variant="ghost" size="sm" className="h-9 px-4 font-bold text-muted-foreground hover:text-foreground" onClick={() => navigate('/')}>
             Salir
           </Button>
         </div>
       </header>
+      
       <div className="flex-1 min-h-0">
-        <ResizablePanelGroup direction="horizontal">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
           <ResizablePanel
             defaultSize={30}
-            minSize={20}
-            maxSize={40}
+            minSize={25}
+            maxSize={45}
             collapsible
             collapsedSize={0}
             onCollapse={() => setIsLeftPanelCollapsed(true)}
             onExpand={() => setIsLeftPanelCollapsed(false)}
-            className={cn("bg-background", isLeftPanelCollapsed ? "hidden" : "")}
+            className={cn("bg-background z-10 shadow-xl", isLeftPanelCollapsed ? "hidden" : "")}
           >
             <ChatPanel
               messages={messages}
@@ -523,10 +466,12 @@ const EditorPage: React.FC = () => {
               generationLogs={generationLogs}
               thought={thoughtProcess}
               codeStream={codeStream}
-              onRetry={handleRetry}
+              onRetry={(text, images) => handleNewMessage(text, images)}
             />
           </ResizablePanel>
-          <ResizableHandle className="w-1.5 bg-border/40 hover:bg-primary/50 transition-colors" />
+          
+          <ResizableHandle className="w-1.5 bg-border/20 hover:bg-primary/40 transition-all duration-300" />
+          
           <ResizablePanel defaultSize={70}>
             <PreviewPanel
               previewUrl="/preview"
@@ -540,7 +485,6 @@ const EditorPage: React.FC = () => {
               projectName={projectName}
               supabaseIntent={supabaseIntentCounter}
               projectId={projectId}
-              // New props for NPM commands
               localhostUrl={localhostUrl}
               npmOutput={npmOutput}
               npmError={npmError}
