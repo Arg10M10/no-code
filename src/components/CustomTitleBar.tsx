@@ -32,7 +32,7 @@ const CustomTitleBar: React.FC = () => {
 
   return (
     <div
-      className="flex items-center justify-between h-8 bg-background border-b border-border/50 text-foreground select-none"
+      className="flex items-center justify-between h-8 bg-background border-b border-border/50 text-foreground select-none z-50" // Added z-50
       style={{ WebkitAppRegion: 'drag' }} // Make the entire bar draggable
     >
       <div className="flex items-center gap-2 pl-3">
