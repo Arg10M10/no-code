@@ -4,8 +4,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ProjectFile } from "@/lib/projects";
 import { cn } from "@/lib/utils";
-import { Copy, FileText } from "lucide-react";
+import { Copy, FileText, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CodePanelProps {
   files?: ProjectFile[] | null;
@@ -17,7 +18,7 @@ const CodePanel: React.FC<CodePanelProps> = ({ files }) => {
   useEffect(() => {
     if (files && files.length > 0 && !selectedPath) {
       setSelectedPath(files[0].path);
-    } else if (files && !files.find(f => f.path === selectedPath)) {
+    } else if (files && selectedPath && !files.find(f => f.path === selectedPath)) {
       setSelectedPath(files.length > 0 ? files[0].path : null);
     }
   }, [files, selectedPath]);
@@ -30,57 +31,60 @@ const CodePanel: React.FC<CodePanelProps> = ({ files }) => {
   const handleCopy = async () => {
     if (selectedFile?.content) {
       await navigator.clipboard.writeText(selectedFile.content);
-      toast.success(`Copied ${selectedFile.path} to clipboard!`);
+      toast.success(`Copiado al portapapeles`);
     }
   };
 
   return (
-    <div className="h-full flex flex-col animate-fade-in">
-      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b bg-background/70">
-        <div className="text-sm font-medium">Generated Files</div>
+    <div className="h-full w-full flex flex-col animate-fade-in bg-background">
+      <div className="flex items-center justify-between gap-2 px-4 py-2 border-b bg-muted/20 shrink-0">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCopy} title="Copy code" disabled={!selectedFile}>
-            <Copy className="h-3.5 w-3.5 mr-2" />
-            Copy Code
-          </Button>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Explorador</span>
+            <ChevronRight className="h-3 w-3 text-muted-foreground/40" />
+            <span className="text-xs font-semibold truncate max-w-[200px]">{selectedPath || "Sin archivo"}</span>
         </div>
+        <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 text-[10px] font-bold" disabled={!selectedFile}>
+          <Copy className="h-3 w-3 mr-2" />
+          COPIAR
+        </Button>
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
-        <aside className="hidden md:block border-r bg-background/50 p-3 overflow-y-auto">
-          <div className="text-xs text-muted-foreground mb-2 px-2">Files</div>
-          {files && files.length > 0 ? (
-            <ul className="space-y-1">
-              {files.map((file) => (
-                <li key={file.path}>
-                  <button
-                    onClick={() => setSelectedPath(file.path)}
-                    className={cn(
-                      "w-full text-left text-sm px-2 py-1.5 rounded-md cursor-pointer truncate flex items-center gap-2",
-                      selectedPath === file.path
-                        ? "bg-secondary/60 border border-border/60 font-medium text-foreground"
-                        : "text-muted-foreground hover:bg-secondary/40"
-                    )}
-                    title={file.path}
-                  >
-                    <FileText className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{file.path}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-xs text-muted-foreground px-2 py-1">No code generated yet.</div>
-          )}
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        {/* Sidebar de archivos */}
+        <aside className="w-56 border-r bg-muted/10 overflow-y-auto hidden md:block shrink-0">
+          <div className="p-2 space-y-0.5">
+            {files && files.length > 0 ? (
+              files.map((file) => (
+                <button
+                  key={file.path}
+                  onClick={() => setSelectedPath(file.path)}
+                  className={cn(
+                    "w-full text-left text-[11px] px-2 py-1.5 rounded flex items-center gap-2 transition-colors",
+                    selectedPath === file.path
+                      ? "bg-primary/10 text-primary font-bold"
+                      : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{file.path}</span>
+                </button>
+              ))
+            ) : (
+              <div className="p-4 text-[11px] text-muted-foreground italic text-center">No hay archivos.</div>
+            )}
+          </div>
         </aside>
 
-        <section className="min-w-0 overflow-hidden">
-          <div className="h-full w-full overflow-auto">
-            <pre className="m-0 p-4 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words font-mono bg-background text-foreground">
-              {selectedFile ? selectedFile.content : "Select a file to view its content."}
-            </pre>
-          </div>
-        </section>
+        {/* Visor de código */}
+        <main className="flex-1 min-w-0 bg-[#0d0d0d] relative">
+          <ScrollArea className="h-full w-full">
+            <div className="p-6">
+              <pre className="m-0 text-[12px] font-mono leading-relaxed text-zinc-300 whitespace-pre overflow-visible">
+                {selectedFile ? selectedFile.content : "Selecciona un archivo para ver el código."}
+              </pre>
+            </div>
+          </ScrollArea>
+        </main>
       </div>
     </div>
   );
