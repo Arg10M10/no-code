@@ -34,6 +34,7 @@ interface PreviewPanelProps {
   onRestart: () => void;
   onStopDevServer: () => void;
   onRunCommand: (command: string, args: string[], showToast?: boolean) => Promise<void>;
+  onSaveFile?: (path: string, content: string) => void; // NUEVA PROP
 }
 
 const PreviewPanel: React.FC<PreviewPanelProps> = ({
@@ -56,6 +57,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   onRestart,
   onStopDevServer,
   onRunCommand,
+  onSaveFile,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const consoleScrollRef = useRef<HTMLDivElement>(null);
@@ -156,7 +158,6 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
       <div className="flex-1 relative min-h-0 w-full overflow-hidden">
         {activeTab === "preview" && (
           <div className="absolute inset-0 flex flex-col bg-white">
-            {/* Fake Address Bar */}
             <div className="h-9 bg-muted/20 border-b flex items-center px-4 gap-3 shrink-0">
               <div className="flex gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-400/40" />
@@ -191,7 +192,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
 
         {activeTab === "code" && (
           <div className="absolute inset-0 bg-background z-10 flex flex-col">
-             <CodePanel files={files} />
+             <CodePanel files={files} onSaveFile={onSaveFile} />
           </div>
         )}
 
