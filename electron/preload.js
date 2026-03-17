@@ -13,4 +13,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('npm-error', subscription);
   },
   getProjectPath: () => ipcRenderer.invoke('get-project-path'),
+  
+  // New window control APIs
+  minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
+  maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
+  closeWindow: () => ipcRenderer.invoke('close-window'),
+  isMaximized: () => ipcRenderer.invoke('is-maximized'),
+  onWindowStateChange: (callback) => {
+    const subscription = (event, isMaximized) => callback(isMaximized);
+    ipcRenderer.on('window-state-changed', subscription);
+    return () => ipcRenderer.removeListener('window-state-changed', subscription);
+  },
 });

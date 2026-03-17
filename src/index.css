@@ -83,6 +83,12 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Global border-radius for the Electron window content */
+  #root {
+    border-radius: var(--radius);
+    overflow: hidden; /* Ensures content respects border-radius */
+  }
 }
 
 @layer components {
@@ -236,5 +242,14 @@ All colors MUST be HSL.
     align-items: center;
     justify-content: center;
     z-index: 10;
+  }
+
+  /* Electron specific styles for draggable regions */
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+
+  .no-drag-region {
+    -webkit-app-region: no-drag;
   }
 }

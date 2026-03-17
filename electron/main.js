@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
@@ -36,6 +36,8 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    frame: false, // Elimina la barra de título nativa
+    transparent: true, // Permite transparencia para esquinas redondeadas
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -43,16 +45,21 @@ function createWindow() {
     },
   });
 
+  // Elimina el menú de la aplicación
+  Menu.setApplicationMenu(null);
+
   win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     console.error(`Failed to load: ${validatedURL}, Code: ${errorCode}, Description: ${errorDescription}`);
     if (isDev && validatedURL === VITE_DEV_SERVER_URL) {
-      // This might happen if Vite server is not ready yet, but our retry logic should handle it.
-      // If it still fails, it's a critical error.
       win.webContents.send('app-load-error', `Failed to load development server: ${errorDescription}`);
     } else if (!isDev && validatedURL.includes('index.html')) {
       win.webContents.send('app-load-error', `Failed to load production build: ${errorDescription}`);
     }
   });
+
+  // Notificar al renderizador cuando el estado de maximizado cambia
+  win.on('maximize', () => win.webContents.send('window-state-changed', true));
+  win.on('unmaximize', () => win.webContents.send('window-state-changed', false));
 
   if (isDev) {
     loadApp(win, VITE_DEV_SERVER_URL);
@@ -119,4 +126,27 @@ ipcMain.handle('run-npm-command', async (event, command, args = []) => {
 
 ipcMain.handle('get-project-path', () => {
   return app.getAppPath();
+});
+
+ipcMain.handle('minimize-window', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.minimize();
+});
+
+ipcMain.handle('maximize-window', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    if (win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
+  }
+});
+
+ipcMain.handle('close-window', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.close();
+});
+
+ipcMain.handle('is-maximized', (event) => {
+  return BrowserWindow.fromWebContents(event.sender)?.isMaximized() || false;
 });
