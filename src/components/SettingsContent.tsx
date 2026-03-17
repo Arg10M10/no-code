@@ -65,7 +65,7 @@ const SectionAppearance = () => {
       <div className="grid gap-3">
         <Label className="text-base">Theme</Label>
         <p className="text-xs text-muted-foreground mb-2">Select your preferred interface theme.</p>
-        <div className="grid grid-cols-2 gap-4 max-w-lg">
+        <div className="grid grid-cols-2 gap-4 max-w-lg"> {/* Eliminado el botón "Dark" */}
             <button 
                 onClick={() => setTheme("system")}
                 className={cn(

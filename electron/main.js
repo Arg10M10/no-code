@@ -36,8 +36,8 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    frame: false, // Elimina la barra de título nativa
-    transparent: true, // Permite transparencia para esquinas redondeadas
+    frame: true, // CAMBIO AQUÍ: Usar la barra de título nativa
+    transparent: false, // No es necesario si frame es true
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
