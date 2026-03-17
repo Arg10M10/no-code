@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
+import { spawn } from 'child_process'; // Removed ChildProcessWithoutNullStreams type import
 import fs from 'fs/promises'; // Importar fs/promises para operaciones asíncronas de archivos
 
 // Obtener __dirname en módulos ES
@@ -12,21 +12,21 @@ const isDev = !app.isPackaged;
 const VITE_DEV_SERVER_URL = 'http://127.0.0.1:5173';
 
 // --- Project Dev Server Management ---
-let currentDevServerProcess: ChildProcessWithoutNullStreams | null = null;
-let currentDevServerUrl: string | null = null;
-let currentProjectRootPath: string | null = null;
+let currentDevServerProcess = null; // Removed type annotation
+let currentDevServerUrl = null; // Removed type annotation
+let currentProjectRootPath = null; // Removed type annotation
 
 // Directorio base para almacenar los proyectos generados por el usuario
 const getUserProjectsBaseDir = () => path.join(app.getPath('userData'), 'framio-user-projects');
 
-async function loadApp(win: BrowserWindow, urlOrPath: string, retries = 10) {
+async function loadApp(win, urlOrPath, retries = 10) { // Removed type annotations for win, urlOrPath, retries
   try {
     if (urlOrPath.startsWith('http')) {
       await win.loadURL(urlOrPath);
     } else {
       await win.loadFile(urlOrPath);
     }
-  } catch (error: any) {
+  } catch (error) { // Removed type annotation for error
     console.error(`Failed to load: ${urlOrPath}. Error: ${error.message}`);
     if (retries > 0 && urlOrPath.startsWith('http')) {
       console.log(`Retrying to load in 1 second... (${retries} retries left)`);
@@ -99,7 +99,7 @@ app.on('window-all-closed', () => {
 });
 
 // --- IPC Handlers ---
-ipcMain.handle('run-npm-command', async (event, command: string, args: string[] = []) => {
+ipcMain.handle('run-npm-command', async (event, command, args = []) => { // Removed type annotations for command, args
   return new Promise((resolve, reject) => {
     const projectPath = currentProjectRootPath || app.getAppPath(); // Usar la ruta del proyecto actual si está definida
     
@@ -165,7 +165,7 @@ ipcMain.handle('is-maximized', (event) => {
 });
 
 // --- New IPC Handler to save project files ---
-ipcMain.handle('save-project-files', async (event, projectId: string, files: Array<{ path: string; content: string }>) => {
+ipcMain.handle('save-project-files', async (event, projectId, files) => { // Removed type annotations for projectId, files
   const projectDir = path.join(getUserProjectsBaseDir(), projectId);
 
   try {
@@ -180,14 +180,14 @@ ipcMain.handle('save-project-files', async (event, projectId: string, files: Arr
       await fs.writeFile(filePath, file.content, 'utf8');
     }
     return true;
-  } catch (error: any) {
+  } catch (error) { // Removed type annotation for error
     console.error(`Error saving project files for ${projectId}:`, error);
     throw new Error(`Failed to save project files: ${error.message}`);
   }
 });
 
 // --- New IPC Handlers for Project Dev Server ---
-ipcMain.handle('start-project-dev-server', async (event, basePath: string, projectId: string) => {
+ipcMain.handle('start-project-dev-server', async (event, basePath, projectId) => { // Removed type annotations for basePath and projectId
   if (currentDevServerProcess) {
     currentDevServerProcess.kill('SIGTERM');
     currentDevServerProcess = null;
@@ -234,7 +234,7 @@ ipcMain.handle('start-project-dev-server', async (event, basePath: string, proje
     event.sender.send('project-dev-server-stopped');
   });
 
-  currentDevServerProcess.on('error', (err) => {
+  currentDevServerProcess.on('error', (err) => { // Removed type annotation for err
     console.error('Failed to start dev server process:', err);
     event.sender.send('project-dev-server-error', `Failed to start dev server: ${err.message}`);
     currentDevServerProcess = null;
