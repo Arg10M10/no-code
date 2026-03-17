@@ -65,17 +65,7 @@ const SectionAppearance = () => {
       <div className="grid gap-3">
         <Label className="text-base">Theme</Label>
         <p className="text-xs text-muted-foreground mb-2">Select your preferred interface theme.</p>
-        <div className="grid grid-cols-2 gap-4 max-w-lg"> {/* Eliminado el botón "Dark" */}
-            <button 
-                onClick={() => setTheme("system")}
-                className={cn(
-                    "flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent cursor-pointer transition-all",
-                    theme === "system" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground"
-                )}
-            >
-                <Monitor className="h-6 w-6" />
-                <span className="text-xs font-medium">System</span>
-            </button>
+        <div className="grid grid-cols-2 gap-4 max-w-lg">
             <button 
                 onClick={() => setTheme("light")}
                 className={cn(
@@ -85,6 +75,16 @@ const SectionAppearance = () => {
             >
                 <Sun className="h-6 w-6" />
                 <span className="text-xs font-medium">Light</span>
+            </button>
+            <button 
+                onClick={() => setTheme("dark")}
+                className={cn(
+                    "flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent cursor-pointer transition-all",
+                    theme === "dark" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground"
+                )}
+            >
+                <Moon className="h-6 w-6" />
+                <span className="text-xs font-medium">Dark</span>
             </button>
         </div>
       </div>
