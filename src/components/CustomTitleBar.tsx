@@ -32,15 +32,15 @@ const CustomTitleBar: React.FC = () => {
 
   return (
     <div
-      className="flex items-center justify-between h-8 bg-background border-b border-border/50 text-foreground select-none z-50" // Added z-50
-      style={{ WebkitAppRegion: 'drag' }} // Make the entire bar draggable
+      className="flex items-center justify-between h-8 bg-secondary text-secondary-foreground select-none z-50"
+      style={{ WebkitAppRegion: 'drag' }}
     >
       <div className="flex items-center gap-2 pl-3">
         <img src="/logo.png" alt="Framio Logo" className="h-5 w-5 object-contain" />
         <span className="text-sm font-semibold">Framio</span>
       </div>
 
-      <div className="flex" style={{ WebkitAppRegion: 'no-drag' }}> {/* Buttons are not draggable */}
+      <div className="flex" style={{ WebkitAppRegion: 'no-drag' }}>
         <button
           onClick={handleMinimize}
           className="w-10 h-8 flex items-center justify-center hover:bg-muted transition-colors"
