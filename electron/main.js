@@ -1,14 +1,34 @@
-import { app, BrowserWindow, protocol, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process'; // Para ejecutar comandos de sistema
+import { spawn } from 'child_process';
 
 // Obtener __dirname en módulos ES
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const isDev = process.env.NODE_ENV === 'development';
-const VITE_DEV_SERVER_URL = 'http://localhost:5173';
+const isDev = !app.isPackaged;
+const VITE_DEV_SERVER_URL = 'http://127.0.0.1:5173';
+
+async function loadApp(win, urlOrPath, retries = 10) {
+  try {
+    if (urlOrPath.startsWith('http')) {
+      await win.loadURL(urlOrPath);
+    } else {
+      await win.loadFile(urlOrPath);
+    }
+  } catch (error) {
+    console.error(`Failed to load: ${urlOrPath}. Error: ${error.message}`);
+    if (retries > 0 && urlOrPath.startsWith('http')) {
+      console.log(`Retrying to load in 1 second... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await loadApp(win, urlOrPath, retries - 1);
+    } else {
+      console.error(`Exceeded retries for ${urlOrPath}. App might not be running.`);
+      win.webContents.send('app-load-error', `Failed to load application: ${error.message}`);
+    }
+  }
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -18,17 +38,27 @@ function createWindow() {
     minHeight: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false, // Es importante mantenerlo en false por seguridad
-      contextIsolation: true, // Es importante mantenerlo en true por seguridad
+      nodeIntegration: false,
+      contextIsolation: true,
     },
   });
 
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error(`Failed to load: ${validatedURL}, Code: ${errorCode}, Description: ${errorDescription}`);
+    if (isDev && validatedURL === VITE_DEV_SERVER_URL) {
+      // This might happen if Vite server is not ready yet, but our retry logic should handle it.
+      // If it still fails, it's a critical error.
+      win.webContents.send('app-load-error', `Failed to load development server: ${errorDescription}`);
+    } else if (!isDev && validatedURL.includes('index.html')) {
+      win.webContents.send('app-load-error', `Failed to load production build: ${errorDescription}`);
+    }
+  });
+
   if (isDev) {
-    win.loadURL(VITE_DEV_SERVER_URL);
+    loadApp(win, VITE_DEV_SERVER_URL);
     win.webContents.openDevTools();
   } else {
-    // Cargar el index.html de tu aplicación React compilada
-    win.loadFile(path.join(__dirname, '../dist/index.html'));
+    loadApp(win, path.join(__dirname, '../dist/index.html'));
   }
 }
 
@@ -48,12 +78,16 @@ app.on('window-all-closed', () => {
   }
 });
 
-// --- Manejo de IPC para comandos de sistema ---
+// --- IPC Handlers ---
 ipcMain.handle('run-npm-command', async (event, command, args = []) => {
   return new Promise((resolve, reject) => {
-    // Asegúrate de que el directorio de trabajo sea el de tu proyecto
-    const projectPath = path.join(__dirname, '../'); // Asumiendo que el proyecto está en la raíz
+    const projectPath = app.getAppPath(); // Obtiene la ruta base de la aplicación Electron
     
+    // Asegurarse de que el comando sea 'npm' y el primer argumento sea 'run'
+    if (command !== 'npm' || args[0] !== 'run') {
+      return reject(new Error('Only "npm run" commands are allowed.'));
+    }
+
     const child = spawn(command, args, { cwd: projectPath, shell: true });
 
     let stdout = '';
@@ -61,7 +95,6 @@ ipcMain.handle('run-npm-command', async (event, command, args = []) => {
 
     child.stdout.on('data', (data) => {
       stdout += data.toString();
-      // Opcional: enviar actualizaciones en tiempo real al Renderer
       event.sender.send('npm-output', data.toString());
     });
 
@@ -82,4 +115,8 @@ ipcMain.handle('run-npm-command', async (event, command, args = []) => {
       reject(err);
     });
   });
+});
+
+ipcMain.handle('get-project-path', () => {
+  return app.getAppPath();
 });

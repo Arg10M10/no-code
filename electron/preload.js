@@ -1,9 +1,16 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-// Exponer funciones seguras al proceso de renderizado (tu app React)
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Ejemplo de cómo tu app React podría pedir al proceso principal que ejecute un comando
   runNpmCommand: (command, args) => ipcRenderer.invoke('run-npm-command', command, args),
-  // Puedes añadir más funciones aquí para interactuar con el sistema operativo
-  // Por ejemplo: guardar archivos, abrir diálogos, etc.
+  onNpmOutput: (callback) => {
+    const subscription = (event, data) => callback(data);
+    ipcRenderer.on('npm-output', subscription);
+    return () => ipcRenderer.removeListener('npm-output', subscription);
+  },
+  onNpmError: (callback) => {
+    const subscription = (event, data) => callback(data);
+    ipcRenderer.on('npm-error', subscription);
+    return () => ipcRenderer.removeListener('npm-error', subscription);
+  },
+  getProjectPath: () => ipcRenderer.invoke('get-project-path'),
 });
