@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { StoredMessage, ProjectFile } from "@/lib/projects";
+import { getApiKeysFromLocalStorage } from "@/lib/storage"; // Import the new local storage utility
 
 // HARDCODED PROJECT URL to ensure correct edge function invocation
 const SUPABASE_PROJECT_URL = "https://xkcnbvcjzezhjaoxojsv.supabase.co";
@@ -287,6 +288,11 @@ async function callDirectBrowser(params: CallApiParams): Promise<string> {
   throw new Error(`Provider ${provider} does not support direct browser fallback.`);
 }
 
+// Function to fetch API keys from local storage
+async function fetchApiKeysFromLocalStorage(): Promise<Record<string, string>> {
+  return getApiKeysFromLocalStorage();
+}
+
 // Main API call router with Fallback
 async function callApi(params: CallApiParams): Promise<string> {
   try {
@@ -339,7 +345,7 @@ export async function generateAnswer(req: {
   prompt: string; 
   images?: string[]; 
   selectedModelLabel: string; 
-  apiKeys: Record<string, string>; 
+  apiKeys: Record<string, string>; // This will now be passed from local storage
   system?: string; 
   temperature?: number; 
   codeContext?: string | null; 
@@ -349,7 +355,7 @@ export async function generateAnswer(req: {
   onCodeStreamUpdate?: (codeStream: string) => void; // New callback for raw code stream
 }): Promise<{ files: ProjectFile[], previewHtml: string, thoughtProcess?: string }> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
-  const apiKey = req.apiKeys[provider];
+  const apiKey = req.apiKeys[provider]; // Use passed apiKeys
   if (!apiKey) throw new Error(`Missing API key for ${provider}.`);
 
   const messages = buildGenerationMessages(req.prompt, req.codeContext, req.images);
@@ -449,14 +455,14 @@ export async function generateAnswer(req: {
 export async function generateChat(req: { 
   messages: StoredMessage[]; 
   selectedModelLabel: string; 
-  apiKeys: Record<string, string>; 
+  apiKeys: Record<string, string>; // This will now be passed from local storage
   system?: string; 
   temperature?: number; 
   signal?: AbortSignal;
   onUpdate?: (fullText: string) => void; 
 }): Promise<string> {
   const { provider, model } = mapLabelToModelId(req.selectedModelLabel);
-  const apiKey = req.apiKeys[provider];
+  const apiKey = req.apiKeys[provider]; // Use passed apiKeys
   if (!apiKey) throw new Error(`Falta la API Key para ${provider}.`);
   
   const chatMessages: ChatMessage[] = req.messages.map(msg => {
@@ -479,6 +485,6 @@ export async function generateChat(req: {
     apiKey, 
     temperature: req.temperature, 
     signal: req.signal,
-    onUpdate: req.onUpdate 
+    onProgress: req.onUpdate // Renamed onUpdate to onProgress for consistency
   });
 }

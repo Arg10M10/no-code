@@ -25,25 +25,19 @@ interface SettingsContentProps {
 
 const THEME_KEY = "app-theme";
 const REDUCED_MOTION_KEY = "reduced-motion";
-type Theme = "system" | "light" | "dark";
+type Theme = "light"; // Only 'light' is allowed now
 
 const SectionAppearance = () => {
-  // Default changed from "dark" to "system"
-  const [theme, setTheme] = useState<Theme>(() => storage.getJSON<Theme>(THEME_KEY, "system"));
+  // Default to Light theme, and only allow Light
+  const [theme, setTheme] = useState<Theme>(() => "light"); // Always 'light'
   const [reducedMotion, setReducedMotion] = useState(() => storage.getJSON<boolean>(REDUCED_MOTION_KEY, false));
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove("light", "dark");
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      root.classList.add(systemTheme);
-    } else {
-      root.classList.add(theme);
-    }
-    storage.setJSON(THEME_KEY, theme);
-  }, [theme]);
+    root.classList.remove("light", "dark"); // Remove both to ensure only 'light' is applied
+    root.classList.add("light"); // Always apply light theme
+    storage.setJSON(THEME_KEY, "light"); // Persist 'light' as the only theme
+  }, [theme]); // theme dependency is kept for consistency, though it will always be 'light'
 
   useEffect(() => {
     storage.setJSON(REDUCED_MOTION_KEY, reducedMotion);
@@ -65,26 +59,16 @@ const SectionAppearance = () => {
       <div className="grid gap-3">
         <Label className="text-base">Theme</Label>
         <p className="text-xs text-muted-foreground mb-2">Select your preferred interface theme.</p>
-        <div className="grid grid-cols-2 gap-4 max-w-lg">
+        <div className="grid grid-cols-1 gap-4 max-w-lg"> {/* Only one column for light theme */}
             <button 
-                onClick={() => setTheme("light")}
+                // This button will always be "selected" as it's the only option
                 className={cn(
-                    "flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent cursor-pointer transition-all",
-                    theme === "light" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground"
+                    "flex flex-col items-center gap-2 p-4 border rounded-xl cursor-default", // cursor-default as it's not interactive
+                    "border-primary bg-primary/5 text-primary" // Always styled as selected
                 )}
             >
                 <Sun className="h-6 w-6" />
                 <span className="text-xs font-medium">Light</span>
-            </button>
-            <button 
-                onClick={() => setTheme("dark")}
-                className={cn(
-                    "flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-accent cursor-pointer transition-all",
-                    theme === "dark" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground"
-                )}
-            >
-                <Moon className="h-6 w-6" />
-                <span className="text-xs font-medium">Dark</span>
             </button>
         </div>
       </div>

@@ -30,6 +30,7 @@ import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/a
 import { cn } from "@/lib/utils";
 import { Github } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getApiKeysFromLocalStorage } from "@/lib/storage"; // Import the new local storage utility
 
 function includesSupabaseIntent(text: string): boolean {
   const t = (text || "").toLowerCase();
@@ -47,16 +48,7 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-async function fetchApiKeysFromSupabase(): Promise<Record<string, string>> {
-  const { data } = await supabase.from('user_api_keys').select('*').single();
-  if (!data) return {};
-  const keys: Record<string, string> = {};
-  if (data.openai) keys.openai = data.openai;
-  if (data.google) keys.google = data.google;
-  if (data.anthropic) keys.anthropic = data.anthropic;
-  if (data.openrouter) keys.openrouter = data.openrouter;
-  return keys;
-}
+// Removed fetchApiKeysFromSupabase as keys are now local
 
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -83,12 +75,82 @@ const EditorPage: React.FC = () => {
   const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // NPM Command States
+  const [localhostUrl, setLocalhostUrl] = useState<string | null>(null);
+  const [npmOutput, setNpmOutput] = useState<string[]>([]);
+  const [npmError, setNpmError] = useState<string[]>([]);
+  const [isNpmRunning, setIsNpmRunning] = useState(false);
+  const isElectron = typeof window.electronAPI !== 'undefined';
+
   const addLog = (text: string) => {
     setGenerationLogs(prev => {
       if (prev.length > 0 && prev[prev.length - 1] === text) return prev;
       return [...prev, text];
     });
   };
+
+  // Effect to listen for npm command output from Electron
+  useEffect(() => {
+    if (!isElectron) return;
+
+    const unsubscribeOutput = window.electronAPI.onNpmOutput((data) => {
+        setNpmOutput(prev => [...prev, data]);
+        // Attempt to parse localhost URL from output
+        const match = data.match(/http:\/\/(localhost|127\.0\.0\.1):\d+/);
+        if (match && !localhostUrl) { // Only set if not already set
+            setLocalhostUrl(match[0]);
+            setPreviewLoading(false); // Stop preview loading once URL is found
+        }
+    });
+
+    const unsubscribeError = window.electronAPI.onNpmError((data) => {
+        setNpmError(prev => [...prev, data]);
+    });
+
+    return () => {
+        unsubscribeOutput();
+        unsubscribeError();
+    };
+  }, [isElectron, localhostUrl]); // Re-run if localhostUrl changes to avoid stale closure
+
+  // Helper to execute NPM commands via Electron
+  const executeNpmCommand = useCallback(async (command: string, args: string[], showToast = true) => {
+    if (!isElectron) {
+        toast.error("Electron API not available. Cannot run NPM commands.");
+        return;
+    }
+    setNpmOutput([]);
+    setNpmError([]);
+    if (args[0] === 'run' && args[1] === 'dev') {
+        setLocalhostUrl(null); // Clear localhost URL on dev command
+        setPreviewLoading(true);
+    }
+    setIsNpmRunning(true);
+    try {
+        const result = await window.electronAPI.runNpmCommand(command, args);
+        console.log(`NPM command '${command} ${args.join(' ')}' finished:`, result);
+        if (showToast) toast.success(`NPM command '${command} ${args.join(' ')}' completed.`);
+    } catch (error: any) {
+        console.error(`NPM command '${command} ${args.join(' ')}' failed:`, error);
+        if (showToast) toast.error(`NPM command failed: ${error.message}`);
+    } finally {
+        setIsNpmRunning(false);
+        if (args[0] === 'run' && args[1] === 'dev' && !localhostUrl) {
+            setPreviewLoading(false);
+        }
+    }
+  }, [isElectron, localhostUrl]);
+
+  const handleRebuild = useCallback(async () => {
+      toast.info("Rebuilding project: Running npm install and restarting dev server...");
+      await executeNpmCommand('npm', ['install'], false); // Don't show success toast for install, it's part of rebuild
+      await executeNpmCommand('npm', ['run', 'dev']);
+  }, [executeNpmCommand]);
+
+  const handleRestart = useCallback(() => {
+      toast.info("Restarting dev server...");
+      executeNpmCommand('npm', ['run', 'dev']);
+  }, [executeNpmCommand]);
 
   const triggerInitialGeneration = useCallback(async (projId: string, initialMessages: StoredMessage[]) => {
     setLoading(true);
@@ -106,13 +168,13 @@ const EditorPage: React.FC = () => {
         return;
     }
 
-    const apiKeys = await fetchApiKeysFromSupabase();
+    const apiKeys = getApiKeysFromLocalStorage(); // Fetch from local storage
     const selectedModel = getSelectedModelLabel();
     const provider = getProviderFromLabel(selectedModel);
 
     if (!apiKeys[provider]) {
       toast.warning(`Falta la clave API de ${provider}`, { description: "Configúrala en Settings > API Keys." });
-      addMessage(projId, { role: "assistant", content: `¡Atención! Necesitas configurar tu clave de API para el proveedor **${provider}** en Settings.\n\nEl sistema la guardará de forma segura en tu base de datos Supabase.` });
+      addMessage(projId, { role: "assistant", content: `¡Atención! Necesitas configurar tu clave de API para el proveedor **${provider}** en Settings.` });
       setMessagesState(getMessages(projId));
       setLoading(false);
       setPreviewLoading(false);
@@ -156,6 +218,11 @@ const EditorPage: React.FC = () => {
       setLoading(false);
       setMessagesState(getMessages(projId));
 
+      // If in Electron, start the dev server after initial generation
+      if (isElectron) {
+        handleRestart();
+      }
+
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error("Error IA:", err);
@@ -167,7 +234,7 @@ const EditorPage: React.FC = () => {
     } finally {
       abortControllerRef.current = null;
     }
-  }, []);
+  }, [isElectron, handleRestart]);
 
   useEffect(() => {
     if (projectId) {
@@ -182,6 +249,9 @@ const EditorPage: React.FC = () => {
 
         if (loadedMessages.length === 1 && loadedMessages[0].role === 'user') {
           triggerInitialGeneration(projectId, loadedMessages);
+        } else if (isElectron && projectFiles && projectFiles.length > 0 && !localhostUrl && !isNpmRunning) {
+          // If project files exist and not already running, start dev server
+          handleRestart();
         }
       } else {
         navigate("/");
@@ -189,7 +259,7 @@ const EditorPage: React.FC = () => {
     } else {
       navigate("/");
     }
-  }, [projectId, navigate, triggerInitialGeneration]);
+  }, [projectId, navigate, triggerInitialGeneration, isElectron, projectFiles, localhostUrl, isNpmRunning, handleRestart]);
 
   const handleCancelGeneration = () => {
     abortControllerRef.current?.abort();
@@ -232,7 +302,7 @@ const EditorPage: React.FC = () => {
     setThoughtProcess("");
     setCodeStream("");
 
-    const apiKeys = await fetchApiKeysFromSupabase();
+    const apiKeys = getApiKeysFromLocalStorage(); // Fetch from local storage
     const selectedModel = getSelectedModelLabel();
     const provider = getProviderFromLabel(selectedModel);
 
@@ -316,6 +386,11 @@ const EditorPage: React.FC = () => {
         setMessagesState(finalMessages);
         setMessages(projectId, finalMessages);
         setLoading(false);
+
+        // If in Electron, restart the dev server after code generation
+        if (isElectron) {
+          handleRestart();
+        }
       }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
@@ -329,11 +404,15 @@ const EditorPage: React.FC = () => {
     } finally {
         abortControllerRef.current = null;
     }
-  }, [messages, projectId, selectedElement]);
+  }, [messages, projectId, selectedElement, isElectron, handleRestart]);
 
   const handleRefreshPreview = () => {
-    setPreviewLoading(true);
-    setTimeout(() => setPreviewLoading(false), 800);
+    if (isElectron) {
+      handleRestart(); // In Electron, refresh means restarting the dev server
+    } else {
+      setPreviewLoading(true);
+      setTimeout(() => setPreviewLoading(false), 800);
+    }
   };
 
   const handleElementSelected = (description: string) => {
@@ -403,6 +482,13 @@ const EditorPage: React.FC = () => {
               projectName={projectName}
               supabaseIntent={supabaseIntentCounter}
               projectId={projectId}
+              // New props for NPM commands
+              localhostUrl={localhostUrl}
+              npmOutput={npmOutput}
+              npmError={npmError}
+              isNpmRunning={isNpmRunning}
+              onRebuild={handleRebuild}
+              onRestart={handleRestart}
             />
           </ResizablePanel>
         </ResizablePanelGroup>

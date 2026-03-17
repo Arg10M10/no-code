@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { KeyRound, Trash2, ExternalLink, ChevronLeft, Check, ChevronRight, Cloud, AlertCircle, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { storage } from "@/lib/storage"; // Import local storage utility
 
 type Provider = {
   id: 'openai' | 'google' | 'anthropic' | 'openrouter';
@@ -52,59 +52,20 @@ const providers: Provider[] = [
   },
 ];
 
-const SQL_CREATE_KEYS_TABLE = `
-create table if not exists public.user_api_keys (
-  user_id uuid references auth.users(id) on delete cascade primary key,
-  openai text,
-  google text,
-  anthropic text,
-  openrouter text,
-  updated_at timestamptz default now()
-);
-
-alter table public.user_api_keys enable row level security;
-
-create policy "Users can manage their own keys"
-on public.user_api_keys
-for all
-to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-`;
+// Key for storing API keys in localStorage
+const LOCAL_STORAGE_API_KEYS_KEY = "local-api-keys";
 
 const ApiKeySettings = () => {
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
   const [currentKey, setCurrentKey] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(false); // Keep loading state for UI feedback
 
   useEffect(() => {
-    // Verificar sesión y cargar claves
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        loadKeysFromSupabase();
-      }
-    });
+    // Load API keys from localStorage on component mount
+    const storedKeys = storage.getJSON<Record<string, string>>(LOCAL_STORAGE_API_KEYS_KEY, {});
+    setApiKeys(storedKeys);
   }, []);
-
-  const loadKeysFromSupabase = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from('user_api_keys').select('*').single();
-    if (data) {
-      // Normalizar datos
-      const loaded: Record<string, string> = {};
-      if (data.openai) loaded.openai = data.openai;
-      if (data.google) loaded.google = data.google;
-      if (data.anthropic) loaded.anthropic = data.anthropic;
-      if (data.openrouter) loaded.openrouter = data.openrouter;
-      setApiKeys(loaded);
-    } else if (error && error.code !== 'PGRST116') { // Ignorar error de "no rows found"
-       console.error("Error loading keys:", error);
-    }
-    setLoading(false);
-  };
 
   const handleManageClick = (provider: Provider) => {
     setSelectedProvider(provider);
@@ -116,102 +77,35 @@ const ApiKeySettings = () => {
     setCurrentKey("");
   };
 
-  const createTable = async () => {
-    const { error } = await supabase.rpc('exec_sql', { sql: SQL_CREATE_KEYS_TABLE });
-    if (error) {
-         // Fallback manual instruction if RPC fails
-         toast.error("No se pudo crear la tabla automáticamente.", {
-             description: "Copia el SQL y ejecútalo en el Editor SQL de Supabase.",
-             action: {
-                 label: "Copiar SQL",
-                 onClick: () => {
-                     navigator.clipboard.writeText(SQL_CREATE_KEYS_TABLE);
-                     toast.success("SQL Copiado");
-                 }
-             }
-         });
-    } else {
-        toast.success("Tabla de seguridad creada correctamente.");
-    }
-  };
-
-  const handleSave = async () => {
-    if (!user) {
-        toast.error("Debes iniciar sesión para guardar claves de forma segura.");
-        return;
-    }
+  const handleSave = () => {
     if (selectedProvider) {
       setLoading(true);
-      const updates = {
+      const updatedKeys = {
           ...apiKeys,
           [selectedProvider.id]: currentKey.trim()
       };
-      
-      // Mapear al formato de la DB
-      const dbPayload = {
-          user_id: user.id,
-          openai: updates.openai || null,
-          google: updates.google || null,
-          anthropic: updates.anthropic || null,
-          openrouter: updates.openrouter || null,
-          updated_at: new Date().toISOString()
-      };
-
-      const { error } = await supabase.from('user_api_keys').upsert(dbPayload);
-
-      if (error) {
-          if (error.code === '42P01') {
-              toast.error("Falta la tabla de claves en Supabase.", {
-                  description: "Haz clic en 'Configurar Base de Datos' abajo."
-              });
-          } else {
-              toast.error("Error al guardar", { description: error.message });
-          }
-      } else {
-          setApiKeys(updates);
-          toast.success(`Clave de ${selectedProvider.name} guardada en Supabase.`);
-          handleBack();
-      }
+      storage.setJSON(LOCAL_STORAGE_API_KEYS_KEY, updatedKeys);
+      setApiKeys(updatedKeys);
+      toast.success(`Clave de ${selectedProvider.name} guardada localmente.`);
+      handleBack();
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-     if (selectedProvider && user) {
+  const handleDelete = () => {
+     if (selectedProvider) {
         setLoading(true);
-        const updates = { ...apiKeys };
-        delete updates[selectedProvider.id];
-
-        // Actualizar DB seteando a null
-        const { error } = await supabase.from('user_api_keys').update({
-            [selectedProvider.id]: null,
-            updated_at: new Date().toISOString()
-        }).eq('user_id', user.id);
-
-        if (error) {
-            toast.error("Error al eliminar", { description: error.message });
-        } else {
-            setApiKeys(updates);
-            toast.info(`Clave de ${selectedProvider.name} eliminada.`);
-            handleBack();
-        }
+        const updatedKeys = { ...apiKeys };
+        delete updatedKeys[selectedProvider.id];
+        storage.setJSON(LOCAL_STORAGE_API_KEYS_KEY, updatedKeys);
+        setApiKeys(updatedKeys);
+        toast.info(`Clave de ${selectedProvider.name} eliminada localmente.`);
+        handleBack();
         setLoading(false);
      }
   };
 
-  if (!user) {
-      return (
-          <div className="flex flex-col items-center justify-center p-8 text-center border rounded-lg bg-muted/20">
-              <Cloud className="h-10 w-10 text-muted-foreground mb-3" />
-              <h3 className="font-semibold">Sincronización en la Nube</h3>
-              <p className="text-sm text-muted-foreground mb-4">Inicia sesión con GitHub para guardar tus claves API de forma segura y cifrada en tu base de datos Supabase.</p>
-              <Button variant="outline" onClick={() => supabase.auth.signInWithOAuth({ provider: 'github' })}>
-                  Conectar Cuenta
-              </Button>
-          </div>
-      );
-  }
-
+  // If a provider is selected, show the input form for that provider
   if (selectedProvider) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -264,18 +158,18 @@ const ApiKeySettings = () => {
                             autoFocus
                         />
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-green-500/5 p-2 rounded border border-green-500/10">
-                        <Cloud className="h-3 w-3 text-green-600" />
-                        Se almacenará de forma segura en tu Supabase.
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-blue-500/5 p-2 rounded border border-blue-500/10">
+                        <Cloud className="h-3 w-3 text-blue-600" />
+                        Se almacenará de forma segura en tu navegador.
                     </div>
                 </div>
 
                 <div className="flex flex-col gap-3 pt-2">
-                    <Button onClick={handleSave} className="w-full" disabled={loading}>
+                    <Button onClick={handleSave} className="w-full" disabled={loading || !currentKey.trim()}>
                         {loading ? "Guardando..." : (
                             <>
                                 <Check className="h-4 w-4 mr-2" />
-                                Guardar Configuración
+                                Guardar Clave
                             </>
                         )}
                     </Button>
@@ -293,15 +187,12 @@ const ApiKeySettings = () => {
     );
   }
 
-  // Vista de Lista
+  // List View
   return (
     <div className="space-y-4 animate-fade-in">
         <div className="flex justify-between items-center mb-2">
             <p className="text-sm text-muted-foreground">Gestiona tus conexiones a proveedores de IA.</p>
-            <Button variant="outline" size="sm" onClick={createTable} title="Si tienes errores, intenta esto primero">
-                <Database className="w-3 h-3 mr-2" />
-                Configurar Base de Datos
-            </Button>
+            {/* Removed Supabase-specific database setup button */}
         </div>
 
         {providers.map((provider) => {

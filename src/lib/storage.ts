@@ -15,3 +15,21 @@ export const storage = {
     localStorage.removeItem(key);
   },
 };
+
+// New functions for local API key storage
+const LOCAL_STORAGE_API_KEYS_KEY = "local-api-keys";
+
+export function getApiKeysFromLocalStorage(): Record<string, string> {
+  return storage.getJSON<Record<string, string>>(LOCAL_STORAGE_API_KEYS_KEY, {});
+}
+
+export function setApiKeyInLocalStorage(providerId: string, apiKey: string) {
+  const currentKeys = getApiKeysFromLocalStorage();
+  storage.setJSON(LOCAL_STORAGE_API_KEYS_KEY, { ...currentKeys, [providerId]: apiKey });
+}
+
+export function removeApiKeyFromLocalStorage(providerId: string) {
+  const currentKeys = getApiKeysFromLocalStorage();
+  delete currentKeys[providerId];
+  storage.setJSON(LOCAL_STORAGE_API_KEYS_KEY, currentKeys);
+}
