@@ -166,7 +166,7 @@ const EditorPage: React.FC = () => {
       try {
         const projectPath = await window.electronAPI.getProjectPath();
         await window.electronAPI.runNpmCommand('npm', ['install']);
-        await window.electronAPI.startProjectDevServer(path.join(projectPath, 'projects', projectId));
+        await window.electronAPI.startProjectDevServer(projectPath, projectId);
       } catch (error: any) {
         toast.error(`Rebuild failed: ${error.message}`);
         setPreviewLoading(false);
@@ -184,7 +184,7 @@ const EditorPage: React.FC = () => {
       setLocalhostUrl(null);
       try {
         const projectPath = await window.electronAPI.getProjectPath();
-        await window.electronAPI.startProjectDevServer(path.join(projectPath, 'projects', projectId));
+        await window.electronAPI.startProjectDevServer(projectPath, projectId);
       } catch (error: any) {
         toast.error(`Restart failed: ${error.message}`);
         setPreviewLoading(false);

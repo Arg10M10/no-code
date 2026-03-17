@@ -161,7 +161,7 @@ ipcMain.handle('is-maximized', (event) => {
 });
 
 // --- New IPC Handlers for Project Dev Server ---
-ipcMain.handle('start-project-dev-server', async (event, projectPath: string) => {
+ipcMain.handle('start-project-dev-server', async (event, basePath: string, projectId: string) => {
   if (currentDevServerProcess) {
     currentDevServerProcess.kill('SIGTERM');
     currentDevServerProcess = null;
@@ -169,8 +169,8 @@ ipcMain.handle('start-project-dev-server', async (event, projectPath: string) =>
     event.sender.send('project-dev-server-stopped');
   }
 
-  currentProjectRootPath = projectPath;
-  currentDevServerProcess = spawn('npm', ['run', 'dev'], { cwd: projectPath, shell: true });
+  currentProjectRootPath = path.join(basePath, 'projects', projectId);
+  currentDevServerProcess = spawn('npm', ['run', 'dev'], { cwd: currentProjectRootPath, shell: true });
   let outputBuffer = '';
   let urlFound = false;
 

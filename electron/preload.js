@@ -26,7 +26,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // New APIs for project management
-  startProjectDevServer: (projectPath) => ipcRenderer.invoke('start-project-dev-server', projectPath),
+  startProjectDevServer: (basePath, projectId) => ipcRenderer.invoke('start-project-dev-server', basePath, projectId),
   stopProjectDevServer: () => ipcRenderer.invoke('stop-project-dev-server'),
   getProjectDevServerUrl: () => ipcRenderer.invoke('get-project-dev-server-url'),
   onProjectDevServerOutput: (callback) => {
