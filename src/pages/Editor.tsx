@@ -26,26 +26,10 @@ import {
   setProjectFiles as persistProjectFiles 
 } from "@/lib/projects";
 import { getSelectedModelLabel } from "@/lib/settings";
-import { getProviderFromLabel, generateAnswer, generateChat } from "@/services/ai";
+import { getProviderFromLabel, generateAnswer } from "@/services/ai";
 import { cn } from "@/lib/utils";
 import { Github, Save } from "lucide-react";
 import { getApiKeysFromLocalStorage } from "@/lib/storage";
-
-function includesSupabaseIntent(text: string): boolean {
-  const t = (text || "").toLowerCase();
-  if (!t.includes("supabase")) return false;
-  const keys = ["conectar", "conéct", "connect", "integrar", "integration", "auth", "database"];
-  return keys.some((k) => t.includes(k));
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-  });
-}
 
 const EditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -69,7 +53,6 @@ const EditorPage: React.FC = () => {
   const [thoughtProcess, setThoughtProcess] = useState<string>("");
   const [codeStream, setCodeStream] = useState<string>("");
 
-  const [supabaseIntentCounter, setSupabaseIntentCounter] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const [localhostUrl, setLocalhostUrl] = useState<string | null>(null);
@@ -85,30 +68,31 @@ const EditorPage: React.FC = () => {
     });
   };
 
+  // Manejadores de Electron para el servidor de desarrollo
   useEffect(() => {
     if (!isElectron) return;
 
-    const unsubscribeOutput = window.electronAPI.onProjectDevServerOutput((data) => {
+    const unsubscribeOutput = window.electronAPI!.onProjectDevServerOutput((data) => {
         setNpmOutput(prev => [...prev, data]);
     });
 
-    const unsubscribeError = window.electronAPI.onProjectDevServerError((data) => {
+    const unsubscribeError = window.electronAPI!.onProjectDevServerError((data) => {
         setNpmError(prev => [...prev, data]);
     });
 
-    const unsubscribeReady = window.electronAPI.onProjectDevServerReady((url) => {
+    const unsubscribeReady = window.electronAPI!.onProjectDevServerReady((url) => {
         setLocalhostUrl(url);
         setPreviewLoading(false);
         setIsNpmRunning(true);
     });
 
-    const unsubscribeStopped = window.electronAPI.onProjectDevServerStopped(() => {
+    const unsubscribeStopped = window.electronAPI!.onProjectDevServerStopped(() => {
         setLocalhostUrl(null);
         setIsNpmRunning(false);
         setPreviewLoading(false);
     });
 
-    window.electronAPI.getProjectDevServerUrl().then(url => {
+    window.electronAPI!.getProjectDevServerUrl().then(url => {
         if (url) {
             setLocalhostUrl(url);
             setIsNpmRunning(true);
@@ -123,28 +107,34 @@ const EditorPage: React.FC = () => {
     };
   }, [isElectron]);
 
-  const executeNpmCommand = useCallback(async (command: string, args: string[], showToast = true) => {
-    if (!isElectron) return;
-    try {
-        await window.electronAPI.runNpmCommand(command, args);
-        if (showToast) toast.success(`Comando ejecutado.`);
-    } catch (error: any) {
-        if (showToast) toast.error(`Error: ${error.message}`);
-    }
-  }, [isElectron]);
-
   const handleRestart = useCallback(async () => {
       if (!isElectron || !projectId) return;
       setPreviewLoading(true);
       setLocalhostUrl(null);
       try {
-        const userProjectsBasePath = await window.electronAPI.getProjectPath();
-        await window.electronAPI.startProjectDevServer(userProjectsBasePath, projectId);
+        const userProjectsBasePath = await window.electronAPI!.getProjectPath();
+        await window.electronAPI!.startProjectDevServer(userProjectsBasePath, projectId);
       } catch (error: any) {
         toast.error(`Error al iniciar: ${error.message}`);
         setPreviewLoading(false);
       }
   }, [isElectron, projectId]);
+
+  const handleStopDevServer = useCallback(async () => {
+    if (isElectron) {
+      await window.electronAPI!.stopProjectDevServer();
+    }
+  }, [isElectron]);
+
+  const executeNpmCommand = useCallback(async (command: string, args: string[]) => {
+    if (!isElectron) return;
+    try {
+        await window.electronAPI!.runNpmCommand(command, args);
+        toast.success(`Comando ejecutado.`);
+    } catch (error: any) {
+        toast.error(`Error: ${error.message}`);
+    }
+  }, [isElectron]);
 
   const handleSaveFile = useCallback(async (path: string, content: string) => {
       if (!projectId || !projectFiles) return;
@@ -154,16 +144,16 @@ const EditorPage: React.FC = () => {
       persistProjectFiles(projectId, newFiles);
 
       if (isElectron) {
-        await window.electronAPI.saveProjectFiles(projectId, newFiles);
-        // Reiniciar servidor para aplicar cambios si está corriendo
+        await window.electronAPI!.saveProjectFiles(projectId, newFiles);
         if (isNpmRunning) handleRestart();
       }
   }, [projectId, projectFiles, isElectron, isNpmRunning, handleRestart]);
 
   const triggerInitialGeneration = useCallback(async (projId: string, initialMessages: StoredMessage[]) => {
+    if (!initialMessages[0]) return;
+    
     setLoading(true);
     setPreviewLoading(true);
-    setProjectFiles(null);
     setGenerationLogs([]); 
     setThoughtProcess("");
     setCodeStream("");
@@ -174,6 +164,7 @@ const EditorPage: React.FC = () => {
     const provider = getProviderFromLabel(selectedModel);
 
     if (!apiKeys[provider]) {
+      toast.warning(`Falta clave de ${provider}. Configúrala en Ajustes.`);
       setLoading(false);
       setPreviewLoading(false);
       return;
@@ -193,13 +184,13 @@ const EditorPage: React.FC = () => {
       
       setProjectFiles(files);
       persistProjectFiles(projId, files);
-      if (isElectron) await window.electronAPI.saveProjectFiles(projId, files);
+      if (isElectron) await window.electronAPI!.saveProjectFiles(projId, files);
 
       setPreviewHtml(previewHtml);
       persistPreviewHtml(projId, previewHtml);
       setPreviewLoading(false);
       
-      addMessage(projId, { role: "assistant", content: finalThought || "Proyecto generado." });
+      addMessage(projId, { role: "assistant", content: finalThought || "Proyecto generado con éxito." });
       setCredits(decrementCredits(projId, 1000));
       setLoading(false);
       setMessagesState(getMessages(projId));
@@ -207,6 +198,7 @@ const EditorPage: React.FC = () => {
       if (isElectron) handleRestart();
     } catch (err: any) {
       if (err.name === 'AbortError') return;
+      toast.error("Error de generación", { description: err.message });
       setLoading(false);
       setPreviewLoading(false);
       setMessagesState(getMessages(projId));
@@ -232,14 +224,10 @@ const EditorPage: React.FC = () => {
       } else {
         navigate("/");
       }
+    } else {
+        navigate("/");
     }
   }, [projectId, navigate, triggerInitialGeneration]);
-
-  const handleCancelGeneration = () => {
-    abortControllerRef.current?.abort();
-    setLoading(false);
-    setPreviewLoading(false);
-  };
 
   const handleNewMessage = useCallback(async (text: string, images?: (File | string)[]) => {
     if (!projectId) return;
@@ -272,13 +260,13 @@ const EditorPage: React.FC = () => {
       
       setProjectFiles(newFiles);
       persistProjectFiles(projectId, newFiles);
-      if (isElectron) await window.electronAPI.saveProjectFiles(projectId, newFiles);
+      if (isElectron) await window.electronAPI!.saveProjectFiles(projectId, newFiles);
 
       setPreviewHtml(previewHtml);
       persistPreviewHtml(projectId, previewHtml);
       setPreviewLoading(false);
 
-      const aiResponseContent = `${finalThought || "He aplicado los cambios."}\n---CHANGES---[]`;
+      const aiResponseContent = `${finalThought || "Cambios aplicados."}\n---CHANGES---[]`;
       setCredits(decrementCredits(projectId, 1000));
       const finalMessages = [...newMessages, { role: "assistant", content: aiResponseContent, createdAt: Date.now() }];
       setMessagesState(finalMessages);
@@ -287,6 +275,8 @@ const EditorPage: React.FC = () => {
 
       if (isElectron) handleRestart();
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      toast.error("Error", { description: err.message });
       setLoading(false);
       setPreviewLoading(false);
     } finally {
@@ -294,7 +284,7 @@ const EditorPage: React.FC = () => {
     }
   }, [messages, projectId, projectFiles, isElectron, handleRestart]);
 
-  if (!projectId) return <div>Cargando...</div>;
+  if (!projectId) return null;
 
   return (
     <div className="h-full w-full flex flex-col bg-background text-foreground overflow-hidden">
@@ -321,7 +311,7 @@ const EditorPage: React.FC = () => {
               loading={loading}
               credits={credits}
               onSend={handleNewMessage}
-              onCancel={handleCancelGeneration}
+              onCancel={() => abortControllerRef.current?.abort()}
               selectedElement={selectedElement}
               onClearSelection={() => setSelectedElement(null)}
               generationLogs={generationLogs}
@@ -336,19 +326,19 @@ const EditorPage: React.FC = () => {
               code={previewHtml}
               files={projectFiles}
               loading={previewLoading}
-              onRefresh={() => handleRestart()}
+              onRefresh={handleRestart}
               isSelectionModeActive={isSelectionModeActive}
               onToggleSelectionMode={() => setIsSelectionModeActive(prev => !prev)}
-              onElementSelected={handleElementSelected}
+              onElementSelected={setSelectedElement}
               projectName={projectName}
               projectId={projectId}
               localhostUrl={localhostUrl}
               npmOutput={npmOutput}
               npmError={npmError}
               isNpmRunning={isNpmRunning}
-              onRebuild={() => handleRestart()}
+              onRebuild={handleRestart}
               onRestart={handleRestart}
-              onStopDevServer={() => window.electronAPI?.stopProjectDevServer()}
+              onStopDevServer={handleStopDevServer}
               onRunCommand={executeNpmCommand}
               onSaveFile={handleSaveFile}
             />

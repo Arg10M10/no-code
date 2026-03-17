@@ -3,11 +3,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
-  RefreshCw, MousePointerClick, Terminal, Package, Play, Square, 
-  Globe, AlertCircle, Code2, Settings2, ChevronDown, ChevronUp, Maximize2 
+  RefreshCw, MousePointerClick, Terminal, Play, Square, 
+  Globe, Code2, Settings2, ChevronDown, ChevronUp, Maximize2 
 } from "lucide-react";
 import Loader from "./Loader";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import SupabaseConnectModal from "@/components/supabase/SupabaseConnectModal";
 import CodePanel from "@/components/CodePanel";
@@ -24,7 +24,6 @@ interface PreviewPanelProps {
   onToggleSelectionMode: () => void;
   onElementSelected: (description: string) => void;
   projectName?: string;
-  supabaseIntent?: number;
   projectId: string | null;
   localhostUrl: string | null;
   npmOutput: string[];
@@ -33,12 +32,11 @@ interface PreviewPanelProps {
   onRebuild: () => void;
   onRestart: () => void;
   onStopDevServer: () => void;
-  onRunCommand: (command: string, args: string[], showToast?: boolean) => Promise<void>;
-  onSaveFile?: (path: string, content: string) => void; // NUEVA PROP
+  onRunCommand: (command: string, args: string[]) => Promise<void>;
+  onSaveFile: (path: string, content: string) => void;
 }
 
 const PreviewPanel: React.FC<PreviewPanelProps> = ({
-  previewUrl,
   code,
   files,
   loading,
@@ -46,9 +44,6 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   isSelectionModeActive,
   onToggleSelectionMode,
   onElementSelected,
-  projectName,
-  supabaseIntent = 0,
-  projectId,
   localhostUrl,
   npmOutput,
   npmError,
@@ -61,23 +56,19 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const consoleScrollRef = useRef<HTMLDivElement>(null);
-  const consoleInputRef = useRef<HTMLInputElement>(null);
   const [openSupabaseModal, setOpenSupabaseModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("preview");
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-  const [commandInput, setCommandInput] = useState<string>("");
+  const [commandInput, setCommandInput] = useState("");
   const isElectron = typeof window.electronAPI !== 'undefined';
 
   useEffect(() => {
     const iframe = iframeRef.current;
     if (iframe && iframe.contentWindow) {
       const message = { type: 'toggleSelectionMode', payload: { isActive: isSelectionModeActive } };
-      const post = () => iframe.contentWindow?.postMessage(message, '*');
-      iframe.addEventListener('load', post);
-      post();
-      return () => iframe.removeEventListener('load', post);
+      iframe.contentWindow.postMessage(message, '*');
     }
-  }, [isSelectionModeActive, code, localhostUrl]);
+  }, [isSelectionModeActive]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -105,23 +96,20 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
 
   return (
     <div className="h-full w-full flex flex-col bg-background overflow-hidden relative">
-      {/* Header Principal */}
       <div className="flex items-center justify-between p-2 border-b bg-background/95 backdrop-blur-sm z-20 shrink-0">
-        <div className="flex items-center gap-1">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-            <TabsList className="bg-muted/50 h-8">
-              <TabsTrigger value="preview" className="text-[11px] font-bold uppercase tracking-wider px-3 h-7">
-                <Globe className="h-3 w-3 mr-1.5" /> Navegador
-              </TabsTrigger>
-              <TabsTrigger value="code" className="text-[11px] font-bold uppercase tracking-wider px-3 h-7">
-                <Code2 className="h-3 w-3 mr-1.5" /> Código
-              </TabsTrigger>
-              <TabsTrigger value="integrations" className="text-[11px] font-bold uppercase tracking-wider px-3 h-7">
-                <Settings2 className="h-3 w-3 mr-1.5" /> Ajustes
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+          <TabsList className="bg-muted/50 h-8">
+            <TabsTrigger value="preview" className="text-[11px] font-bold uppercase tracking-wider px-3 h-7">
+              <Globe className="h-3 w-3 mr-1.5" /> Navegador
+            </TabsTrigger>
+            <TabsTrigger value="code" className="text-[11px] font-bold uppercase tracking-wider px-3 h-7">
+              <Code2 className="h-3 w-3 mr-1.5" /> Código
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="text-[11px] font-bold uppercase tracking-wider px-3 h-7">
+              <Settings2 className="h-3 w-3 mr-1.5" /> Ajustes
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <div className="flex items-center gap-2">
           {isElectron && (
@@ -154,28 +142,27 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </div>
       </div>
 
-      {/* Área de Contenido Principal */}
       <div className="flex-1 relative min-h-0 w-full overflow-hidden">
         {activeTab === "preview" && (
           <div className="absolute inset-0 flex flex-col bg-white">
             <div className="h-9 bg-muted/20 border-b flex items-center px-4 gap-3 shrink-0">
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 shrink-0">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-400/40" />
                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/40" />
                 <div className="w-2.5 h-2.5 rounded-full bg-green-400/40" />
               </div>
               <div className="flex-1 bg-background/50 border rounded h-6 flex items-center px-3 gap-2 text-[10px] text-muted-foreground font-mono truncate">
-                <Maximize2 className="h-2.5 w-2.5" />
+                <Maximize2 className="h-2.5 w-2.5 shrink-0" />
                 {localhostUrl || "http://localhost:5173"}
               </div>
             </div>
             
-            <div className="flex-1 relative overflow-hidden">
+            <div className="flex-1 relative">
               {(loading || (isNpmRunning && !localhostUrl)) && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-30">
                   <Loader />
-                  <p className="mt-4 text-xs font-bold tracking-widest text-muted-foreground animate-pulse">
-                    CARGANDO SERVIDOR...
+                  <p className="mt-4 text-xs font-bold tracking-widest text-muted-foreground animate-pulse uppercase">
+                    Cargando...
                   </p>
                 </div>
               )}
@@ -191,7 +178,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         )}
 
         {activeTab === "code" && (
-          <div className="absolute inset-0 bg-background z-10 flex flex-col">
+          <div className="absolute inset-0 bg-background z-10">
              <CodePanel files={files} onSaveFile={onSaveFile} />
           </div>
         )}
@@ -199,11 +186,11 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         {activeTab === "integrations" && (
           <div className="absolute inset-0 bg-background overflow-auto p-8">
              <div className="max-w-2xl mx-auto space-y-6">
-                <h2 className="text-xl font-bold">Configuración del Proyecto</h2>
+                <h2 className="text-xl font-bold">Ajustes</h2>
                 <div className="p-6 border rounded-xl bg-card">
-                   <h3 className="font-semibold mb-2">Supabase Cloud</h3>
-                   <p className="text-sm text-muted-foreground mb-4">Conecta tu base de datos y autenticación en segundos.</p>
-                   <Button onClick={() => setOpenSupabaseModal(true)}>Configurar Conexión</Button>
+                   <h3 className="font-semibold mb-2">Supabase</h3>
+                   <p className="text-sm text-muted-foreground mb-4">Conecta tu base de datos.</p>
+                   <Button onClick={() => setOpenSupabaseModal(true)}>Configurar</Button>
                 </div>
              </div>
              <SupabaseConnectModal open={openSupabaseModal} onOpenChange={setOpenSupabaseModal} />
@@ -211,10 +198,9 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         )}
       </div>
 
-      {/* Terminal Inferior Animada */}
       <div 
         className={cn(
-          "absolute bottom-0 left-0 right-0 z-40 bg-[#0c0c0c] border-t border-white/10 transition-all duration-300 ease-in-out flex flex-col shadow-2xl",
+          "absolute bottom-0 left-0 right-0 z-40 bg-[#0c0c0c] border-t border-white/10 transition-all duration-300 flex flex-col",
           isTerminalOpen ? "h-[300px]" : "h-9"
         )}
       >
@@ -224,37 +210,26 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         >
           <div className="flex items-center gap-2">
             <Terminal className="h-3.5 w-3.5 text-blue-400" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Terminal de Node.js</span>
-            {isNpmRunning && <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse ml-2" />}
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Terminal</span>
           </div>
-          <div className="flex items-center gap-3">
-             <span className="text-[9px] text-zinc-600 font-mono">localhost:5173</span>
-             {isTerminalOpen ? <ChevronDown className="h-4 w-4 text-zinc-500" /> : <ChevronUp className="h-4 w-4 text-zinc-500" />}
-          </div>
+          {isTerminalOpen ? <ChevronDown className="h-4 w-4 text-zinc-500" /> : <ChevronUp className="h-4 w-4 text-zinc-500" />}
         </div>
 
         {isTerminalOpen && (
-          <div className="flex-1 flex flex-col min-h-0 font-mono">
+          <div className="flex-1 flex flex-col min-h-0 font-mono overflow-hidden">
             <ScrollArea className="flex-1 p-3" viewportRef={consoleScrollRef}>
-              <div className="space-y-1 text-[11px] leading-tight">
-                {npmOutput.map((line, i) => (
-                  <div key={`out-${i}`} className="text-zinc-300 break-all whitespace-pre-wrap">{line}</div>
-                ))}
-                {npmError.map((line, i) => (
-                  <div key={`err-${i}`} className="text-red-400/90 break-all whitespace-pre-wrap">{line}</div>
-                ))}
+              <div className="space-y-1 text-[11px]">
+                {npmOutput.map((line, i) => <div key={i} className="text-zinc-300 whitespace-pre-wrap">{line}</div>)}
+                {npmError.map((line, i) => <div key={i} className="text-red-400/90 whitespace-pre-wrap">{line}</div>)}
               </div>
             </ScrollArea>
-            
-            <form onSubmit={handleConsoleCommandSubmit} className="p-2 bg-black border-t border-white/5 flex items-center gap-2 px-4">
-               <span className="text-blue-500 font-bold text-xs">$</span>
+            <form onSubmit={handleConsoleCommandSubmit} className="p-2 bg-black border-t border-white/5 flex items-center px-4">
+               <span className="text-blue-500 font-bold text-xs mr-2">$</span>
                <input
-                 ref={consoleInputRef}
                  value={commandInput}
                  onChange={(e) => setCommandInput(e.target.value)}
-                 className="flex-1 bg-transparent border-none text-[11px] font-mono py-1 focus:ring-0 text-zinc-200 placeholder:text-zinc-800"
-                 placeholder="Ej: npm install, npm run build..."
-                 autoFocus
+                 className="flex-1 bg-transparent border-none text-[11px] font-mono focus:ring-0 text-zinc-200"
+                 placeholder="npm install..."
                />
             </form>
           </div>
