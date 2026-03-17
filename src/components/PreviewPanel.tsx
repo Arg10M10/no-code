@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, MousePointerClick, Terminal, Package, Play } from "lucide-react";
+import { RefreshCw, MousePointerClick, Terminal, Package, Play, Square, Trash2, Globe } from "lucide-react";
 import Loader from "./Loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import SupabaseConnectModal from "@/components/supabase/SupabaseConnectModal";
 import CodePanel from "@/components/CodePanel";
 import { ProjectFile } from "@/lib/projects";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 
 interface PreviewPanelProps {
   previewUrl: string;
@@ -30,6 +31,8 @@ interface PreviewPanelProps {
   isNpmRunning: boolean;
   onRebuild: () => void;
   onRestart: () => void;
+  onStopDevServer: () => void;
+  onRunCommand: (command: string, args: string[], showToast?: boolean) => Promise<void>;
 }
 
 const SUPABASE_PROJECT_ID = "xkcnbvcjzezhjaoxojsv";
@@ -53,11 +56,15 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   isNpmRunning,
   onRebuild,
   onRestart,
+  onStopDevServer,
+  onRunCommand,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const consoleScrollRef = useRef<HTMLDivElement>(null);
+  const consoleInputRef = useRef<HTMLInputElement>(null);
   const [openSupabaseModal, setOpenSupabaseModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("preview");
+  const [commandInput, setCommandInput] = useState<string>("");
   const isElectron = typeof window.electronAPI !== 'undefined';
 
   const handleRefresh = () => {
@@ -115,6 +122,21 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
     window.open(url, "_blank", "noopener");
   };
 
+  const handleConsoleCommandSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commandInput.trim()) return;
+
+    const [cmd, ...args] = commandInput.trim().split(/\s+/);
+    await onRunCommand(cmd, args);
+    setCommandInput("");
+    consoleInputRef.current?.focus();
+  };
+
+  const handleClearConsole = () => {
+    npmOutput.splice(0, npmOutput.length); // Clear array directly
+    npmError.splice(0, npmError.length); // Clear array directly
+  };
+
   return (
     <div className="h-full flex flex-col bg-muted/40">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
@@ -132,9 +154,15 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
                 <Button variant="ghost" size="icon" onClick={onRebuild} title="Rebuild & Restart" disabled={isNpmRunning}>
                   <Package className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={onRestart} title="Restart Dev Server" disabled={isNpmRunning}>
-                  <Play className="h-4 w-4" />
-                </Button>
+                {isNpmRunning ? (
+                  <Button variant="ghost" size="icon" onClick={onStopDevServer} title="Stop Dev Server">
+                    <Square className="h-4 w-4 text-red-500" />
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="icon" onClick={onRestart} title="Start Dev Server">
+                    <Play className="h-4 w-4 text-green-500" />
+                  </Button>
+                )}
               </>
             )}
             <Button
@@ -153,20 +181,36 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </div>
         
         <TabsContent value="preview" className="flex-1 relative">
-          {(loading || isNpmRunning) && (
+          {(loading || isNpmRunning && !localhostUrl) && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
               <Loader />
             </div>
           )}
-          <iframe
-            ref={iframeRef}
-            src={localhostUrl || (code ? undefined : previewUrl)} // Use localhostUrl if available, else srcDoc (via code) or default previewUrl
-            srcDoc={localhostUrl ? undefined : code ?? undefined} // Only use srcDoc if no localhostUrl
-            className="w-full h-full border-0 transition-opacity duration-300"
-            title="Preview"
-            sandbox="allow-scripts"
-            style={{ opacity: (loading || isNpmRunning) ? 0.5 : 1 }}
-          />
+          {isElectron && localhostUrl ? (
+            <iframe
+              ref={iframeRef}
+              src={localhostUrl}
+              className="w-full h-full border-0 transition-opacity duration-300"
+              title="Preview"
+              sandbox="allow-scripts"
+              style={{ opacity: (loading || isNpmRunning && !localhostUrl) ? 0.5 : 1 }}
+            />
+          ) : (
+            <iframe
+              ref={iframeRef}
+              srcDoc={code ?? undefined}
+              className="w-full h-full border-0 transition-opacity duration-300"
+              title="Preview"
+              sandbox="allow-scripts"
+              style={{ opacity: (loading || isNpmRunning && !localhostUrl) ? 0.5 : 1 }}
+            />
+          )}
+          {isElectron && localhostUrl && (
+            <div className="absolute bottom-2 left-2 bg-background/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs text-muted-foreground flex items-center gap-2 border border-border/60">
+              <Globe className="h-3 w-3 text-green-500" />
+              <span>Live: <a href={localhostUrl} target="_blank" rel="noopener noreferrer" className="text-foreground hover:underline">{localhostUrl}</a></span>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="issues" className="p-6 flex-1 overflow-y-auto">
@@ -212,7 +256,14 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
               <div className="flex items-center gap-2 p-3 border-b border-gray-800 bg-gray-900">
                 <Terminal className="h-4 w-4 text-gray-400" />
                 <span className="text-sm font-mono text-gray-300">NPM Console</span>
-                {isNpmRunning && <span className="ml-auto text-xs text-blue-400 animate-pulse">Running...</span>}
+                {isNpmRunning && (
+                  <span className="ml-auto text-xs text-blue-400 animate-pulse">
+                    Running: {localhostUrl ? `Dev Server (${localhostUrl})` : 'Command...'}
+                  </span>
+                )}
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-white" onClick={handleClearConsole} title="Clear Console">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
               <ScrollArea className="flex-1 p-3 text-xs font-mono whitespace-pre-wrap break-all" viewportRef={consoleScrollRef}>
                 {npmOutput.map((line, i) => (
@@ -225,6 +276,16 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
                   <div className="text-gray-500">No output yet. Run a command to see results.</div>
                 )}
               </ScrollArea>
+              <form onSubmit={handleConsoleCommandSubmit} className="flex-shrink-0 p-3 border-t border-gray-800 bg-gray-900">
+                <Input
+                  ref={consoleInputRef}
+                  value={commandInput}
+                  onChange={(e) => setCommandInput(e.target.value)}
+                  placeholder="npm install, npm run build, npx ..."
+                  className="bg-gray-800 border-gray-700 text-white text-xs font-mono focus:ring-blue-500 focus:border-blue-500"
+                  disabled={isNpmRunning}
+                />
+              </form>
             </div>
           </TabsContent>
         )}

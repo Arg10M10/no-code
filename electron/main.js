@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 
 // Obtener __dirname en módulos ES
 const __filename = fileURLToPath(import.meta.url);
@@ -9,6 +9,11 @@ const __dirname = path.dirname(__filename);
 
 const isDev = !app.isPackaged;
 const VITE_DEV_SERVER_URL = 'http://127.0.0.1:5173';
+
+// --- Project Dev Server Management ---
+let currentDevServerProcess: ChildProcessWithoutNullStreams | null = null;
+let currentDevServerUrl: string | null = null;
+let currentProjectRootPath: string | null = null;
 
 async function loadApp(win, urlOrPath, retries = 10) {
   try {
@@ -36,7 +41,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    frame: true, // CAMBIO AQUÍ: Usar la barra de título nativa
+    frame: true, // Usar la barra de título nativa
     transparent: false, // No es necesario si frame es true
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -80,6 +85,10 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  // Asegurarse de que el proceso del servidor de desarrollo se detenga al cerrar la aplicación
+  if (currentDevServerProcess) {
+    currentDevServerProcess.kill('SIGTERM'); // O 'SIGKILL' si es necesario
+  }
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -88,11 +97,11 @@ app.on('window-all-closed', () => {
 // --- IPC Handlers ---
 ipcMain.handle('run-npm-command', async (event, command, args = []) => {
   return new Promise((resolve, reject) => {
-    const projectPath = app.getAppPath(); // Obtiene la ruta base de la aplicación Electron
+    const projectPath = currentProjectRootPath || app.getAppPath(); // Usar la ruta del proyecto actual si está definida
     
-    // Asegurarse de que el comando sea 'npm' y el primer argumento sea 'run'
-    if (command !== 'npm' || args[0] !== 'run') {
-      return reject(new Error('Only "npm run" commands are allowed.'));
+    // Permitir solo comandos npm y npx
+    if (command !== 'npm' && command !== 'npx') {
+      return reject(new Error('Only "npm" or "npx" commands are allowed.'));
     }
 
     const child = spawn(command, args, { cwd: projectPath, shell: true });
@@ -149,4 +158,69 @@ ipcMain.handle('close-window', (event) => {
 
 ipcMain.handle('is-maximized', (event) => {
   return BrowserWindow.fromWebContents(event.sender)?.isMaximized() || false;
+});
+
+// --- New IPC Handlers for Project Dev Server ---
+ipcMain.handle('start-project-dev-server', async (event, projectPath: string) => {
+  if (currentDevServerProcess) {
+    currentDevServerProcess.kill('SIGTERM');
+    currentDevServerProcess = null;
+    currentDevServerUrl = null;
+    event.sender.send('project-dev-server-stopped');
+  }
+
+  currentProjectRootPath = projectPath;
+  currentDevServerProcess = spawn('npm', ['run', 'dev'], { cwd: projectPath, shell: true });
+  let outputBuffer = '';
+  let urlFound = false;
+
+  currentDevServerProcess.stdout.on('data', (data) => {
+    const output = data.toString();
+    event.sender.send('project-dev-server-output', output);
+    outputBuffer += output;
+
+    if (!urlFound) {
+      const match = output.match(/http:\/\/(localhost|127\.0\.0\.1):\d+/);
+      if (match) {
+        currentDevServerUrl = match[0];
+        event.sender.send('project-dev-server-ready', currentDevServerUrl);
+        urlFound = true;
+      }
+    }
+  });
+
+  currentDevServerProcess.stderr.on('data', (data) => {
+    event.sender.send('project-dev-server-error', data.toString());
+  });
+
+  currentDevServerProcess.on('close', (code) => {
+    console.log(`Dev server process exited with code ${code}`);
+    currentDevServerProcess = null;
+    currentDevServerUrl = null;
+    event.sender.send('project-dev-server-stopped');
+  });
+
+  currentDevServerProcess.on('error', (err) => {
+    console.error('Failed to start dev server process:', err);
+    event.sender.send('project-dev-server-error', `Failed to start dev server: ${err.message}`);
+    currentDevServerProcess = null;
+    currentDevServerUrl = null;
+    event.sender.send('project-dev-server-stopped');
+  });
+
+  // Return the URL if found immediately, otherwise null (will be sent via event)
+  return currentDevServerUrl;
+});
+
+ipcMain.handle('stop-project-dev-server', async (event) => {
+  if (currentDevServerProcess) {
+    currentDevServerProcess.kill('SIGTERM'); // Terminar el proceso
+    currentDevServerProcess = null;
+    currentDevServerUrl = null;
+    event.sender.send('project-dev-server-stopped');
+  }
+});
+
+ipcMain.handle('get-project-dev-server-url', () => {
+  return currentDevServerUrl;
 });

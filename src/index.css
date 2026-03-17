@@ -93,7 +93,7 @@ All colors MUST be HSL.
   /* Global border-radius for the Electron window content */
   #root {
     @apply bg-background; /* Apply main background to #root */
-    border-radius: var(--radius);
+    /* border-radius: var(--radius); */ /* Removed for native frame */
     overflow: hidden; /* Ensures content respects border-radius */
     height: 100vh; /* Ensure #root fills the viewport */
     width: 100vw; /* Ensure #root fills the viewport */

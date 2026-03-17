@@ -93,25 +93,44 @@ const EditorPage: React.FC = () => {
   useEffect(() => {
     if (!isElectron) return;
 
-    const unsubscribeOutput = window.electronAPI.onNpmOutput((data) => {
+    const unsubscribeOutput = window.electronAPI.onProjectDevServerOutput((data) => {
         setNpmOutput(prev => [...prev, data]);
-        // Attempt to parse localhost URL from output
-        const match = data.match(/http:\/\/(localhost|127\.0\.0\.1):\d+/);
-        if (match && !localhostUrl) { // Only set if not already set
-            setLocalhostUrl(match[0]);
-            setPreviewLoading(false); // Stop preview loading once URL is found
-        }
     });
 
-    const unsubscribeError = window.electronAPI.onNpmError((data) => {
+    const unsubscribeError = window.electronAPI.onProjectDevServerError((data) => {
         setNpmError(prev => [...prev, data]);
+    });
+
+    const unsubscribeReady = window.electronAPI.onProjectDevServerReady((url) => {
+        setLocalhostUrl(url);
+        setPreviewLoading(false);
+        setIsNpmRunning(true); // Mark as running once URL is ready
+        toast.success(`Dev server running at ${url}`);
+    });
+
+    const unsubscribeStopped = window.electronAPI.onProjectDevServerStopped(() => {
+        setLocalhostUrl(null);
+        setIsNpmRunning(false);
+        setPreviewLoading(false);
+        toast.info("Dev server stopped.");
+    });
+
+    // Get initial URL if server is already running
+    window.electronAPI.getProjectDevServerUrl().then(url => {
+        if (url) {
+            setLocalhostUrl(url);
+            setIsNpmRunning(true);
+            setPreviewLoading(false);
+        }
     });
 
     return () => {
         unsubscribeOutput();
         unsubscribeError();
+        unsubscribeReady();
+        unsubscribeStopped();
     };
-  }, [isElectron, localhostUrl]); // Re-run if localhostUrl changes to avoid stale closure
+  }, [isElectron]);
 
   // Helper to execute NPM commands via Electron
   const executeNpmCommand = useCallback(async (command: string, args: string[], showToast = true) => {
@@ -121,12 +140,9 @@ const EditorPage: React.FC = () => {
     }
     setNpmOutput([]);
     setNpmError([]);
-    if (args[0] === 'run' && args[1] === 'dev') {
-        setLocalhostUrl(null); // Clear localhost URL on dev command
-        setPreviewLoading(true);
-    }
-    setIsNpmRunning(true);
+    setIsNpmRunning(true); // Assume running for any command
     try {
+        const projectPath = await window.electronAPI.getProjectPath(); // Get base project path
         const result = await window.electronAPI.runNpmCommand(command, args);
         console.log(`NPM command '${command} ${args.join(' ')}' finished:`, result);
         if (showToast) toast.success(`NPM command '${command} ${args.join(' ')}' completed.`);
@@ -134,23 +150,53 @@ const EditorPage: React.FC = () => {
         console.error(`NPM command '${command} ${args.join(' ')}' failed:`, error);
         if (showToast) toast.error(`NPM command failed: ${error.message}`);
     } finally {
-        setIsNpmRunning(false);
-        if (args[0] === 'run' && args[1] === 'dev' && !localhostUrl) {
-            setPreviewLoading(false);
-        }
+        setIsNpmRunning(false); // Reset after command finishes
     }
-  }, [isElectron, localhostUrl]);
+  }, [isElectron]);
 
   const handleRebuild = useCallback(async () => {
+      if (!isElectron || !projectId) return;
       toast.info("Rebuilding project: Running npm install and restarting dev server...");
-      await executeNpmCommand('npm', ['install'], false); // Don't show success toast for install, it's part of rebuild
-      await executeNpmCommand('npm', ['run', 'dev']);
-  }, [executeNpmCommand]);
+      setPreviewLoading(true);
+      setIsNpmRunning(true);
+      setNpmOutput([]);
+      setNpmError([]);
+      setLocalhostUrl(null);
 
-  const handleRestart = useCallback(() => {
+      try {
+        const projectPath = await window.electronAPI.getProjectPath();
+        await window.electronAPI.runNpmCommand('npm', ['install']);
+        await window.electronAPI.startProjectDevServer(path.join(projectPath, 'projects', projectId));
+      } catch (error: any) {
+        toast.error(`Rebuild failed: ${error.message}`);
+        setPreviewLoading(false);
+        setIsNpmRunning(false);
+      }
+  }, [isElectron, projectId]);
+
+  const handleRestart = useCallback(async () => {
+      if (!isElectron || !projectId) return;
       toast.info("Restarting dev server...");
-      executeNpmCommand('npm', ['run', 'dev']);
-  }, [executeNpmCommand]);
+      setPreviewLoading(true);
+      setIsNpmRunning(true);
+      setNpmOutput([]);
+      setNpmError([]);
+      setLocalhostUrl(null);
+      try {
+        const projectPath = await window.electronAPI.getProjectPath();
+        await window.electronAPI.startProjectDevServer(path.join(projectPath, 'projects', projectId));
+      } catch (error: any) {
+        toast.error(`Restart failed: ${error.message}`);
+        setPreviewLoading(false);
+        setIsNpmRunning(false);
+      }
+  }, [isElectron, projectId]);
+
+  const handleStopDevServer = useCallback(async () => {
+    if (!isElectron) return;
+    toast.info("Stopping dev server...");
+    await window.electronAPI.stopProjectDevServer();
+  }, [isElectron]);
 
   const triggerInitialGeneration = useCallback(async (projId: string, initialMessages: StoredMessage[]) => {
     setLoading(true);
@@ -489,6 +535,8 @@ const EditorPage: React.FC = () => {
               isNpmRunning={isNpmRunning}
               onRebuild={handleRebuild}
               onRestart={handleRestart}
+              onStopDevServer={handleStopDevServer}
+              onRunCommand={executeNpmCommand}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
