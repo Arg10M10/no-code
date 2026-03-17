@@ -142,7 +142,7 @@ const EditorPage: React.FC = () => {
     setNpmError([]);
     setIsNpmRunning(true); // Assume running for any command
     try {
-        const projectPath = await window.electronAPI.getProjectPath(); // Get base project path
+        // No need to get projectPath here, as runNpmCommand uses currentProjectRootPath from main.js
         const result = await window.electronAPI.runNpmCommand(command, args);
         console.log(`NPM command '${command} ${args.join(' ')}' finished:`, result);
         if (showToast) toast.success(`NPM command '${command} ${args.join(' ')}' completed.`);
@@ -164,9 +164,9 @@ const EditorPage: React.FC = () => {
       setLocalhostUrl(null);
 
       try {
-        const projectPath = await window.electronAPI.getProjectPath();
-        await window.electronAPI.runNpmCommand('npm', ['install']);
-        await window.electronAPI.startProjectDevServer(projectPath, projectId);
+        const userProjectsBasePath = await window.electronAPI.getProjectPath();
+        await window.electronAPI.runNpmCommand('npm', ['install']); // This will run in the current project's directory
+        await window.electronAPI.startProjectDevServer(userProjectsBasePath, projectId);
       } catch (error: any) {
         toast.error(`Rebuild failed: ${error.message}`);
         setPreviewLoading(false);
@@ -183,8 +183,8 @@ const EditorPage: React.FC = () => {
       setNpmError([]);
       setLocalhostUrl(null);
       try {
-        const projectPath = await window.electronAPI.getProjectPath();
-        await window.electronAPI.startProjectDevServer(projectPath, projectId);
+        const userProjectsBasePath = await window.electronAPI.getProjectPath();
+        await window.electronAPI.startProjectDevServer(userProjectsBasePath, projectId);
       } catch (error: any) {
         toast.error(`Restart failed: ${error.message}`);
         setPreviewLoading(false);
@@ -249,6 +249,12 @@ const EditorPage: React.FC = () => {
 
       setProjectFiles(files);
       persistProjectFiles(projId, files);
+      
+      // Save files to disk via Electron IPC
+      if (isElectron) {
+        await window.electronAPI.saveProjectFiles(projId, files);
+      }
+
       setPreviewHtml(previewHtml);
       persistPreviewHtml(projId, previewHtml);
       
@@ -419,6 +425,12 @@ const EditorPage: React.FC = () => {
 
         setProjectFiles(newFiles);
         persistProjectFiles(projectId, newFiles);
+
+        // Save files to disk via Electron IPC
+        if (isElectron) {
+          await window.electronAPI.saveProjectFiles(projectId, newFiles);
+        }
+
         setPreviewHtml(previewHtml);
         persistPreviewHtml(projectId, previewHtml);
         setPreviewLoading(false);

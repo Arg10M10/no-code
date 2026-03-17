@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // New APIs for project management
+  saveProjectFiles: (projectId, files) => ipcRenderer.invoke('save-project-files', projectId, files),
   startProjectDevServer: (basePath, projectId) => ipcRenderer.invoke('start-project-dev-server', basePath, projectId),
   stopProjectDevServer: () => ipcRenderer.invoke('stop-project-dev-server'),
   getProjectDevServerUrl: () => ipcRenderer.invoke('get-project-dev-server-url'),

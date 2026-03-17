@@ -12,6 +12,7 @@ interface Window {
     isMaximized: () => Promise<boolean>;
     onWindowStateChange: (callback: (isMax: boolean) => void) => () => void;
     // New APIs for project management
+    saveProjectFiles: (projectId: string, files: Array<{ path: string; content: string }>) => Promise<boolean>;
     startProjectDevServer: (basePath: string, projectId: string) => Promise<string | null>;
     stopProjectDevServer: () => Promise<void>;
     getProjectDevServerUrl: () => Promise<string | null>;

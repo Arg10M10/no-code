@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process'; // Removed ChildProcessWithoutNullStreams type import
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
+import fs from 'fs/promises'; // Importar fs/promises para operaciones asíncronas de archivos
 
 // Obtener __dirname en módulos ES
 const __filename = fileURLToPath(import.meta.url);
@@ -11,18 +12,21 @@ const isDev = !app.isPackaged;
 const VITE_DEV_SERVER_URL = 'http://127.0.0.1:5173';
 
 // --- Project Dev Server Management ---
-let currentDevServerProcess = null; // Removed type annotation
-let currentDevServerUrl = null; // Removed type annotation
-let currentProjectRootPath = null; // Removed type annotation
+let currentDevServerProcess: ChildProcessWithoutNullStreams | null = null;
+let currentDevServerUrl: string | null = null;
+let currentProjectRootPath: string | null = null;
 
-async function loadApp(win, urlOrPath, retries = 10) {
+// Directorio base para almacenar los proyectos generados por el usuario
+const getUserProjectsBaseDir = () => path.join(app.getPath('userData'), 'framio-user-projects');
+
+async function loadApp(win: BrowserWindow, urlOrPath: string, retries = 10) {
   try {
     if (urlOrPath.startsWith('http')) {
       await win.loadURL(urlOrPath);
     } else {
       await win.loadFile(urlOrPath);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to load: ${urlOrPath}. Error: ${error.message}`);
     if (retries > 0 && urlOrPath.startsWith('http')) {
       console.log(`Retrying to load in 1 second... (${retries} retries left)`);
@@ -95,7 +99,7 @@ app.on('window-all-closed', () => {
 });
 
 // --- IPC Handlers ---
-ipcMain.handle('run-npm-command', async (event, command, args = []) => {
+ipcMain.handle('run-npm-command', async (event, command: string, args: string[] = []) => {
   return new Promise((resolve, reject) => {
     const projectPath = currentProjectRootPath || app.getAppPath(); // Usar la ruta del proyecto actual si está definida
     
@@ -134,7 +138,7 @@ ipcMain.handle('run-npm-command', async (event, command, args = []) => {
 });
 
 ipcMain.handle('get-project-path', () => {
-  return app.getAppPath();
+  return getUserProjectsBaseDir(); // Ahora devuelve el directorio base de proyectos de usuario
 });
 
 ipcMain.handle('minimize-window', (event) => {
@@ -160,8 +164,30 @@ ipcMain.handle('is-maximized', (event) => {
   return BrowserWindow.fromWebContents(event.sender)?.isMaximized() || false;
 });
 
+// --- New IPC Handler to save project files ---
+ipcMain.handle('save-project-files', async (event, projectId: string, files: Array<{ path: string; content: string }>) => {
+  const projectDir = path.join(getUserProjectsBaseDir(), projectId);
+
+  try {
+    // Asegurarse de que el directorio del proyecto exista y esté limpio
+    await fs.rm(projectDir, { recursive: true, force: true });
+    await fs.mkdir(projectDir, { recursive: true });
+
+    for (const file of files) {
+      const filePath = path.join(projectDir, file.path);
+      const fileDir = path.dirname(filePath);
+      await fs.mkdir(fileDir, { recursive: true }); // Crear directorios anidados si no existen
+      await fs.writeFile(filePath, file.content, 'utf8');
+    }
+    return true;
+  } catch (error: any) {
+    console.error(`Error saving project files for ${projectId}:`, error);
+    throw new Error(`Failed to save project files: ${error.message}`);
+  }
+});
+
 // --- New IPC Handlers for Project Dev Server ---
-ipcMain.handle('start-project-dev-server', async (event, basePath, projectId) => { // Removed type annotations for basePath and projectId
+ipcMain.handle('start-project-dev-server', async (event, basePath: string, projectId: string) => {
   if (currentDevServerProcess) {
     currentDevServerProcess.kill('SIGTERM');
     currentDevServerProcess = null;
@@ -169,7 +195,15 @@ ipcMain.handle('start-project-dev-server', async (event, basePath, projectId) =>
     event.sender.send('project-dev-server-stopped');
   }
 
-  currentProjectRootPath = path.join(basePath, 'projects', projectId);
+  currentProjectRootPath = path.join(basePath, projectId); // basePath ya es getUserProjectsBaseDir()
+  
+  // Verificar si el directorio del proyecto existe
+  try {
+    await fs.access(currentProjectRootPath);
+  } catch (error) {
+    throw new Error(`Project directory not found: ${currentProjectRootPath}. Please generate files first.`);
+  }
+
   currentDevServerProcess = spawn('npm', ['run', 'dev'], { cwd: currentProjectRootPath, shell: true });
   let outputBuffer = '';
   let urlFound = false;
