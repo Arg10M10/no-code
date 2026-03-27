@@ -10,9 +10,10 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    frame: true, // Usamos el frame nativo para estabilidad, pero podemos personalizarlo
+    frame: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      // Apuntamos al nuevo nombre del archivo .cjs
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -36,15 +37,12 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// IPC para ejecutar comandos NPM (Node.js real)
 ipcMain.handle('run-npm-command', async (event, command, args) => {
   return new Promise((resolve, reject) => {
     if (npmProcess) {
       npmProcess.kill();
     }
 
-    // En un entorno real, aquí crearíamos una carpeta temporal para el proyecto
-    // Por ahora, simulamos la ejecución en el directorio raíz o uno específico
     npmProcess = spawn(command, args, {
       shell: true,
       env: { ...process.env, FORCE_COLOR: true }
