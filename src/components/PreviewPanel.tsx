@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
-  RefreshCw, MousePointerClick, Globe, Code2, Settings2, Maximize2 
+  RefreshCw, MousePointerClick, Globe, Code2, Settings2, Maximize2, ChevronLeft, ChevronRight, ShieldCheck
 } from "lucide-react";
 import Loader from "./Loader";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +27,7 @@ interface PreviewPanelProps {
 }
 
 const PreviewPanel: React.FC<PreviewPanelProps> = ({
+  previewUrl,
   code,
   files,
   loading,
@@ -47,16 +48,6 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
       iframe.contentWindow.postMessage(message, '*');
     }
   }, [isSelectionModeActive]);
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'elementSelected') {
-        onElementSelected(event.data.payload.description);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [onElementSelected]);
 
   return (
     <div className="h-full w-full flex flex-col bg-background overflow-hidden relative">
@@ -95,30 +86,36 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
       <div className="flex-1 relative min-h-0 w-full overflow-hidden flex flex-col">
         {activeTab === "preview" && (
           <div className="flex-1 flex flex-col bg-white overflow-hidden">
-            <div className="h-9 bg-muted/20 border-b flex items-center px-4 gap-3 shrink-0">
-              <div className="flex gap-1.5 shrink-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-400/40" />
-                <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/40" />
-                <div className="w-2.5 h-2.5 rounded-full bg-green-400/40" />
+            {/* Barra de Direcciones Estilo Navegador */}
+            <div className="h-11 bg-muted/30 border-b flex items-center px-4 gap-4 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-50"><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-50"><ChevronRight className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefresh}><RefreshCw className="h-3.5 w-3.5" /></Button>
               </div>
-              <div className="flex-1 bg-background/50 border rounded h-6 flex items-center px-3 gap-2 text-[10px] text-muted-foreground font-mono truncate">
-                <Maximize2 className="h-2.5 w-2.5 shrink-0" />
-                Previsualización en vivo
+              
+              <div className="flex-1 bg-background border rounded-full h-7 flex items-center px-4 gap-2 text-[11px] text-muted-foreground font-medium shadow-sm">
+                <ShieldCheck className="h-3.5 w-3.5 text-green-500" />
+                <span className="truncate">{previewUrl.startsWith('data:') ? 'localhost:preview' : previewUrl}</span>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7"><Maximize2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
             
-            <div className="flex-1 relative overflow-hidden">
+            <div className="flex-1 relative overflow-hidden bg-white">
               {loading && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-30">
                   <Loader />
                   <p className="mt-4 text-xs font-bold tracking-widest text-muted-foreground animate-pulse uppercase">
-                    Cargando...
+                    Iniciando Node.js...
                   </p>
                 </div>
               )}
               <iframe
                 ref={iframeRef}
-                src={code ? `data:text/html;base64,${btoa(unescape(encodeURIComponent(code)))}` : "about:blank"}
+                src={previewUrl.startsWith('data:') ? previewUrl : previewUrl}
                 className="w-full h-full border-0"
                 title="Preview"
                 sandbox="allow-scripts allow-same-origin allow-forms"

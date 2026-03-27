@@ -28,7 +28,7 @@ import {
 import { getSelectedModelLabel } from "@/lib/settings";
 import { getProviderFromLabel, generateAnswer } from "@/services/ai";
 import { cn } from "@/lib/utils";
-import { Github, Save } from "lucide-react";
+import { Github, Save, Play, RotateCcw } from "lucide-react";
 import { getApiKeysFromLocalStorage } from "@/lib/storage";
 
 const EditorPage: React.FC = () => {
@@ -53,7 +53,12 @@ const EditorPage: React.FC = () => {
   const [thoughtProcess, setThoughtProcess] = useState<string>("");
   const [codeStream, setCodeStream] = useState<string>("");
 
+  // Estados de Node.js/NPM
+  const [localhostUrl, setLocalhostUrl] = useState<string | null>(null);
+  const [isNpmRunning, setIsNpmRunning] = useState(false);
+
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isElectron = typeof window.electronAPI !== 'undefined';
 
   const addLog = (text: string) => {
     setGenerationLogs(prev => {
@@ -61,6 +66,33 @@ const EditorPage: React.FC = () => {
       return [...prev, text];
     });
   };
+
+  // Escuchar salida de terminal si estamos en Electron
+  useEffect(() => {
+    if (!isElectron) return;
+    const unsub = window.electronAPI.onNpmOutput((data: string) => {
+      if (data.includes("http://localhost:") || data.includes("http://127.0.0.1:")) {
+        const match = data.match(/http:\/\/(localhost|127\.0\.0\.1):\d+/);
+        if (match) setLocalhostUrl(match[0]);
+      }
+    });
+    return () => unsub();
+  }, [isElectron]);
+
+  const runDevServer = useCallback(async () => {
+    if (!isElectron) return;
+    setIsNpmRunning(true);
+    setPreviewLoading(true);
+    try {
+      // En una app real, primero guardaríamos los archivos a disco
+      await window.electronAPI.runNpmCommand('npm', ['run', 'dev']);
+    } catch (e) {
+      toast.error("Error al iniciar servidor Node.js");
+    } finally {
+      setPreviewLoading(false);
+      setIsNpmRunning(false);
+    }
+  }, [isElectron]);
 
   const triggerInitialGeneration = useCallback(async (projId: string, initialMessages: StoredMessage[]) => {
     if (!initialMessages[0]) return;
@@ -99,12 +131,15 @@ const EditorPage: React.FC = () => {
       persistProjectFiles(projId, files);
       setPreviewHtml(previewHtml);
       persistPreviewHtml(projId, previewHtml);
-      setPreviewLoading(false);
       
       addMessage(projId, { role: "assistant", content: finalThought || "Proyecto generado con éxito." });
       setCredits(decrementCredits(projId, 1000));
       setLoading(false);
       setMessagesState(getMessages(projId));
+
+      if (isElectron) runDevServer();
+      else setPreviewLoading(false);
+
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       toast.error("Error de generación", { description: err.message });
@@ -114,7 +149,7 @@ const EditorPage: React.FC = () => {
     } finally {
       abortControllerRef.current = null;
     }
-  }, []);
+  }, [isElectron, runDevServer]);
 
   useEffect(() => {
     if (projectId) {
@@ -133,8 +168,6 @@ const EditorPage: React.FC = () => {
       } else {
         navigate("/");
       }
-    } else {
-        navigate("/");
     }
   }, [projectId, navigate, triggerInitialGeneration]);
 
@@ -171,7 +204,6 @@ const EditorPage: React.FC = () => {
       persistProjectFiles(projectId, newFiles);
       setPreviewHtml(previewHtml);
       persistPreviewHtml(projectId, previewHtml);
-      setPreviewLoading(false);
 
       const aiResponseContent = `${finalThought || "Cambios aplicados."}\n---CHANGES---[]`;
       setCredits(decrementCredits(projectId, 1000));
@@ -179,6 +211,10 @@ const EditorPage: React.FC = () => {
       setMessagesState(finalMessages);
       setMessages(projectId, finalMessages);
       setLoading(false);
+
+      if (isElectron) runDevServer();
+      else setPreviewLoading(false);
+
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       toast.error("Error", { description: err.message });
@@ -187,15 +223,7 @@ const EditorPage: React.FC = () => {
     } finally {
       abortControllerRef.current = null;
     }
-  }, [messages, projectId, projectFiles]);
-
-  const handleSaveFile = useCallback((path: string, content: string) => {
-      if (!projectId || !projectFiles) return;
-      const newFiles = projectFiles.map(f => f.path === path ? { ...f, content } : f);
-      setProjectFiles(newFiles);
-      persistProjectFiles(projectId, newFiles);
-      toast.success("Archivo guardado localmente.");
-  }, [projectId, projectFiles]);
+  }, [messages, projectId, projectFiles, isElectron, runDevServer]);
 
   if (!projectId) return null;
 
@@ -209,6 +237,11 @@ const EditorPage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isElectron && (
+            <Button size="sm" variant="outline" className="h-9 border-green-500/30 text-green-500 hover:bg-green-500/10" onClick={runDevServer}>
+              <Play className="h-4 w-4 mr-2" /> Run Node.js
+            </Button>
+          )}
           <Button size="sm" variant="outline" className="h-9" onClick={() => navigate(`/publish/${projectId}`)}>
             <Github className="h-4 w-4 mr-2" /> Publicar
           </Button>
@@ -235,17 +268,22 @@ const EditorPage: React.FC = () => {
           <ResizableHandle className="w-1.5 bg-border/20" />
           <ResizablePanel defaultSize={70}>
             <PreviewPanel
-              previewUrl="/preview"
+              previewUrl={localhostUrl || "/preview"}
               code={previewHtml}
               files={projectFiles}
               loading={previewLoading}
-              onRefresh={() => setPreviewLoading(true)}
+              onRefresh={() => isElectron ? runDevServer() : setPreviewLoading(true)}
               isSelectionModeActive={isSelectionModeActive}
               onToggleSelectionMode={() => setIsSelectionModeActive(prev => !prev)}
               onElementSelected={setSelectedElement}
               projectName={projectName}
               projectId={projectId}
-              onSaveFile={handleSaveFile}
+              onSaveFile={(path, content) => {
+                if (!projectFiles) return;
+                const next = projectFiles.map(f => f.path === path ? { ...f, content } : f);
+                setProjectFiles(next);
+                persistProjectFiles(projectId, next);
+              }}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
