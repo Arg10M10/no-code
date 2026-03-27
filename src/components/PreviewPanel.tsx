@@ -3,8 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
-  RefreshCw, MousePointerClick, Terminal, Play, Square, 
-  Globe, Code2, Settings2, ChevronDown, ChevronUp, Maximize2 
+  RefreshCw, MousePointerClick, Globe, Code2, Settings2, Maximize2 
 } from "lucide-react";
 import Loader from "./Loader";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,7 +11,6 @@ import { cn } from "@/lib/utils";
 import SupabaseConnectModal from "@/components/supabase/SupabaseConnectModal";
 import CodePanel from "@/components/CodePanel";
 import { ProjectFile } from "@/lib/projects";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PreviewPanelProps {
   previewUrl: string;
@@ -25,14 +23,6 @@ interface PreviewPanelProps {
   onElementSelected: (description: string) => void;
   projectName?: string;
   projectId: string | null;
-  localhostUrl: string | null;
-  npmOutput: string[];
-  npmError: string[];
-  isNpmRunning: boolean;
-  onRebuild: () => void;
-  onRestart: () => void;
-  onStopDevServer: () => void;
-  onRunCommand: (command: string, args: string[]) => Promise<void>;
   onSaveFile: (path: string, content: string) => void;
 }
 
@@ -44,23 +34,11 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   isSelectionModeActive,
   onToggleSelectionMode,
   onElementSelected,
-  localhostUrl,
-  npmOutput,
-  npmError,
-  isNpmRunning,
-  onRebuild,
-  onRestart,
-  onStopDevServer,
-  onRunCommand,
   onSaveFile,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const consoleScrollRef = useRef<HTMLDivElement>(null);
   const [openSupabaseModal, setOpenSupabaseModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("preview");
-  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-  const [commandInput, setCommandInput] = useState("");
-  const isElectron = typeof window.electronAPI !== 'undefined';
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -79,20 +57,6 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementSelected]);
-
-  useEffect(() => {
-    if (consoleScrollRef.current) {
-      consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight;
-    }
-  }, [npmOutput, npmError, isTerminalOpen]);
-
-  const handleConsoleCommandSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commandInput.trim()) return;
-    const parts = commandInput.trim().split(/\s+/);
-    await onRunCommand(parts[0], parts.slice(1));
-    setCommandInput("");
-  };
 
   return (
     <div className="h-full w-full flex flex-col bg-background overflow-hidden relative">
@@ -113,22 +77,6 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         </Tabs>
 
         <div className="flex items-center gap-2">
-          {isElectron && (
-            <div className="flex items-center gap-1.5 border-r pr-2 mr-1">
-              <Button variant="outline" size="sm" onClick={onRebuild} disabled={loading} className="h-7 text-[10px] font-bold">
-                REBUILD
-              </Button>
-              <Button 
-                variant={isNpmRunning ? "destructive" : "secondary"} 
-                size="sm" 
-                onClick={isNpmRunning ? onStopDevServer : onRestart}
-                className="h-7 text-[10px] font-bold"
-              >
-                {isNpmRunning ? <Square className="h-3 w-3 mr-1 fill-current" /> : <Play className="h-3 w-3 mr-1 fill-current" />}
-                {isNpmRunning ? "STOP" : "RUN DEV"}
-              </Button>
-            </div>
-          )}
           <Button
             variant="ghost"
             size="icon"
@@ -155,12 +103,12 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
               </div>
               <div className="flex-1 bg-background/50 border rounded h-6 flex items-center px-3 gap-2 text-[10px] text-muted-foreground font-mono truncate">
                 <Maximize2 className="h-2.5 w-2.5 shrink-0" />
-                {localhostUrl || "http://localhost:5173"}
+                Previsualización en vivo
               </div>
             </div>
             
             <div className="flex-1 relative overflow-hidden">
-              {(loading || (isNpmRunning && !localhostUrl)) && (
+              {loading && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-30">
                   <Loader />
                   <p className="mt-4 text-xs font-bold tracking-widest text-muted-foreground animate-pulse uppercase">
@@ -170,7 +118,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
               )}
               <iframe
                 ref={iframeRef}
-                src={localhostUrl || (code ? `data:text/html;base64,${btoa(unescape(encodeURIComponent(code)))}` : "about:blank")}
+                src={code ? `data:text/html;base64,${btoa(unescape(encodeURIComponent(code)))}` : "about:blank"}
                 className="w-full h-full border-0"
                 title="Preview"
                 sandbox="allow-scripts allow-same-origin allow-forms"
@@ -196,45 +144,6 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
                 </div>
              </div>
              <SupabaseConnectModal open={openSupabaseModal} onOpenChange={setOpenSupabaseModal} />
-          </div>
-        )}
-      </div>
-
-      {/* Terminal Inferior */}
-      <div 
-        className={cn(
-          "absolute bottom-0 left-0 right-0 z-40 bg-[#0c0c0c] border-t border-white/10 transition-all duration-300 flex flex-col",
-          isTerminalOpen ? "h-[300px]" : "h-9"
-        )}
-      >
-        <div 
-          className="h-9 flex items-center justify-between px-4 cursor-pointer hover:bg-white/5 shrink-0"
-          onClick={() => setIsTerminalOpen(!isTerminalOpen)}
-        >
-          <div className="flex items-center gap-2">
-            <Terminal className="h-3.5 w-3.5 text-blue-400" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Terminal de Desarrollo</span>
-          </div>
-          {isTerminalOpen ? <ChevronDown className="h-4 w-4 text-zinc-500" /> : <ChevronUp className="h-4 w-4 text-zinc-500" />}
-        </div>
-
-        {isTerminalOpen && (
-          <div className="flex-1 flex flex-col min-h-0 font-mono overflow-hidden">
-            <ScrollArea className="flex-1 p-3" viewportRef={consoleScrollRef}>
-              <div className="space-y-1 text-[11px]">
-                {npmOutput.map((line, i) => <div key={i} className="text-zinc-300 whitespace-pre-wrap">{line}</div>)}
-                {npmError.map((line, i) => <div key={i} className="text-red-400/90 whitespace-pre-wrap">{line}</div>)}
-              </div>
-            </ScrollArea>
-            <form onSubmit={handleConsoleCommandSubmit} className="p-2 bg-black border-t border-white/5 flex items-center px-4">
-               <span className="text-blue-500 font-bold text-xs mr-2">$</span>
-               <input
-                 value={commandInput}
-                 onChange={(e) => setCommandInput(e.target.value)}
-                 className="flex-1 bg-transparent border-none text-[11px] font-mono focus:ring-0 text-zinc-200"
-                 placeholder="Ej: npm install..."
-               />
-            </form>
           </div>
         )}
       </div>

@@ -2,76 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    /* Default to Light Mode */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-
     --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
-
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
-
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
-
     --radius: 0.5rem;
-
-    --gradient-hero: linear-gradient(135deg, hsl(210 100% 60% / 0.1), hsl(200 100% 50% / 0.1));
   }
 
   .dark {
     --background: 220 40% 5%;
     --foreground: 0 0% 100%;
-
     --card: 220 30% 8%;
     --card-foreground: 0 0% 100%;
-
     --popover: 220 30% 8%;
     --popover-foreground: 0 0% 100%;
-
     --primary: 210 100% 60%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 220 25% 12%;
     --secondary-foreground: 0 0% 100%;
-
     --muted: 220 20% 15%;
     --muted-foreground: 220 10% 60%;
-
     --accent: 200 100% 50%;
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
-
     --border: 220 20% 20%;
     --input: 220 20% 15%;
     --ring: 210 100% 60%;
-
-    --gradient-hero: linear-gradient(135deg, hsl(210 100% 60% / 0.1), hsl(200 100% 50% / 0.1));
   }
 }
 
@@ -79,24 +53,8 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
-
-  /* Ensure html and body are transparent for frameless windows */
-  html {
-    background-color: transparent;
-  }
-
   body {
-    @apply text-foreground; /* Remove bg-background from body */
-    background-color: transparent; /* Ensure body is transparent */
-  }
-
-  /* Global border-radius for the Electron window content */
-  #root {
-    @apply bg-background; /* Apply main background to #root */
-    /* border-radius: var(--radius); */ /* Removed for native frame */
-    overflow: hidden; /* Ensures content respects border-radius */
-    height: 100vh; /* Ensure #root fills the viewport */
-    width: 100vw; /* Ensure #root fills the viewport */
+    @apply bg-background text-foreground;
   }
 }
 
@@ -120,133 +78,14 @@ All colors MUST be HSL.
     animation: float 20s infinite ease-in-out;
   }
 
-  .lavalamp-blob:nth-child(1) {
-    width: 500px;
-    height: 500px;
-    background: hsl(210 100% 60%);
-    top: 10%;
-    left: 10%;
-    animation-delay: 0s;
-    animation-duration: 20s;
-  }
-
-  .lavalamp-blob:nth-child(2) {
-    width: 400px;
-    height: 400px;
-    background: hsl(200 100% 50%);
-    top: 50%;
-    right: 10%;
-    animation-delay: 5s;
-    animation-duration: 25s;
-  }
-
-  .lavalamp-blob:nth-child(3) {
-    width: 600px;
-    height: 600px;
-    background: hsl(220 100% 55%);
-    bottom: 10%;
-    left: 30%;
-    animation-delay: 10s;
-    animation-duration: 30s;
-  }
-
-  .lavalamp-blob:nth-child(4) {
-    width: 450px;
-    height: 450px;
-    background: hsl(195 100% 55%);
-    top: 30%;
-    left: 50%;
-    animation-delay: 15s;
-    animation-duration: 28s;
-  }
+  .lavalamp-blob:nth-child(1) { width: 500px; height: 500px; background: hsl(210 100% 60%); top: 10%; left: 10%; }
+  .lavalamp-blob:nth-child(2) { width: 400px; height: 400px; background: hsl(200 100% 50%); top: 50%; right: 10%; }
+  .lavalamp-blob:nth-child(3) { width: 600px; height: 600px; background: hsl(220 100% 55%); bottom: 10%; left: 30%; }
+  .lavalamp-blob:nth-child(4) { width: 450px; height: 450px; background: hsl(195 100% 55%); top: 30%; left: 50%; }
 
   @keyframes float {
-    0% {
-      transform: translate(0, 0) scale(1) rotate(0deg);
-    }
-    20% {
-      transform: translate(100px, -80px) scale(1.2) rotate(45deg);
-    }
-    40% {
-      transform: translate(-80px, 100px) scale(0.8) rotate(90deg);
-    }
-    60% {
-      transform: translate(120px, 60px) scale(1.1) rotate(180deg);
-    }
-    80% {
-      transform: translate(-60px, -100px) scale(0.9) rotate(270deg);
-    }
-    100% {
-      transform: translate(0, 0) scale(1) rotate(360deg);
-    }
-  }
-
-  /* Loader animation (from Uiverse.io by csozidev), adapted to theme */
-  .loader {
-    --size: 56px;
-    --gap: 10px;
-    --box: 14px;
-    width: calc(var(--size) + var(--gap));
-    display: grid;
-    grid-template-columns: repeat(2, var(--box));
-    grid-template-rows: repeat(2, var(--box));
-    gap: var(--gap);
-    transform: rotate(45deg);
-  }
-
-  .loader .box {
-    position: relative;
-    width: var(--box);
-    height: var(--box);
-    transform-style: preserve-3d;
-    animation: box-shift 1.25s ease-in-out infinite;
-  }
-
-  .loader .box-1 { animation-delay: 0s; }
-  .loader .box-2 { animation-delay: 0.1s; }
-  .loader .box-3 { animation-delay: 0.2s; }
-  .loader .box-4 { animation-delay: 0.3s; }
-
-  .loader .side-left {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    transform-origin: left;
-    background: hsl(var(--primary) / 0.7);
-  }
-  .loader .side-right {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 100%;
-    height: 100%;
-    transform-origin: right;
-    background: hsl(var(--accent) / 0.7);
-  }
-  .loader .side-top {
-    position: absolute;
-    inset: 0;
-    background: hsl(var(--primary));
-    transform-origin: top;
-  }
-
-  @keyframes box-shift {
-    0%, 10% { transform: translateZ(0) rotate(0); }
-    50%     { transform: translateZ(12px) rotate(180deg); }
-    90%,100%{ transform: translateZ(0) rotate(360deg); }
-  }
-
-  /* Preview overlay */
-  .preview-loading-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, hsl(var(--background) / 0.6), hsl(var(--background) / 0.8));
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
+    0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+    50% { transform: translate(100px, -80px) scale(1.2) rotate(180deg); }
+    100% { transform: translate(0, 0) scale(1) rotate(360deg); }
   }
 }
